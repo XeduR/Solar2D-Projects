@@ -22,6 +22,9 @@ A game where the goal is to keep the runners from escaping by reaching the botto
 #### Dodger* (A fully functional game made with Corona in less than 50 lines of code.)
 A game with minimal vector art where the goal is to keep the ball afloat for as long as possible without hitting the moving platforms.
 
+#### Collision filters
+A simple convenience spreadsheet for creating custom collision filters in a quick and easy manner. Just tick the boxes, optionally name your collision filters and the rest is done automatically, so you just need to copy the filters to your projects.
+
 ---
 
 ### Closing remarks
