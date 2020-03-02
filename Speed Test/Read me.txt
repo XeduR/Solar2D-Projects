@@ -1,0 +1,14 @@
+Hello!
+
+This "Speed Test" sample game for Corona SDK was created by Spyric.
+
+This project was created just for the fun of it and it consists of less than
+150 lines of code, with no special tricks or external libraries/modules.
+
+Feel free to do anything you want with the code.
+
+Have fun!
+
+-
+Eetu Rantanen / Spyric
+www.spyric.com

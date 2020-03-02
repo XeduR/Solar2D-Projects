@@ -10,6 +10,18 @@ Project marked with an _asterisk*_ are written in Lua and require [Corona](https
 #### autotile*
 autotile is a light-weight and fast module that uses bitwise tile index to automatically place correct tiles on a map. Uses Blob tileset (47 tile tileset). The project has a simple UI and comes with a tileset template.
 
+#### screen*
+A simple table containing fully dynamic coordinate and related values for displays of any size and aspect ratio to simplify creating and managing UI.
+
+#### Speed Test* (A fully functional game made with Corona in less than 150 lines of code.)
+A simple speed tester game with flashing lights where the goal is to keep tapping the lights in the correct sequence for as long as possible. Features simple graphics, visual effects and score tracking.
+
+#### Runners* (A fully functional game made with Corona in less than 100 lines of code.)
+A game where the goal is to keep the runners from escaping by reaching the bottom of the screen. Features simple graphics, animations and score tracking.
+
+#### Dodger* (A fully functional game made with Corona in less than 50 lines of code.)
+A game with minimal vector art where the goal is to keep the ball afloat for as long as possible without hitting the moving platforms.
+
 ---
 
 ### Closing remarks
