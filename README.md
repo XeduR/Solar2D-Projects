@@ -3,7 +3,7 @@
 
 A collection of my publicly available projects ranging from individual functions to modules, libraries and even entire games.
 
-Project marked with an _asterisk*_ are written in Lua and require [Corona](https://coronalabs.com/) in order to work out of the box. If you are using Lua based engine/tool, like Löve, then you will need to edit some parts of these projects to get them to work.
+Project marked with an _asterisk*_ are written in Lua and require [Corona](https://coronalabs.com/) in order to work out of the box. If you are using soem other Lua based engine/tool, like Löve, then you will need to edit some parts of these projects to get them to work.
 
 ### List of projects
 
