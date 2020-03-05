@@ -9,7 +9,7 @@ local onApprovedDomain = false
 ]]
 
 if system.getInfo( "platform" ) == "html5" then
-    local domain = require( "spyric.verifyDomain" )
+    local domain = require( "verifyDomain" )
     -- Add any domains you want to be able to launch your game here.
     local approvedDomains = {
         "https://xedur.github.io/",
