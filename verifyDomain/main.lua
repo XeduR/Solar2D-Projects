@@ -12,8 +12,10 @@ if system.getInfo( "platform" ) == "html5" then
     local domain = require( "verifyDomain" )
     -- Add any domains you want to be able to launch your game here.
     local approvedDomains = {
+        "https://spyric.com/",
         "https://xedur.github.io/",
-        "https://spyric.com/"
+        "https://www.xedur.com/",
+        "https://xedur.com/"
     }
     --[[
         If ignoreSubfolders is false, then the retrieved domain has to perfectly match
