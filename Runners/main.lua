@@ -82,7 +82,7 @@ local function addRunner()
 	runner:play()
 	currentSpeed = startSpeed+(startTime-system.getTimer())*0.1
 	if currentSpeed <= maximumSpeed then currentSpeed = maximumSpeed end
-	runner.transition = transition.to( runner, {time=currentSpeed, x=math.random(20,300), y=ground.y, xScale=1, yScale=1, onComplete=gameover})
+	runner.transition = transition.to( runner, {time=currentSpeed, x=math.random(40,440), y=ground.y, xScale=1, yScale=1, onComplete=gameover})
 	runnerTimer = timer.performWithDelay( spawnSpeed*(currentSpeed/startSpeed), addRunner )
 end
 
