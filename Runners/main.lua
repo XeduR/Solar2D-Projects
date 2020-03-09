@@ -3,7 +3,7 @@ display.setDefault( "fillColor", 0 )
 math.randomseed( os.time() )
 -- A bit of "cheeky grouping" with the variable declarations in order to fit everything to within 100 lines, as per personal constraints.
 local startTime, runnerTimer, startTransition, score, integral, fractional, currentSpeed
-local text, spawnSpeed, startSpeed, maximumSpeed, highscore, font, fontSize = {}, 500, 4000, 1200, 0, "assets/adventpro-bold.ttf", 24
+local text, spawnSpeed, startSpeed, maximumSpeed, highscore, font, fontSize = {}, 500, 4000, 1200, 0, "assets/adventpro-bold.ttf", 15
 local groupBG = display.newGroup()
 local groupRunners = display.newGroup()
 
@@ -17,7 +17,11 @@ local options = {
 local runnerSheet = graphics.newImageSheet( "assets/runner.png", options )
 local runnerAnimation = { time=400, frames={1,1,2,3,3} }
 
-local sky = display.newRect( groupBG, 160, 240, display.actualContentWidth, display.actualContentHeight )
+local ground = display.newImageRect( groupBG, "assets/ground.png", display.actualContentWidth, 256 ) -- will warp the ground image a bit
+ground.x, ground.y, ground.anchorY = 240, (display.contentHeight-display.actualContentHeight)*0.5+display.actualContentHeight, 1
+
+local sky = display.newRect( groupBG, 240, display.screenOriginY, display.actualContentWidth, display.actualContentHeight - ground.height )
+sky.anchorY = 0
 sky.fill = {
     type = "gradient",
     color1 = { 0.6, 0.9, 0.9 },
@@ -25,19 +29,16 @@ sky.fill = {
     direction = "up"
 }
 
-local ground = display.newImageRect( groupBG, "assets/ground.png", 512, 256 )
-ground.x, ground.y, ground.anchorY = 160, (display.contentHeight-display.actualContentHeight)*0.5+display.actualContentHeight, 1
-
-local title = display.newImageRect( groupBG, "assets/title.png", 256, 128 )
-title.x, title.y = 160, display.safeScreenOriginY+title.height*0.5
+local title = display.newImageRect( groupBG, "assets/title.png", 196, 56 )
+title.x, title.y = 100, display.safeScreenOriginY+title.height*0.5
 
 local startButton = display.newImageRect( groupBG, "assets/start.png", 128, 64 )
-startButton.x, startButton.y = title.x-70, 180
+startButton.x, startButton.y = 240, 220
 startTransition = transition.blink( startButton, {time=3500} )
 
-text[1] = display.newText( groupBG, "Stop all runners from reaching the finish line!", title.x-title.width*0.5, title.y+title.height+12, 160, 300, font, fontSize )
-text[2] = display.newText( groupBG, "Score: 0:00", title.x+20, title.y+title.height*0.8, font, fontSize*0.8 )
-text[3] = display.newText( groupBG, "Highscore: 0:00", text[2].x, text[2].y+fontSize, font, fontSize*0.8 )
+text[1] = display.newText( groupBG, "Stop all runners from reaching the finish line!", title.x + 100, title.y - 10, font, fontSize )
+text[2] = display.newText( groupBG, "Score: 0:00", text[1].x + 30, title.y + 20, font, fontSize )
+text[3] = display.newText( groupBG, "Highscore: 0:00", text[2].x + 100, text[2].y, font, fontSize )
 for i = 1, 3 do
 	text[i].anchorX = 0
 end
@@ -49,7 +50,7 @@ local function updateScore()
 end
 
 local function gameover()
-	transition.cancel()
+	transition.cancel() -- cancels all transitions
 	timer.cancel( runnerTimer )
 	Runtime:removeEventListener( "enterFrame", updateScore )
 	if score > highscore then
@@ -75,7 +76,7 @@ end
 
 local function addRunner()
 	local runner = display.newSprite( groupRunners, runnerSheet, runnerAnimation )
-	runner.x, runner.y, runner.xScale, runner.yScale = math.random(60,260), ground.y-ground.height, 0.1, 0.1
+	runner.x, runner.y, runner.xScale, runner.yScale = math.random(60,420), ground.y-ground.height, 0.1, 0.1
 	runner:addEventListener( "touch", removeRunner )
 	runner:toBack()
 	runner:play()

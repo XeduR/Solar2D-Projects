@@ -6,14 +6,14 @@ local shiftTimer, started
 physics.start()
 physics.pause()
 
-local platformTop = display.newRect( display.contentCenterX, display.contentCenterY - 120, display.actualContentWidth, 60 )
+local platformTop = display.newRect( display.contentCenterX, display.contentCenterY - 120, display.actualContentWidth, 40 )
 physics.addBody( platformTop, "static" )
-local platformBottom = display.newRect( display.contentCenterX, display.contentCenterY + 120, display.actualContentWidth, 60 )
+local platformBottom = display.newRect( display.contentCenterX, display.contentCenterY + 120, display.actualContentWidth, 40 )
 physics.addBody( platformBottom, "static" )
 local player = display.newCircle( display.contentCenterX, display.contentCenterY, 20 )
 physics.addBody( player, {radius=20} )
 player:setFillColor( 0.1, 0.7, 0.1 )
-local text = display.newText( "Tap to Jump. Don't get hit!", display.contentCenterX, display.contentCenterY + 180, "assets/adventpro-bold.ttf", 28 )
+local text = display.newText( "Tap to Jump. Don't get hit!", display.contentCenterX, display.contentCenterY + 120, "assets/adventpro-bold.ttf", 28 )
 text:setFillColor( 1 )
 
 local function shift()
@@ -25,8 +25,8 @@ end
 local function jump( event )
 	if event.phase == "began" then
 		if not started then
-			physics.start()
 			started = true
+			physics.start()
 			shiftTimer = timer.performWithDelay( 750, shift, 0 )
 		end
 		player:setLinearVelocity( 0, 0 )

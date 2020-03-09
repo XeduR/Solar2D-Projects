@@ -109,12 +109,22 @@ local function updateMode( event )
     end
 end
 
-local buttonAdd = display.newRect( 110, 70, 48, 48 )
+local labelAdd = display.newText( "Add", 140, 50, "font/adventpro-bold.ttf", 30 )
+labelAdd:setFillColor( 0, 0.7, 0 )
+labelAdd.anchorX = 1
+
+local buttonAdd = display.newRect( 110, labelAdd.y + labelAdd.height + 20, 48, 48 )
 buttonAdd:setFillColor( 0, 0.7, 0 )
 buttonAdd.id = "add"
 buttonAdd:addEventListener( "touch", updateMode )
 
-local buttonRemove = display.newRect( 110, 140, 48, 48 )
+local labelRemove = display.newText( "Remove", 140, 160, "font/adventpro-bold.ttf", 30 )
+labelRemove:setFillColor( 0.7, 0, 0 )
+labelRemove.anchorX = 1
+
+local buttonRemove = display.newRect( 110, labelRemove.y + labelRemove.height + 20, 48, 48 )
 buttonRemove:setFillColor( 0.7, 0, 0 )
 buttonRemove.id = "remove"
 buttonRemove:addEventListener( "touch", updateMode )
+
+selected.y = buttonAdd.y

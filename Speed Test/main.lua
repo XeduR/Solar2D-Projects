@@ -25,7 +25,7 @@ end
 
 display.setDefault( "textureWrapX", "repeat" )
 display.setDefault( "textureWrapY", "mirroredRepeat" )
-local bg = display.newRect( 160, 240, display.actualContentWidth, display.actualContentHeight )
+local bg = display.newRect( display.contentCenterX, display.contentCenterY, display.actualContentWidth, display.actualContentHeight )
 bg.fill = {
     type = "image",
     filename = "images/metalTexture.png"
@@ -34,10 +34,10 @@ bg.fill.scaleX, bg.fill.scaleY = 128 / bg.width, 128 / bg.height
 display.setDefault( "textureWrapX", "clampToEdge" )
 display.setDefault( "textureWrapY", "clampToEdge" )
 
-local title = display.newImageRect( "images/title.png", 256, 128 )
-title.x, title.y = 160, display.safeScreenOriginY+title.height*0.5
+local title = display.newImageRect( "images/title.png", 160, 128 )
+title.x, title.y = 110, 90
 button[1] = display.newImageRect( "images/buttonRed.png", 128, 128 )
-button[1].x, button[1].y = 92, (display.contentHeight-display.actualContentHeight)*0.5+display.actualContentHeight-260
+button[1].x, button[1].y = 288, 62
 button[2] = display.newImageRect( "images/buttonGreen.png", 128, 128 )
 button[2].x, button[2].y = button[1].x+button[1].width, button[1].y+button[1].height*0.5
 button[3] = display.newImageRect( "images/buttonOrange.png", 128, 128 )
@@ -55,10 +55,9 @@ flash.alpha = 0
 flash.blendMode = "add"
 
 local misclick = display.newImageRect( "images/misclick.png", 128, 128 )
-misclick.x, misclick.y = button[1].x, button[1].y
-misclick.alpha = 0
+misclick.x, misclick.y, misclick.alpha = button[1].x, button[1].y, 0
 
-text[1] = display.newText( "Score: "..score, 148, title.y+80, font, fontSize )
+text[1] = display.newText( "Score: "..score, 30, title.y+100, font, fontSize )
 text[1]:setFillColor( 0 )
 text[2] = display.newText( "Score: "..score, text[1].x-1, text[1].y-1, font, fontSize )
 text[2]:setFillColor( 0.898, 0.663, 0.153 )
@@ -122,10 +121,10 @@ end
 function gameover(id, colour)
 	playing = false
 	if id == 0 then -- 0 is first launch
-		box = display.newRect( 160, (button[1].y+button[4].y)*0.5, display.actualContentWidth, 280 )
+		box = display.newRect( 354, 158, 240, 300 )
 		box:setFillColor(0)
 		box.alpha = 0.8
-		text[5] = display.newText( "Tap the lights in the correct order for as long as you can.\n\nTap here to start", 160, box.y+60, 240, 300,  font, fontSize )
+		text[5] = display.newText( "Tap the lights in the correct order for as long as you can.\n\nTap here to start", 364, box.y+60, 240, 300,  font, fontSize )
 		box:addEventListener( "touch", newgame )
 	else
 		transition.cancel()
