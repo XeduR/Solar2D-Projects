@@ -1,12 +1,10 @@
--- NB! This file is used for HTML5 exports as they currently behave differently from desktop/mobile builds.
-
-display.setDefault( "background", 0.3 ) -- Change the background to grey.
+display.setDefault( "background", 0.3 )
 local physics = require("physics")
 physics.start()
-physics.setGravity( 0, 50 )
 physics.pause() -- Physics are paused until the game starts.
 local shiftTimer, started
 
+-- Images used in this project are from Ponywolf's Sticker Knight Platformer, CCO, (source: https://github.com/ponywolf/Sticker-Knight-Platformer)
 local platformTop = display.newImage( "assets/platformBase3.png", display.contentCenterX, display.contentCenterY - 150 )
 physics.addBody( platformTop, "static" )
 platformTop.xScale, platformTop.yScale = -1, -1 -- Flip the top platform over its x and y-axes.
@@ -33,10 +31,10 @@ local function jump( event )
 			started = true
 			physics.start()
 			shiftTimer = timer.performWithDelay( 750, shift, 0 )
-	  		display.setDefault( "background", 0.3 ) -- Restore the background colour.
+			display.setDefault( "background", 0.3 ) -- Restore the background colour.
 		end
-		bomb:setLinearVelocity( 0, 0 ) -- Reset the bomb's current linear velocity.
-		bomb:applyLinearImpulse( 0, -0.3 ) -- And give it an upwards impulse.
+		bomb:setLinearVelocity( 0, 0 )
+		bomb:applyLinearImpulse( 0, -0.1 )
 	end
 end
 
@@ -46,7 +44,7 @@ local function collision( event ) -- If a collision begins, it means the game is
 		timer.cancel( shiftTimer )
 		transition.cancel()
 		physics.pause()
-		timer.performWithDelay( 100, function()
+		timer.performWithDelay( 50, function()
 			platformTop.y, platformBottom.y, bomb.y = display.contentCenterY-150, display.contentCenterY+150, display.contentCenterY
 			started = false
 		end )
