@@ -25,19 +25,19 @@ local seed = 12345
 function rng.randomseed(n)
     if (type(n) == "number") then
         seed = _floor(n+0.5)
-	else
-		print( "WARNING: bad argument to 'randomseed' (number expected, got "..type(n)..")" )
+    else
+        print( "WARNING: bad argument to 'randomseed' (number expected, got "..type(n)..")" )
     end
 end
 
 -- If only one arguments is passed, then x >= 1. If two arguments are passed, then y >= x.
 function rng.random(x,y)
     seed = (a * seed + c) % m
-	local r = seed / m
-	-- With no arguments, return a random number between 0 and 1.
-	-- With one argument, return a random number between it and 1.
-	-- With two arguments, return a random number between them.
-	return not x and r or not y and _floor((x-1)*r+1.5) or _floor((y-x)*r+x+0.5)
+    local r = seed / m
+    -- With no arguments, return a random number between 0 and 1.
+    -- With one argument, return a random number between it and 1.
+    -- With two arguments, return a random number between them.
+    return not x and r or not y and _floor((x-1)*r+1.5) or _floor((y-x)*r+x+0.5)
 end
 
 return rng
