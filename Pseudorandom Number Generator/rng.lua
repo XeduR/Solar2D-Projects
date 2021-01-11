@@ -1,6 +1,9 @@
 -----------------------------------------------------------------------
 -- Pseudorandom number generation using the linear congruential method:
 -----------------------------------------------------------------------
+-- You can take a look at the statistical representation of the results
+-- at: https://www.xedur.com/demos/Pseudorandom%20Number%20Generator/
+--
 -- This module is intended to be used for when you need to generate
 -- platform independent pseudorandom numbers in your Lua applications.
 -- Lua's implementation of math.random() is platform specific and its
@@ -30,13 +33,14 @@ function rng.randomseed(n)
     end
 end
 
--- If only one arguments is passed, then x >= 1. If two arguments are passed, then y >= x.
+-- If only one argument is passed, then x needs to be larger than or equal to 1.
+-- If two arguments are passed, then y needs to be larger than or equal to x.
 function rng.random(x,y)
     seed = (a * seed + c) % m
     local r = seed / m
-    -- With no arguments, return a random number between 0 and 1.
-    -- With one argument, return a random number between it and 1.
-    -- With two arguments, return a random number between them.
+    -- With no arguments, return a random number (fraction) between 0 and 1.
+    -- With one argument, return a random number (integer) between 1 and x.
+    -- With two arguments, return a random number (integer) between x and y.
     return not x and r or not y and _floor((x-1)*r+1.5) or _floor((y-x)*r+x+0.5)
 end
 
