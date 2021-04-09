@@ -17,6 +17,7 @@
 local rng = {}
 
 local _floor = math.floor
+local _type = type
 
 -- Initial randomisation parameters (you can leave these as is).
 local a = 1664525
@@ -41,7 +42,7 @@ function rng.random(x,y)
     -- With no arguments, return a random number (fraction) between 0 and 1.
     -- With one argument, return a random number (integer) between 1 and x.
     -- With two arguments, return a random number (integer) between x and y.
-    return not x and r or not y and _floor((x-1)*r+1.5) or _floor((y-x)*r+x+0.5)
+    return _type(x) ~= "number" and r or _type(y) ~= "number" and _floor((x-1)*r+1.5) or _floor((y-x)*r+x+0.5)
 end
 
 return rng
