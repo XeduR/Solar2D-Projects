@@ -1,0 +1,5 @@
+These are the source files for images, etc. that were created during Ludum Dare 46 game jam.
+
+This folder, as well as the Git files in the root folder, are excluded from the build.
+This means that if you build the project yourself using Solar2D, then you won't need
+to worry about any of the files inside this folder. See build.settings file.
