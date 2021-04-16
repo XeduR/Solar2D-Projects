@@ -2,8 +2,15 @@ display.setStatusBar( display.HiddenStatusBar )
 local tileLoader = require( "spyric.autotile" )
 
 local map, sensor = {}, {}
-local maxRows = 18
-local maxColumns = 20
+----------------------------
+-- Original, restore these:
+-- local maxRows = 18
+-- local maxColumns = 20
+----------------------------
+-- 60 Second Heist, TEMP:
+local maxRows = 16
+local maxColumns = 26
+----------------------------
 local sensorSize = 32 -- Same as frame size.
 local mode = "add"
 local prevSensor
@@ -11,8 +18,8 @@ local prevSensor
 tileLoader.init( map, maxRows, maxColumns )
 
 local options = {
-    width = 32,
-    height = 32,
+    width = sensorSize,
+    height = sensorSize,
     numFrames = 49
 }
 
@@ -35,7 +42,6 @@ local function addTile( r, c, overwrite )
         sensor[r][c].bitmask = bitmask
     end
 end
-
 
 local function sensorEvent( event )
     if event.phase == "ended" then
@@ -107,6 +113,26 @@ local function updateMode( event )
         mode = event.target.id
         selected.y = event.target.y
     end
+    return true
+end
+
+
+local function printToConsole( event )
+    if event.phase == "ended" then
+        local s = "\v{\v"
+        for row = 1, #map do
+            local t = {}
+            for column = 1, #map[row] do
+                t[column] = map[row][column] or 0
+            end
+            if #t > 0 then
+                s = s.."\t{"..table.concat(t, ",").."},\v"
+            end
+        end
+        s = s.."},"
+        print(s)
+    end
+    return true
 end
 
 local labelAdd = display.newText( "Add", 140, 50, "font/adventpro-bold.ttf", 30 )
@@ -126,5 +152,13 @@ local buttonRemove = display.newRect( 110, labelRemove.y + labelRemove.height + 
 buttonRemove:setFillColor( 0.7, 0, 0 )
 buttonRemove.id = "remove"
 buttonRemove:addEventListener( "touch", updateMode )
+
+local labelPrint = display.newText( "Print", 140, 270, "font/adventpro-bold.ttf", 30 )
+labelPrint:setFillColor( 0.8, 0.7, 0 )
+labelPrint.anchorX = 1
+
+local buttonPrint = display.newRect( 110, labelPrint.y + labelPrint.height + 20, 48, 48 )
+buttonPrint:setFillColor( 0.8, 0.7, 0 )
+buttonPrint:addEventListener( "touch", printToConsole )
 
 selected.y = buttonAdd.y
