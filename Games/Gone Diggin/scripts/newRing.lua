@@ -5,14 +5,12 @@ local pi = math.pi
 local cos = math.cos
 local sin = math.sin
 local min = math.min
-local max = math.max
 local deg = math.deg
 local rad = math.rad
-local atan2 = math.atan2
 local random = math.random
 local round = math.round
-local unpack = unpack
-local newPolygon = display.newPolygon
+
+local newRect = display.newRect
 
 local toRGB = 1/255
 
@@ -39,7 +37,6 @@ function M.create( params, startingLayer )
 	local thickness = params.thickness
 	local surfaceLayers = params.surfaceLayers
 	local segmentsPerRing = params.segmentsPerRing
-	local debugInfo = params.debugInfo
 	
 	local ring, ringScales = {}, {}
 	
@@ -51,11 +48,11 @@ function M.create( params, startingLayer )
 	local outerY = round(-cos(a)*(radius)-1)
 	local innerX = round(sin(a)*(radius-thickness))+1
 	local outerX = round(sin(a)*(radius))+1
-	local width = outerX*2+2
-	local height = innerY-outerY+2
+	local width = outerX*2+4
+	local height = innerY-outerY+4
 	local offsetX2 = outerX-innerX
 	local offsetX3 = innerX-outerX
-	print( width, height )
+	
 	local xy, angle = getCoordinates( segmentsPerRing, radius-thickness*0.5, true )
 		
 	for i = 1, ringCount do
@@ -82,7 +79,7 @@ function M.create( params, startingLayer )
 		for segment = 1, #xy, 2 do
 			-- Then create a rectangle based on the bounds, but manipulate the path to
 			-- achieve quadrilateral distortion and segments to use to create the ring.
-			local t = display.newRect( ring[i], xy[segment], xy[segment+1], width, height )
+			local t = newRect( ring[i], xy[segment], xy[segment+1], width, height )
 			t.rotation = angle[n]+90
 			t.path.x2 = offsetX2
 			t.path.x3 = offsetX3

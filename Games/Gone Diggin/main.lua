@@ -14,11 +14,14 @@ local bgShading = display.newRect( groupBG, screen.centreX, screen.centreY, scre
 bgShading:setFillColor(0)
 bgShading.alpha = 0
 
--- Hacking by using a mask to hide the ugly snap to ring scaling.
-local mask = display.newImageRect( groupUI, "images/mask.png", 960, 256 )
-mask.x, mask.y = screen.centreX, screen.minY
-mask.anchorY = 0
-mask.alpha = 0
+-- Hacking by using a masks to hide the ugly "snap to transitions".
+local maskTop = display.newImageRect( groupUI, "images/maskTop.png", 960, 256 )
+maskTop.x, maskTop.y = screen.centreX, screen.minY
+maskTop.anchorY = 0
+maskTop.alpha = 0
+local maskBottom = display.newImageRect( groupUI, "images/maskBottom.png", 960, 100 )
+maskBottom.x, maskBottom.y = screen.centreX, screen.maxY
+maskBottom.anchorY = 1
 -------------------------------------------------------------
 -- World generation & other visual parameters:
 local startingLayer = 5
@@ -27,13 +30,11 @@ local transitionTime = 150
 -- NB! These settings are written for 960x640 content area.
 local ringParameters = {
     parent = groupWorld,
-    -- radius = 300,
     radius = screen.width,
     ringCount = 12,
     thickness = 122,
     surfaceLayers = 2,
-    segmentsPerRing = 24,
-    debugInfo = true,
+    segmentsPerRing = 24
 }
 -------------------------------------------------------------
 local currentDifficulty = ringParameters.ringCount - ringParameters.surfaceLayers - startingLayer
@@ -88,7 +89,7 @@ local function movePlayer( direction )
                 if bgShading.alpha < 1 then
                     local alpha = (currentDifficulty - startingLayer)/5
                     transition.to( bgShading, { time=transitionTime, alpha=alpha  })
-                    transition.to( mask, { time=transitionTime, alpha=alpha  })
+                    transition.to( maskTop, { time=transitionTime, alpha=alpha  })
                 end
                 
                 for i = 1, #ring do
