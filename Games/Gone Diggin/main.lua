@@ -1,6 +1,6 @@
 display.setStatusBar( display.HiddenStatusBar )
 display.setDefault( "background", 70/255, 189/255, 194/255 )
--- display.setDefault( "background", 0.5, 0.4, 0.25  )
+
 
 local screen = require("scripts.screen")
 local newRing = require("scripts.newRing")
@@ -26,6 +26,7 @@ maskBottom.anchorY = 1
 -- World generation & other visual parameters:
 local startingLayer = 5
 local transitionTime = 150
+local debugMode = true
 
 -- NB! These settings are written for 960x640 content area.
 local ringParameters = {
@@ -42,6 +43,7 @@ local rotationAngle = 360/ringParameters.segmentsPerRing -- How many angles each
 local activeLayer = startingLayer
 local activeColumn = 1
 local canMove = true
+local bgColourToggled = false
 -------------------------------------------------------------
 
 local ring, ringScales = newRing.create( ringParameters, startingLayer )
@@ -70,7 +72,7 @@ player:setFillColor(0.8,0,0)
 
 
 local debugText
-if ringParameters.debugInfo then
+if debugMode then
     debugText = display.newText( "", screen.centreX, screen.minY + 40, native.systemFontBold, 20 )
     debugText:setFillColor(0)
 end
@@ -90,6 +92,11 @@ local function movePlayer( direction )
                     local alpha = (currentDifficulty - startingLayer)/5
                     transition.to( bgShading, { time=transitionTime, alpha=alpha  })
                     transition.to( maskTop, { time=transitionTime, alpha=alpha  })
+                else
+                    if not bgColourToggled then
+                        bgColourToggled = true
+                        display.setDefault( "background", 0.5, 0.4, 0.25  )
+                    end
                 end
                 
                 for i = 1, #ring do
