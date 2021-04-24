@@ -1,37 +1,46 @@
 display.setStatusBar( display.HiddenStatusBar )
 display.setDefault( "background", 70/255, 189/255, 194/255 )
+-- display.setDefault( "background", 0.5, 0.4, 0.25  )
 
 local screen = require("scripts.screen")
 local newRing = require("scripts.newRing")
 
-local background = display.newGroup()
-local world = display.newGroup()
+local groupBG = display.newGroup()
+local groupWorld = display.newGroup()
+local groupUI = display.newGroup()
 
--- local mask = graphics.newMask( "images/mask.jpg" )
--- world:setMask( mask )
 
-local shadeRect = display.newRect( background, screen.centreX, screen.centreY, screen.width, screen.height )
-shadeRect:setFillColor(0)
-shadeRect.alpha = 0
+local bgShading = display.newRect( groupBG, screen.centreX, screen.centreY, screen.width, screen.height )
+bgShading:setFillColor(0)
+bgShading.alpha = 0
 
+-- Hacking by using a mask to hide the ugly snap to ring scaling.
+local mask = display.newImageRect( groupUI, "images/mask.png", 960, 256 )
+mask.x, mask.y = screen.centreX, screen.minY
+mask.anchorY = 0
+mask.alpha = 0
 -------------------------------------------------------------
--- World generation values:
+-- World generation & other visual parameters:
 local startingLayer = 5
+local transitionTime = 150
 
 -- NB! These settings are written for 960x640 content area.
 local ringParameters = {
-    parent = world,
+    parent = groupWorld,
+    -- radius = 300,
     radius = screen.width,
     ringCount = 12,
     thickness = 122,
     surfaceLayers = 2,
-    segmentsPerRing = 32,
+    segmentsPerRing = 24,
     debugInfo = true,
 }
 -------------------------------------------------------------
 local currentDifficulty = ringParameters.ringCount - ringParameters.surfaceLayers - startingLayer
+local rotationAngle = 360/ringParameters.segmentsPerRing -- How many angles each rotation is.
 local activeLayer = startingLayer
 local activeColumn = 1
+local canMove = true
 -------------------------------------------------------------
 
 local ring, ringScales = newRing.create( ringParameters, startingLayer )
@@ -46,19 +55,18 @@ for i = 1, #ring do
         playerStartY = playerStartY + ring[i].xScale*ringParameters.thickness*0.5
     end
 end
-world.x, world.y = screen.centreX, screen.maxY + (world.height - ringScale*ringParameters.thickness*2 )*0.5
-world.rotationOffset = 360/ringParameters.segmentsPerRing*0.5
-world.rotation = -90-world.rotationOffset
+groupWorld.x, groupWorld.y = screen.centreX, screen.maxY + (groupWorld.height - ringScale*ringParameters.thickness*2 )*0.5
+groupWorld.rotationOffset = 360/ringParameters.segmentsPerRing*0.5
+groupWorld.rotatingTo = groupWorld.rotation
+-- groupWorld.rotation = -90-groupWorld.rotationOffset
 local ringRotation = 360/ringParameters.segmentsPerRing
 
+-- local groundBG = display.newCircle( groupBG, groupWorld.x, groupWorld.y, groupWorld.height*0.5 )
 
-local player = display.newCircle( screen.centreX, world.y - world.height*0.5 + playerStartY, 24 )
+
+local player = display.newCircle( screen.centreX, groupWorld.y - groupWorld.height*0.5 + playerStartY, 24 )
 player:setFillColor(0.8,0,0)
 
--- world.maskX = world.x - 50
--- world.maskY = world.y - (world.height*0.5)
-
--- transition.to( world, {time=5000,rotation=world.rotation + 360})
 
 local debugText
 if ringParameters.debugInfo then
@@ -69,55 +77,79 @@ end
 
 local function movePlayer( direction )
     local didMove = false
-    if direction == "down" then
-        local nextLayer = activeLayer+1 > ringParameters.ringCount and 1 or activeLayer+1
-        if not ring[nextLayer][activeColumn].isPassable then
-            print("impassable")
-        else
-            currentDifficulty = currentDifficulty + 1
-            shadeRect.alpha = (currentDifficulty - startingLayer)/6
-            
-            for i = 1, #ring do
-                local t = ring[i]
-                t.layer = t.layer - 1
-                if t.layer < 1 then
-                    t:reset( currentDifficulty )
-                    t.isVisible = true
-                    t.layer = ringParameters.ringCount
+    if canMove then
+        if direction == "down" then
+            local nextLayer = activeLayer+1 > ringParameters.ringCount and 1 or activeLayer+1
+            if not ring[nextLayer][activeColumn].isPassable then
+                print("impassable")
+            else
+                canMove = false
+                currentDifficulty = currentDifficulty + 1
+                if bgShading.alpha < 1 then
+                    local alpha = (currentDifficulty - startingLayer)/5
+                    transition.to( bgShading, { time=transitionTime, alpha=alpha  })
+                    transition.to( mask, { time=transitionTime, alpha=alpha  })
                 end
-                local scale = ringScales[t.layer]
-                t.xScale, t.yScale = scale, scale
-            end
-            activeLayer = activeLayer+1
-            if activeLayer > ringParameters.ringCount then
-                activeLayer = 1
-            end
-            didMove = true
-        end
-    else
-        local nextColumn = activeColumn
-        if direction == "left" then
-            nextColumn = nextColumn-1
-            if nextColumn < 1 then
-                nextColumn = ringParameters.segmentsPerRing
+                
+                for i = 1, #ring do
+                    local t = ring[i]
+                    t.layer = t.layer-1 >= 1 and t.layer-1 or ringParameters.ringCount
+                        local scale = ringScales[t.layer]
+                    if t.layer == ringParameters.ringCount then
+                        t:reset( currentDifficulty )
+                        t.isVisible = true
+                        -- TODO: See about fixing the bottom ring layer's non-easing bounce.
+                        t.xScale, t.yScale = scale, scale
+                        timer.performWithDelay( transitionTime, function() canMove = true end )
+                    else
+                        transition.to( t, { time=transitionTime, xScale=scale, yScale=scale, transition=easing.outBack })
+                    end
+                    
+                end
+                activeLayer = activeLayer+1
+                if activeLayer > ringParameters.ringCount then
+                    activeLayer = 1
+                end
+                didMove = true
             end
         else
-            nextColumn = nextColumn+1
-            if nextColumn > ringParameters.segmentsPerRing then
-                nextColumn = 1
+            local nextColumn = activeColumn
+            local rotateTo
+            if direction == "left" then
+                rotateTo = rotationAngle
+                nextColumn = nextColumn-1
+                if nextColumn < 1 then
+                    nextColumn = ringParameters.segmentsPerRing
+                end
+            else
+                rotateTo = -rotationAngle
+                nextColumn = nextColumn+1
+                if nextColumn > ringParameters.segmentsPerRing then
+                    nextColumn = 1
+                end
             end
+            
+            if not ring[activeLayer][nextColumn].isPassable then
+                print("impassable")
+            else
+                canMove = false
+                groupWorld.rotatingTo = groupWorld.rotatingTo + rotateTo
+                transition.to( groupWorld, { time=transitionTime, rotation=groupWorld.rotatingTo, transition=easing.outBack, onComplete=function() canMove = true end })
+                activeColumn = nextColumn
+                didMove = true
+            end
+        end
+        if debugText then
+            local t = ring[activeLayer][activeColumn]
+            debugText.text = didMove and (t.isVisited and "Visited." or (t.isGold and "Found gold!" or "Just dirt.") or "")
         end
         
-        if not ring[activeLayer][nextColumn].isPassable then
-            print("impassable")
-        else
-            world.rotation = world.rotation + (direction == "left" and ringRotation or -ringRotation)
-            activeColumn = nextColumn
-            didMove = true
+        -- TODO: what happens on movement to accessible segments?
+        local t = ring[activeLayer][activeColumn]
+        if not t.isVisited then
+            t.isVisited = true
+            -- TODO: add gold, dig dunnel & update nearby segments if necessary.
         end
-    end
-    if debugText then
-        debugText.text = didMove and (ring[activeLayer][activeColumn].isGold and "Found gold!" or "Just dirt.") or ""
     end
 end
 
@@ -135,7 +167,9 @@ local function keyEvent( event )
             elseif activeKey == "s" or activeKey == "down" then
                 movePlayer("down")
             elseif activeKey == "w" or activeKey == "up" then
-                print("No can do! This'll only go deeper!")
+                if debugText then
+                    debugText.text = "No can do! This'll only go deeper!"
+                end
             end
         end
     elseif event.phase == "up" and event.keyName == activeKey then

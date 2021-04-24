@@ -7,8 +7,10 @@ local sin = math.sin
 local min = math.min
 local max = math.max
 local deg = math.deg
+local rad = math.rad
 local atan2 = math.atan2
 local random = math.random
+local round = math.round
 local unpack = unpack
 local newPolygon = display.newPolygon
 
@@ -16,15 +18,18 @@ local toRGB = 1/255
 
 -- Calculates the coordinates for n points around a radius.
 local function getCoordinates( n, r )
-	local v, theta, dtheta = {}, 0, pi*2/n
-
+	-- Offsetting the starting point by -90 degrees (-pi/2),
+	-- in order to place the starting segment to center top.
+	local v, a, theta, dtheta = {}, {}, -pi/2, pi*2/n
+	
 	for i = 1, n*2, 2 do
 		v[i] = r * cos(theta)
 		v[i+1] = r * sin(theta)
+		a[#a+1] = deg(theta)
 		theta = theta + dtheta
 	end
 
-	return v
+	return v, a
 end
 
 function M.create( params, startingLayer )
@@ -37,8 +42,22 @@ function M.create( params, startingLayer )
 	local debugInfo = params.debugInfo
 	
 	local ring, ringScales = {}, {}
-	local debugNum = 1
 	
+	-- Calculate the size of a single segment and extend each vertex by 1 pixel
+	-- to each direction in order to prevent visual issues during transitions.
+	-- NB! Remember that Solar2D's coordinate system has y-axis flipped.
+	local a = rad(360/segmentsPerRing*0.5)
+	local innerY = round(-cos(a)*(radius-thickness)+1)
+	local outerY = round(-cos(a)*(radius)-1)
+	local innerX = round(sin(a)*(radius-thickness))+1
+	local outerX = round(sin(a)*(radius))+1
+	local width = outerX*2+2
+	local height = innerY-outerY+2
+	local offsetX2 = outerX-innerX
+	local offsetX3 = innerX-outerX
+	print( width, height )
+	local xy, angle = getCoordinates( segmentsPerRing, radius-thickness*0.5, true )
+		
 	for i = 1, ringCount do
 		ring[i] = display.newGroup()
 		parent:insert(ring[i])
@@ -58,20 +77,17 @@ function M.create( params, startingLayer )
 			ringScales[i] = scale
 		end
 
-		local side, xy = {}, {}
-		local outer = getCoordinates( segmentsPerRing, radius )
-	    local inner = getCoordinates( segmentsPerRing, radius-thickness )
-	    for i = 1, segmentsPerRing do
-	        side[i] = { inner[i*2-1], inner[i*2], inner[i*2+1] or inner[1], inner[i*2+2] or inner[2], outer[i*2+1] or outer[1], outer[i*2+2] or outer[2], outer[i*2-1], outer[i*2] }
-	        xy[i] = {
-	            (min(inner[i*2-1], inner[i*2+1] or inner[1], outer[i*2+1] or outer[1], outer[i*2-1]) + max(inner[i*2-1], inner[i*2+1] or inner[1], outer[i*2+1] or outer[1], outer[i*2-1]))*0.5,
-	            (min(inner[i*2], inner[i*2+2] or inner[2], outer[i*2+2] or outer[2], outer[i*2]) + max(inner[i*2], inner[i*2+2] or inner[2], outer[i*2+2] or outer[2], outer[i*2]))*0.5
-	        }
-	    end
-		
+		local n = 1
 		ring[i].segment = {}
-		for segment = 1, segmentsPerRing do
-			ring[i].segment[segment] = newPolygon( ring[i], xy[segment][1], xy[segment][2], { unpack( side[segment] ) } )
+		for segment = 1, #xy, 2 do
+			-- Then create a rectangle based on the bounds, but manipulate the path to
+			-- achieve quadrilateral distortion and segments to use to create the ring.
+			local t = display.newRect( ring[i], xy[segment], xy[segment+1], width, height )
+			t.rotation = angle[n]+90
+			t.path.x2 = offsetX2
+			t.path.x3 = offsetX3
+			ring[i].segment[n] = t
+			n = n+1
 		end
 		
 		-- Set the visual style and state for every segment of the ring.
@@ -83,6 +99,7 @@ function M.create( params, startingLayer )
 			for i = 1, #self.segment do
 				local r = random(1,cap)
 				local t = self.segment[i]
+				t.isVisited = false
 				t.isGold = false
 				
 				-- Hardcoded probability of impassable segment.
