@@ -31,7 +31,8 @@ local function getCoordinates( n, r )
 end
 
 function M.create( params, startingLayer )
-	local parent = params.parent
+	local groupBack = params.groupBack
+	local groupFront = params.groupFront
 	local radius = params.radius
 	local ringCount = params.ringCount
 	local thickness = params.thickness
@@ -48,18 +49,21 @@ function M.create( params, startingLayer )
 	local outerY = round(-cos(a)*(radius)-1)
 	local innerX = round(sin(a)*(radius-thickness))+1
 	local outerX = round(sin(a)*(radius))+1
-	local width = outerX*2+4
-	local height = innerY-outerY+4
+	local width = outerX*2+2
+	local height = innerY-outerY+2
 	local offsetX2 = outerX-innerX
 	local offsetX3 = innerX-outerX
 	
+	print( width, height )
+	
 	local xy, angle = getCoordinates( segmentsPerRing, radius-thickness*0.5, true )
-		
+	
 	for i = 1, ringCount do
 		ring[i] = display.newGroup()
-		parent:insert(ring[i])
-		-- "difficulty" determines how likely impassable tiles are on the ring segments.
-		ring[i].difficulty = i
+		groupFront:insert(ring[i])
+		ring[i].back = display.newGroup()
+		groupBack:insert(ring[i].back)
+		
 		-- "layer" property specifies the current position of the layer in the world.
 		ring[i].layer = i
 		
@@ -71,35 +75,48 @@ function M.create( params, startingLayer )
 			end			
 			local scale = (radius-thickness*scalingFactor)/radius
 			ring[i].xScale, ring[i].yScale = scale, scale
+			ring[i].back.xScale, ring[i].back.yScale = scale, scale
 			ringScales[i] = scale
 		end
 
 		local n = 1
-		ring[i].segment = {}
+		ring[i].overlay = {} -- All gameplay information is stored in overlay.
+		ring[i].backdrop = {}
 		for segment = 1, #xy, 2 do
 			-- Then create a rectangle based on the bounds, but manipulate the path to
 			-- achieve quadrilateral distortion and segments to use to create the ring.
-			local t = newRect( ring[i], xy[segment], xy[segment+1], width, height )
-			t.rotation = angle[n]+90
-			t.path.x2 = offsetX2
-			t.path.x3 = offsetX3
-			ring[i].segment[n] = t
+			local t1 = newRect( ring[i], xy[segment], xy[segment+1], width, height )
+			t1.rotation = angle[n]+90
+			t1.path.x2 = offsetX2
+			t1.path.x3 = offsetX3
+			ring[i].overlay[n] = t1
+			-- Creating two separate tables because Lua copies tables by reference.
+			local t2 = newRect( ring[i].back, xy[segment], xy[segment+1], width, height )
+			t2.rotation = angle[n]+90
+			t2.path.x2 = offsetX2
+			t2.path.x3 = offsetX3
+			ring[i].backdrop[n] = t2
 			n = n+1
 		end
 		
-		-- Set the visual style and state for every segment of the ring.
+		
+		-- Set the visual style and state for every segment of a ring.
 		ring[i].reset = function( self, difficulty )
-			self.difficulty = difficulty
 			-- The way how the difficulty is implemented makes the game unwinnable.
 			local cap = 200
-			local difficulty = min( self.difficulty, cap )
-			for i = 1, #self.segment do
+			local difficulty = min( difficulty, cap )
+			for i = 1, #self.backdrop do
+				local t = self.backdrop[i]
+				t:setFillColor( 0.5, 0.4, 0.25 )
+				t.fill = { 0.5, 0.4, 0.25 }
+			end
+			for i = 1, #self.overlay do
 				local r = random(1,cap)
-				local t = self.segment[i]
+				local t = self.overlay[i]
+				t.isVisible = true
 				t.isVisited = false
 				t.isGold = false
 				
-				-- Hardcoded probability of impassable segment.
 				if r < difficulty then
 					t:setFillColor( 0.1, 0.15, 0.25 )
 					-- t:setFillColor( random(30,45)*toRGB, random(40,55)*toRGB, random(50,75)*toRGB )
@@ -122,15 +139,17 @@ function M.create( params, startingLayer )
 		-- Make rings before the starting layer invisible and passable.
 		if i <= startingLayer then
 	        ring[i].isVisible = false
+			ring[i].back.isVisible = false
 			for segment = 1, segmentsPerRing do
-				ring[i].segment[segment].isPassable = true
+				ring[i].overlay[segment].isPassable = true
 			end
 		elseif i <= startingLayer+surfaceLayers then
 			-- All "surface level" segments are guaranteed to be passable.
 			for segment = 1, segmentsPerRing do
-				ring[i].segment[segment]:setFillColor( 0.6, 0.8, 0.2 )
-				-- ring[i].segment[segment]:setFillColor( random(175,205)*toRGB, random(200,225)*toRGB, random(20,75)*toRGB )
-				ring[i].segment[segment].isPassable = true
+				ring[i].backdrop[segment]:setFillColor( 0.6, 0.8, 0.2 )
+				ring[i].overlay[segment]:setFillColor( 0.6, 0.8, 0.2 )
+				-- ring[i].overlay[segment]:setFillColor( random(175,205)*toRGB, random(200,225)*toRGB, random(20,75)*toRGB )
+				ring[i].overlay[segment].isPassable = true
 			end
 		else
 			ring[i]:reset( i-startingLayer-surfaceLayers )
