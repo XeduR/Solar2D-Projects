@@ -123,7 +123,7 @@ function M.create( params, startingLayer )
 		-- Set the visual style and state for every segment of a ring.
 		ring[i].reset = function( self, difficulty )
 			-- The way how the difficulty is implemented makes the game unwinnable.
-			local cap = 200
+			local cap = 150
 			local difficulty = min( difficulty, cap )
 			for i = 1, #self.backdrop do
 				local t = self.backdrop[i]

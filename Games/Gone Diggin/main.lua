@@ -30,9 +30,6 @@ local maskBottom = display.newImageRect( groupUI, "images/maskBottom.png", 960, 
 maskBottom.x, maskBottom.y = screen.centreX, screen.maxY
 maskBottom.anchorY = 1
 
-local goldCounter = display.newText( groupUI, "0", screen.minX+10, screen.minY+10, font, 30 )
-goldCounter.anchorX, goldCounter.anchorY = 0, 0
-
 local gameoverBackground = display.newRect( groupUI, screen.centreX, screen.centreY, screen.width, screen.height )
 gameoverBackground:setFillColor(0)
 gameoverBackground.alpha = 0
@@ -42,13 +39,58 @@ groupUI:insert(diggingCounter)
 diggingCounter.x, diggingCounter.y = screen.centreX, screen.maxY + 100
 
 local diggingBG = display.newImageRect( diggingCounter, "images/timer.png", 256, 64 )
-local diggingText = display.newText( diggingCounter, "", 0, 0, font, 22 )
+local diggingText = display.newText( diggingCounter, "", 0, 0 + (isBrowser and 2 or 0), font, 22 )
 diggingText.anchorY = 1
 local diggingMeter = display.newRect( diggingCounter, diggingBG.x, diggingBG.y + 10, 236, 20 )
 diggingMeter.x = diggingBG.x - diggingBG.width*0.5 + (diggingBG.width-diggingMeter.width)*0.5
 diggingMeter.maxWidth = diggingMeter.width
 diggingMeter.anchorX = 0
 
+local function generateText( group, text, x, y, anchorX, anchorY, fontSize )
+    local textObject = display.newGroup()
+    textObject.x, textObject.y = x, y
+    group:insert(textObject)
+    
+    textObject.back = display.newText( textObject, text, 1, 1, font, fontSize )
+    textObject.back.anchorX, textObject.back.anchorY = anchorX, anchorY
+    textObject.back:setFillColor(0)
+    textObject.front = display.newText( textObject, text, 0, 0, font, fontSize )
+    textObject.front.anchorX, textObject.front.anchorY = anchorX, anchorY
+    
+    function textObject:text(s)
+        textObject.back.text = s
+        textObject.front.text = s
+    end
+    
+    return textObject
+end
+
+local goldCounter = generateText( diggingCounter, "0", diggingBG.x, diggingBG.y - diggingBG.height*0.5 - 8 + (isBrowser and 2 or 0), 0.5, 1, 30 )
+local goldCounterCopy = generateText( groupUI, "0", screen.centreX, 540 - 4 + (isBrowser and 2 or 0), 0.5, 1, 30 )
+goldCounterCopy.xStart, goldCounterCopy.yStart = goldCounterCopy.x, goldCounterCopy.y
+goldCounterCopy.isVisible = false
+local highscore = generateText( groupUI, "Highscore: 0", screen.minX + 10, screen.minY + 10 + (isBrowser and 2 or 0), 0, 0, 32 )
+local lastScore = generateText( groupUI, "Last score: 0", highscore.x, highscore.y + highscore.height + 20 + (isBrowser and 2 or 0), 0, 0, 32 )
+
+local howToPlay = generateText( groupUI, "Use arrow keys or WASD to move.", screen.centreX, screen.centreY - 100 + (isBrowser and 2 or 0), 0.5, 0.5, 32 )
+
+-- Create and animate the logo
+local logo = display.newImageRect( groupUI, "images/logo.png", 320, 128 )
+logo.x, logo.y = screen.centreX, screen.minY + 10
+logo.yStart = logo.y
+logo.anchorY = 0
+local logoT2
+local function logoT1() 
+    transition.to( logo, { time=500, xScale=1.05, yScale=1.05, transition=easing.inOutQuad, onComplete=function()
+        logoT2()
+    end })
+end
+function logoT2() 
+    transition.to( logo, { time=500, xScale=0.95, yScale=0.95, transition=easing.inOutQuad, onComplete=function()
+        logoT1()
+    end })
+end
+logoT1()
 -------------------------------------------------------------
 -- World generation, gameplay & other parameters:
 local startingLayer = 5
@@ -56,7 +98,7 @@ local transitionTime = 150
 local gameoverTransitionTime = 750
 local timeBeforeGameover = 10000
 local extraTimeFromGold = 500
-local debugMode = true
+-- local debugMode = true
 
 -- NB! These settings are written for 960x640 content area.
 local ringParameters = {
@@ -74,6 +116,7 @@ local ring, ringScales, currentDifficulty, previousSegment, keyEvent
 local activeLayer, activeColumn, goldCount, activeKey, gameover
 local rotationAngle = 360/ringParameters.segmentsPerRing -- How many angles each rotation is.
 local canMove, bgColourToggled, firstMove, startTime, bonusTime
+local highscoreVal, lastScoreVal = 0, 0
 -------------------------------------------------------------
 
 local function createEmitter( filename, x, y )
@@ -171,7 +214,8 @@ local function generateWorld( seed )
     bgColourToggled = false
     bonusTime = 0
     firstMove = true
-    goldCounter.text = "0"
+    goldCounter:text(0)
+    goldCounter.isVisible = true
     diggingText.text = "Dig for gold!"
 
     -- Position the world and calculate initial rotation values, plus how much to rate per move.
@@ -202,7 +246,9 @@ local function movePlayer( direction )
             if firstMove then
                 firstMove = false
                 startTime = getTimer()
-                transition.to( diggingCounter, {time=350, y=screen.maxY-64, transition=easing.inSine })
+                transition.to( howToPlay, { time=350, alpha=0 } )
+                transition.to( logo, { time=350, y=screen.minY - logo.height*2 } )
+                transition.to( diggingCounter, {time=350, y=screen.maxY-64, transition=easing.inSine} )
                 diggingMeter:setFillColor(0,1,0)
                 Runtime:addEventListener( "enterFrame", update )
             end
@@ -293,7 +339,11 @@ local function movePlayer( direction )
                 local activeEmitter = emitterGround
                 if overlay.isGold then
                     goldCount = goldCount+1
-                    goldCounter.text = goldCount
+                    goldCounter:text(goldCount)
+                    goldCounter.front:setFillColor(1,210/255,0)
+                    transition.from( goldCounter, { time=100, xScale=1.5, yScale=1.5, onComplete=function()
+                        goldCounter.front:setFillColor(1)
+                    end })
                     bonusTime = bonusTime + extraTimeFromGold
                     activeEmitter = emitterGold
                 end
@@ -353,11 +403,40 @@ end
 function gameover()
     Runtime:removeEventListener( "enterFrame", update )
     Runtime:removeEventListener( "key", keyEvent )
+    
+    goldCounterCopy.x, goldCounterCopy.y = goldCounterCopy.xStart, goldCounterCopy.yStart
+    goldCounterCopy:text(goldCount)
+    goldCounterCopy.isVisible = true
+    goldCounter.isVisible = false
+    
+    transition.to( goldCounterCopy, { delay=250, time=gameoverTransitionTime*0.5, x=240, y=88+goldCounterCopy.height*0.5, onComplete=function()
+        transition.from( highscore, { time=100, xScale=1.5, yScale=1.5 })
+        transition.from( lastScore, { time=100, xScale=1.5, yScale=1.5 })
+            goldCounterCopy.isVisible = false
+        
+        if goldCount > highscoreVal then
+            highscoreVal = goldCount
+            highscore.front:setFillColor(1,210/255,0)
+            highscore:text( "Highscore: " .. goldCount )
+        else
+            highscore.front:setFillColor(1)
+        end
+        if goldCount > lastScoreVal then
+            lastScore.front:setFillColor(1,210/255,0)
+        else
+            lastScore.front:setFillColor(1)
+        end
+        lastScore:text("Last score: " .. goldCount)
+        lastScoreVal = goldCount
+    end })
     transition.to( diggingCounter, { delay=250, time=500, y=screen.maxY+100, transition=easing.outBack })
     transition.to( gameoverBackground, {time=firstMove and 0 or gameoverTransitionTime, alpha=1, onComplete=function()
         generateWorld()
-        gameoverBackground.alpha = 0
-        Runtime:addEventListener( "key", keyEvent )
+        transition.to( howToPlay, { time=350, alpha=1 } )
+        transition.to( logo, { time=350, y=logo.yStart } )
+        transition.to( gameoverBackground, { delay=250, time=500, alpha=0, onComplete=function()
+            Runtime:addEventListener( "key", keyEvent )
+        end })
     end })
 end
 
