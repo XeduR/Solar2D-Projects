@@ -14,21 +14,27 @@ local newRect = display.newRect
 
 -- Create simple image fills.
 local rockFill = {}
-for i = 1, 3 do
+for i = 1, 6 do
 	rockFill[i] = {
 		type = "image",
 		filename = "images/rock"..i..".png"
 	}
 end
 local goldFill = {}
-for i = 1, 3 do
+for i = 1, 6 do
 	goldFill[i] = {
 		type = "image",
 		filename = "images/gold"..i..".png"
 	}
 end
-
-local toRGB = 1/255
+local surfaceFill = {
+	type = "image",
+	filename = "images/surface.jpg"
+}
+local groundFill = {
+	type = "image",
+	filename = "images/ground.jpg"
+}
 
 -- Calculates the coordinates for n points around a radius.
 local function getCoordinates( n, r )
@@ -121,17 +127,16 @@ function M.create( params, startingLayer )
 			local difficulty = min( difficulty, cap )
 			for i = 1, #self.backdrop do
 				local t = self.backdrop[i]
-				t.fill = { 0.5, 0.4, 0.25 }
+				t.fill = groundFill
 				t.bitmask = nil
 			end
 			
-			-- To help with bitmasking the route, ensure that there is always at least
-			-- a single impassable segment in a ring so that player can't loop through.
 			local hasImpassableSegment = false
 			for i = 1, #self.overlay do
 				local r = random(1,cap)
 				local t = self.overlay[i]
 				t.isVisible = true
+				t.isPassable = true
 				t.isVisited = false
 				t.isGold = false
 				
@@ -143,14 +148,14 @@ function M.create( params, startingLayer )
 					-- Hardcoded probability of gold segment.
 					if random() < 0.15 then
 						t.fill = goldFill[random(1,#goldFill)]
-						t.isPassable = true
 						t.isGold = true
 					else
-						t.isPassable = true
-						t.fill = { 0.5, 0.4, 0.25 }
+						t.fill = groundFill
 					end
 				end
 			end
+			-- To help with bitmasking the route, ensure that there is always at least
+			-- a single impassable segment in a ring so that player can't loop through.
 			if not hasImpassableSegment then
 				local t = self.overlay[random(1,#self.overlay)]
 				t.fill = rockFill[random(1,#rockFill)]
@@ -168,8 +173,10 @@ function M.create( params, startingLayer )
 		elseif i <= startingLayer+surfaceLayers then
 			-- All but one "surface level" segments are guaranteed to be passable (for bitmasking purposes).
 			for segment = 1, segmentsPerRing do
-				ring[i].backdrop[segment].fill = { 0.6, 0.8, 0.2 }
-				ring[i].overlay[segment].fill = { 0.6, 0.8, 0.2 }
+				ring[i].backdrop[segment].fill = surfaceFill
+				ring[i].overlay[segment].fill = surfaceFill
+				-- ring[i].backdrop[segment].fill = { 175/255, 201/255, 78/255 }
+				-- ring[i].overlay[segment].fill = { 175/255, 201/255, 78/255 }
 				ring[i].overlay[segment].isPassable = true
 			end
 			local t = ring[i].overlay[random(1,segmentsPerRing)]

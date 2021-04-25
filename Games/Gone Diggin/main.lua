@@ -1,5 +1,4 @@
 display.setStatusBar( display.HiddenStatusBar )
-display.setDefault( "background", 70/255, 189/255, 194/255 )
 
 
 local screen = require("scripts.screen")
@@ -43,7 +42,6 @@ local diggingMeter = display.newRect( diggingCounter, diggingBG.x, diggingBG.y +
 diggingMeter.x = diggingBG.x - diggingBG.width*0.5 + (diggingBG.width-diggingMeter.width)*0.5
 diggingMeter.maxWidth = diggingMeter.width
 diggingMeter.anchorX = 0
-diggingMeter:setFillColor(0)
 
 -------------------------------------------------------------
 -- World generation, gameplay & other parameters:
@@ -94,7 +92,21 @@ local function update()
         return
     end
     
+    local r, g = 0, 1
+    if timeLeft > 0.5 then
+        r = (1 - timeLeft)*2
+    else
+        r = 1
+        g = timeLeft*2
+    end
+    -- print(  , timeLeft )
+    -- print(  timeLeft, 0.5 / timeLeft )
+    -- print( (1 - timeLeft)*2, timeLeft)
+    
+    -- print( r, g )
+    
     diggingMeter.width = diggingMeter.maxWidth*timeLeft
+    diggingMeter:setFillColor( r, g, 0 )
     -- local timeBeforeGameover = 10000
     -- local extraTimeFromGold = 100
     -- diggingMeter.maxWidth = diggingMeter.width
@@ -121,7 +133,7 @@ local function generateWorld( seed )
     groupWorldBack.rotation = 0
     groupWorldFront.rotation = 0
     
-    display.setDefault( "background", 70/255, 189/255, 194/255 )
+    display.setDefault( "background", 96/255, 203/255, 239/255 )
     bgShading.alpha = 0
     maskTop.alpha = 0
     
@@ -165,7 +177,8 @@ local function movePlayer( direction )
             if firstMove then
                 firstMove = false
                 startTime = getTimer()
-                transition.to( diggingCounter, {time=350, y=screen.maxY-64, transition=easing.outBack })
+                transition.to( diggingCounter, {time=350, y=screen.maxY-64, transition=easing.inSine })
+                diggingMeter:setFillColor(0,1,0)
                 Runtime:addEventListener( "enterFrame", update )
             end
             local nextLayer = activeLayer+1 > ringParameters.ringCount and 1 or activeLayer+1
@@ -181,7 +194,7 @@ local function movePlayer( direction )
                 else
                     if not bgColourToggled then
                         bgColourToggled = true
-                        display.setDefault( "background", 0.5, 0.4, 0.25  )
+                        display.setDefault( "background", 157/255, 120/255, 73/255  )
                     end
                 end
                 
@@ -198,8 +211,8 @@ local function movePlayer( direction )
                         ringBack.xScale, ringBack.yScale = scale, scale
                         timer.performWithDelay( transitionTime, function() canMove = true end )
                     else
-                        transition.to( ringOverlay, { time=transitionTime, xScale=scale, yScale=scale, transition=easing.outBack })
-                        transition.to( ringBack, { time=transitionTime, xScale=scale, yScale=scale, transition=easing.outBack })
+                        transition.to( ringOverlay, { time=transitionTime, xScale=scale, yScale=scale, transition=easing.inSine })
+                        transition.to( ringBack, { time=transitionTime, xScale=scale, yScale=scale, transition=easing.inSine  })
                     end
                     
                 end
@@ -230,8 +243,8 @@ local function movePlayer( direction )
                 impassable = true
             else
                 canMove = false
-                transition.to( groupWorldBack, { time=transitionTime, rotation=groupWorldBack.rotation + rotateTo, transition=easing.outBack, onComplete=function() canMove = true end })
-                transition.to( groupWorldFront, { time=transitionTime, rotation=groupWorldFront.rotation + rotateTo, transition=easing.outBack })
+                transition.to( groupWorldBack, { time=transitionTime, rotation=groupWorldBack.rotation + rotateTo, transition=easing.inSine, onComplete=function() canMove = true end })
+                transition.to( groupWorldFront, { time=transitionTime, rotation=groupWorldFront.rotation + rotateTo, transition=easing.inSine })
                 activeColumn = nextColumn
                 didMove = true
             end
@@ -285,8 +298,16 @@ local function movePlayer( direction )
                     previousSegment.bitmask = previousSegment.bitmask + dirGoing
                     previousSegment.fill = diggingPath[previousSegment.bitmask]
                 end
-                backdrop.fill = diggingPath[dirComing]
                 backdrop.bitmask = dirComing
+                
+                -- transition.to( overlay, { time=transitionTime, alpha=0, onComplete=function()
+                --     overlay.isVisible = false
+                --     overlay.alpha = 1
+                --     backdrop.fill = diggingPath[dirComing]
+                -- end })
+                timer.performWithDelay( transitionTime, function()
+                    backdrop.fill = diggingPath[dirComing]
+                end )
             end
             -- Store previous segment so that its digging path can be updated.
             previousSegment = backdrop
