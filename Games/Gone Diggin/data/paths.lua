@@ -28,7 +28,7 @@ local path = {
 		type = "image",
 		filename = "images/path7.jpg"
 	},
-	-- Value of 8 is impossible since player can't dig up.
+	-- Value of 8 is impossible since player can't dig upwards.
 	[9] = {
 		type = "image",
 		filename = "images/path9.jpg"

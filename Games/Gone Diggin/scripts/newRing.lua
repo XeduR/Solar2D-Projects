@@ -12,6 +12,22 @@ local round = math.round
 
 local newRect = display.newRect
 
+-- Create simple image fills.
+local rockFill = {}
+for i = 1, 3 do
+	rockFill[i] = {
+		type = "image",
+		filename = "images/rock"..i..".png"
+	}
+end
+local goldFill = {}
+for i = 1, 3 do
+	goldFill[i] = {
+		type = "image",
+		filename = "images/gold"..i..".png"
+	}
+end
+
 local toRGB = 1/255
 
 -- Calculates the coordinates for n points around a radius.
@@ -53,8 +69,6 @@ function M.create( params, startingLayer )
 	local height = innerY-outerY+2
 	local offsetX2 = outerX-innerX
 	local offsetX3 = innerX-outerX
-	
-	print( width, height )
 	
 	local xy, angle = getCoordinates( segmentsPerRing, radius-thickness*0.5, true )
 	
@@ -107,9 +121,13 @@ function M.create( params, startingLayer )
 			local difficulty = min( difficulty, cap )
 			for i = 1, #self.backdrop do
 				local t = self.backdrop[i]
-				t:setFillColor( 0.5, 0.4, 0.25 )
 				t.fill = { 0.5, 0.4, 0.25 }
+				t.bitmask = nil
 			end
+			
+			-- To help with bitmasking the route, ensure that there is always at least
+			-- a single impassable segment in a ring so that player can't loop through.
+			local hasImpassableSegment = false
 			for i = 1, #self.overlay do
 				local r = random(1,cap)
 				local t = self.overlay[i]
@@ -118,21 +136,25 @@ function M.create( params, startingLayer )
 				t.isGold = false
 				
 				if r < difficulty then
-					t:setFillColor( 0.1, 0.15, 0.25 )
-					-- t:setFillColor( random(30,45)*toRGB, random(40,55)*toRGB, random(50,75)*toRGB )
+					hasImpassableSegment = true
+					t.fill = rockFill[random(1,#rockFill)]
 					t.isPassable = false
 				else
 					-- Hardcoded probability of gold segment.
 					if random() < 0.15 then
-						t:setFillColor( 1, 1, 0 )
+						t.fill = goldFill[random(1,#goldFill)]
 						t.isPassable = true
 						t.isGold = true
 					else
-						t:setFillColor( 0.5, 0.4, 0.25 )
-						-- t:setFillColor( random(100,160)*toRGB, random(70,120)*toRGB, random(55,75)*toRGB )
 						t.isPassable = true
+						t.fill = { 0.5, 0.4, 0.25 }
 					end
 				end
+			end
+			if not hasImpassableSegment then
+				local t = self.overlay[random(1,#self.overlay)]
+				t.fill = rockFill[random(1,#rockFill)]
+				t.isPassable = false
 			end
 		end
 		
@@ -144,13 +166,15 @@ function M.create( params, startingLayer )
 				ring[i].overlay[segment].isPassable = true
 			end
 		elseif i <= startingLayer+surfaceLayers then
-			-- All "surface level" segments are guaranteed to be passable.
+			-- All but one "surface level" segments are guaranteed to be passable (for bitmasking purposes).
 			for segment = 1, segmentsPerRing do
-				ring[i].backdrop[segment]:setFillColor( 0.6, 0.8, 0.2 )
-				ring[i].overlay[segment]:setFillColor( 0.6, 0.8, 0.2 )
-				-- ring[i].overlay[segment]:setFillColor( random(175,205)*toRGB, random(200,225)*toRGB, random(20,75)*toRGB )
+				ring[i].backdrop[segment].fill = { 0.6, 0.8, 0.2 }
+				ring[i].overlay[segment].fill = { 0.6, 0.8, 0.2 }
 				ring[i].overlay[segment].isPassable = true
 			end
+			local t = ring[i].overlay[random(1,segmentsPerRing)]
+			t.fill = rockFill[random(1,#rockFill)]
+			t.isPassable = false
 		else
 			ring[i]:reset( i-startingLayer-surfaceLayers )
 		end

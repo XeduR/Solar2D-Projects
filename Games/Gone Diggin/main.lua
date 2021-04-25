@@ -12,7 +12,6 @@ local groupPlayer = display.newGroup()
 local groupWorldFront = display.newGroup()
 local groupUI = display.newGroup()
 
-
 local bgShading = display.newRect( groupBG, screen.centreX, screen.centreY, screen.width, screen.height )
 bgShading:setFillColor(0)
 bgShading.alpha = 0
@@ -25,10 +24,19 @@ maskTop.alpha = 0
 local maskBottom = display.newImageRect( groupUI, "images/maskBottom.png", 960, 100 )
 maskBottom.x, maskBottom.y = screen.centreX, screen.maxY
 maskBottom.anchorY = 1
+
+local goldCounter = display.newText( groupUI, "0", screen.minX+10, screen.minY+10, native.systemFontBold, 30 )
+goldCounter.anchorX, goldCounter.anchorY = 0, 0
+
+local gameoverBackground = display.newRect( groupUI, screen.centreX, screen.centreY, screen.width, screen.height )
+gameoverBackground:setFillColor(0)
+gameoverBackground.alpha = 0
+
 -------------------------------------------------------------
 -- World generation & other visual parameters:
 local startingLayer = 5
 local transitionTime = 150
+local gameoverTransitionTime = 0
 local debugMode = true
 
 -- NB! These settings are written for 960x640 content area.
@@ -43,9 +51,9 @@ local ringParameters = {
 }
 -------------------------------------------------------------
 -- Forward declaring variables.
-local ring, ringScales, currentDifficulty, previousSegment
+local ring, ringScales, currentDifficulty, previousSegment, keyEvent
+local activeLayer, activeColumn, goldCount, activeKey
 local rotationAngle = 360/ringParameters.segmentsPerRing -- How many angles each rotation is.
-local activeLayer, activeColumn
 local canMove = true
 local bgColourToggled = false
 -------------------------------------------------------------
@@ -69,15 +77,33 @@ local function generateWorld( seed )
     end
     
     -- Reset the game world.
-    display.remove(ring)
-    ring = nil
+    if ring then
+        for i = 1, #ring do
+            for j = 1, #ring[i].overlay do
+                display.remove(ring[i].overlay[j])
+                display.remove(ring[i].backdrop[j])
+            end
+            display.remove(ring[i].back)
+            display.remove(ring[i])
+        end
+        ring = nil
+    end
+    groupWorldBack.rotation = 0
+    groupWorldFront.rotation = 0
+    
+    display.setDefault( "background", 70/255, 189/255, 194/255 )
+    bgShading.alpha = 0
+    maskTop.alpha = 0
     
     ring, ringScales = newRing.create( ringParameters, startingLayer )
     currentDifficulty = ringParameters.ringCount - ringParameters.surfaceLayers - startingLayer
     activeLayer = startingLayer
     activeColumn = 1
     canMove = true
+    goldCount = 0
+    activeKey = nil
     bgColourToggled = false
+    goldCounter.text = "0"
 
     -- Position the world and calculate initial rotation values, plus how much to rate per move.
     local scaleFactor, playerStartY = 0, 0
@@ -102,11 +128,11 @@ end
 local function movePlayer( direction )
     local didMove = false
     if canMove then
-        local layerStart, columnStart = activeLayer, activeColumn
+        local impassable = false
         if direction == "down" then
             local nextLayer = activeLayer+1 > ringParameters.ringCount and 1 or activeLayer+1
             if not ring[nextLayer][activeColumn].isPassable then
-                print("impassable")
+                impassable = true
             else
                 canMove = false
                 currentDifficulty = currentDifficulty + 1
@@ -163,7 +189,7 @@ local function movePlayer( direction )
             end
             
             if not ring[activeLayer].overlay[nextColumn].isPassable then
-                print("impassable")
+                impassable = true
             else
                 canMove = false
                 transition.to( groupWorldBack, { time=transitionTime, rotation=groupWorldBack.rotation + rotateTo, transition=easing.outBack, onComplete=function() canMove = true end })
@@ -173,8 +199,12 @@ local function movePlayer( direction )
             end
         end
         if debugText then
-            local t = ring[activeLayer].overlay[activeColumn]
-            debugText.text = didMove and (t.isVisited and "Visited." or (t.isGold and "Found gold!" or "Just dirt.") or "")
+            if impassable then
+                debugText.text = "We can't dig there!"
+            else
+                local t = ring[activeLayer].overlay[activeColumn]
+                debugText.text = didMove and (t.isVisited and "" or (t.isGold and "Found gold!" or "Just dirt.") or "")
+            end
         end
         
         if didMove then
@@ -183,6 +213,11 @@ local function movePlayer( direction )
             if not overlay.isVisited then
                 overlay.isVisited = true
                 overlay.isVisible = false
+                
+                if overlay.isGold then
+                    goldCount = goldCount+1
+                    goldCounter.text = goldCount
+                end
                 
                 ----------------------------------------------------------------------------------------------------------------
                 -- We can get by using simple bitmasking value calculations since the player can only move left, right or down.
@@ -210,27 +245,28 @@ local function movePlayer( direction )
                 if previousSegment then
                     previousSegment.bitmask = previousSegment.bitmask + dirGoing
                     previousSegment.fill = diggingPath[previousSegment.bitmask]
-                    print( "previous: " .. previousSegment.bitmask )
                 end
-                
-                -- print( "NEW: " .. dirComing )
                 backdrop.fill = diggingPath[dirComing]
                 backdrop.bitmask = dirComing
-                print( "new: " .. dirComing )
-                
-                -- layerStart, columnStart
-                -- Store previous segment so that its digging path can be updated.
             end
+            -- Store previous segment so that its digging path can be updated.
             previousSegment = backdrop
         end
     end
 end
 
+local function gameover()
+    Runtime:removeEventListener( "key", keyEvent )
+    transition.to( gameoverBackground, {time=gameoverTransitionTime,alpha=1, onComplete=function()
+        generateWorld()
+        gameoverBackground.alpha = 0
+        Runtime:addEventListener( "key", keyEvent )
+    end })
+end
 
--- Keep track of currently held key and prevent additional keystrokes.
-local activeKey = nil
-local function keyEvent( event )
+function keyEvent( event )
     if event.phase == "down" then
+        -- Keep track of currently held key and prevent additional keystrokes.
         if not activeKey then
             activeKey = event.keyName
             if activeKey == "a" or activeKey == "left" then
@@ -243,6 +279,8 @@ local function keyEvent( event )
                 if debugText then
                     debugText.text = "No can do! This'll only go deeper!"
                 end
+            elseif activeKey == "q" then
+                gameover()
             end
         end
     elseif event.phase == "up" and event.keyName == activeKey then
