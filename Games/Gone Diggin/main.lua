@@ -6,6 +6,8 @@ local screen = require("scripts.screen")
 local newRing = require("scripts.newRing")
 local diggingPath = require("data.paths")
 
+local getTimer = system.getTimer
+
 local groupBG = display.newGroup()
 local groupWorldBack = display.newGroup()
 local groupPlayer = display.newGroup()
@@ -32,11 +34,24 @@ local gameoverBackground = display.newRect( groupUI, screen.centreX, screen.cent
 gameoverBackground:setFillColor(0)
 gameoverBackground.alpha = 0
 
+local diggingCounter = display.newGroup()
+groupUI:insert(diggingCounter)
+diggingCounter.x, diggingCounter.y = screen.centreX, screen.maxY + 100
+
+local diggingBG = display.newRect( diggingCounter, 0, 0, 256, 64 )
+local diggingMeter = display.newRect( diggingCounter, diggingBG.x, diggingBG.y + 10, 236, 20 )
+diggingMeter.x = diggingBG.x - diggingBG.width*0.5 + (diggingBG.width-diggingMeter.width)*0.5
+diggingMeter.maxWidth = diggingMeter.width
+diggingMeter.anchorX = 0
+diggingMeter:setFillColor(0)
+
 -------------------------------------------------------------
--- World generation & other visual parameters:
+-- World generation, gameplay & other parameters:
 local startingLayer = 5
 local transitionTime = 150
-local gameoverTransitionTime = 0
+local gameoverTransitionTime = 750
+local timeBeforeGameover = 10000
+local extraTimeFromGold = 500
 local debugMode = true
 
 -- NB! These settings are written for 960x640 content area.
@@ -52,10 +67,9 @@ local ringParameters = {
 -------------------------------------------------------------
 -- Forward declaring variables.
 local ring, ringScales, currentDifficulty, previousSegment, keyEvent
-local activeLayer, activeColumn, goldCount, activeKey
+local activeLayer, activeColumn, goldCount, activeKey, gameover
 local rotationAngle = 360/ringParameters.segmentsPerRing -- How many angles each rotation is.
-local canMove = true
-local bgColourToggled = false
+local canMove, bgColourToggled, firstMove, startTime, bonusTime
 -------------------------------------------------------------
 
 
@@ -70,6 +84,22 @@ if debugMode then
     debugText = display.newText( "", screen.centreX, screen.minY + 40, native.systemFontBold, 20 )
     debugText:setFillColor(0)
 end
+
+
+
+local function update()
+    local timeLeft = 1-(getTimer()-startTime-bonusTime)/(timeBeforeGameover)
+    if timeLeft <= 0 then
+        gameover()
+        return
+    end
+    
+    diggingMeter.width = diggingMeter.maxWidth*timeLeft
+    -- local timeBeforeGameover = 10000
+    -- local extraTimeFromGold = 100
+    -- diggingMeter.maxWidth = diggingMeter.width
+end
+
 
 local function generateWorld( seed )
     if type( seed ) == "number" then
@@ -103,6 +133,8 @@ local function generateWorld( seed )
     goldCount = 0
     activeKey = nil
     bgColourToggled = false
+    bonusTime = 0
+    firstMove = true
     goldCounter.text = "0"
 
     -- Position the world and calculate initial rotation values, plus how much to rate per move.
@@ -130,6 +162,12 @@ local function movePlayer( direction )
     if canMove then
         local impassable = false
         if direction == "down" then
+            if firstMove then
+                firstMove = false
+                startTime = getTimer()
+                transition.to( diggingCounter, {time=350, y=screen.maxY-64, transition=easing.outBack })
+                Runtime:addEventListener( "enterFrame", update )
+            end
             local nextLayer = activeLayer+1 > ringParameters.ringCount and 1 or activeLayer+1
             if not ring[nextLayer][activeColumn].isPassable then
                 impassable = true
@@ -217,6 +255,7 @@ local function movePlayer( direction )
                 if overlay.isGold then
                     goldCount = goldCount+1
                     goldCounter.text = goldCount
+                    bonusTime = bonusTime + extraTimeFromGold
                 end
                 
                 ----------------------------------------------------------------------------------------------------------------
@@ -255,9 +294,11 @@ local function movePlayer( direction )
     end
 end
 
-local function gameover()
+function gameover()
+    Runtime:removeEventListener( "enterFrame", update )
     Runtime:removeEventListener( "key", keyEvent )
-    transition.to( gameoverBackground, {time=gameoverTransitionTime,alpha=1, onComplete=function()
+    transition.to( diggingCounter, {time=350, y=screen.maxY+100, transition=easing.outBack })
+    transition.to( gameoverBackground, {time=firstMove and 0 or gameoverTransitionTime, alpha=1, onComplete=function()
         generateWorld()
         gameoverBackground.alpha = 0
         Runtime:addEventListener( "key", keyEvent )
@@ -288,7 +329,6 @@ function keyEvent( event )
     end
     return false
 end
-
 
 generateWorld()
 Runtime:addEventListener( "key", keyEvent )
