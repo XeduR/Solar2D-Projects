@@ -1,9 +1,12 @@
 display.setStatusBar( display.HiddenStatusBar )
 
-
+local json = require( "json" )
 local screen = require("scripts.screen")
 local newRing = require("scripts.newRing")
 local diggingPath = require("data.paths")
+
+local font = "fonts/Amagro-bold.ttf"
+local isBrowser = (system.getInfo( "environment" ) == "browser")
 
 local getTimer = system.getTimer
 
@@ -11,6 +14,7 @@ local groupBG = display.newGroup()
 local groupWorldBack = display.newGroup()
 local groupPlayer = display.newGroup()
 local groupWorldFront = display.newGroup()
+local groupEmitter = display.newGroup()
 local groupUI = display.newGroup()
 
 local bgShading = display.newRect( groupBG, screen.centreX, screen.centreY, screen.width, screen.height )
@@ -26,7 +30,7 @@ local maskBottom = display.newImageRect( groupUI, "images/maskBottom.png", 960, 
 maskBottom.x, maskBottom.y = screen.centreX, screen.maxY
 maskBottom.anchorY = 1
 
-local goldCounter = display.newText( groupUI, "0", screen.minX+10, screen.minY+10, native.systemFontBold, 30 )
+local goldCounter = display.newText( groupUI, "0", screen.minX+10, screen.minY+10, font, 30 )
 goldCounter.anchorX, goldCounter.anchorY = 0, 0
 
 local gameoverBackground = display.newRect( groupUI, screen.centreX, screen.centreY, screen.width, screen.height )
@@ -37,7 +41,9 @@ local diggingCounter = display.newGroup()
 groupUI:insert(diggingCounter)
 diggingCounter.x, diggingCounter.y = screen.centreX, screen.maxY + 100
 
-local diggingBG = display.newRect( diggingCounter, 0, 0, 256, 64 )
+local diggingBG = display.newImageRect( diggingCounter, "images/timer.png", 256, 64 )
+local diggingText = display.newText( diggingCounter, "", 0, 0, font, 22 )
+diggingText.anchorY = 1
 local diggingMeter = display.newRect( diggingCounter, diggingBG.x, diggingBG.y + 10, 236, 20 )
 diggingMeter.x = diggingBG.x - diggingBG.width*0.5 + (diggingBG.width-diggingMeter.width)*0.5
 diggingMeter.maxWidth = diggingMeter.width
@@ -70,6 +76,23 @@ local rotationAngle = 360/ringParameters.segmentsPerRing -- How many angles each
 local canMove, bgColourToggled, firstMove, startTime, bonusTime
 -------------------------------------------------------------
 
+local function createEmitter( filename, x, y )
+    local filePath = system.pathForFile( filename )
+    local f = io.open( filePath, "r" )
+    local emitterData = f:read( "*a" )
+    f:close()
+    local emitterParams = json.decode( emitterData )
+     
+    local emitter = display.newEmitter( emitterParams )
+    groupEmitter:insert(emitter)
+    emitter:stop()
+    emitter.x = x
+    emitter.y = y
+    return emitter
+end
+
+local emitterGold = createEmitter( "data/particleGold.json", screen.centreX, screen.centreY )
+local emitterGround = createEmitter( "data/particleGround.json", screen.centreX, screen.centreY )
 
 local player = display.newCircle( groupPlayer, screen.centreX, 0, 24 )
 player:setFillColor(0.8,0,0)
@@ -79,8 +102,8 @@ player.isVisible = false
 
 local debugText
 if debugMode then
-    debugText = display.newText( "", screen.centreX, screen.minY + 40, native.systemFontBold, 20 )
-    debugText:setFillColor(0)
+    debugText = display.newText( "", screen.centreX, screen.minY + 40, font, 20 )
+    debugText:setFillColor(1)
 end
 
 
@@ -88,6 +111,7 @@ end
 local function update()
     local timeLeft = 1-(getTimer()-startTime-bonusTime)/(timeBeforeGameover)
     if timeLeft <= 0 then
+        diggingText.text = "Out of time!"
         gameover()
         return
     end
@@ -99,17 +123,17 @@ local function update()
         r = 1
         g = timeLeft*2
     end
-    -- print(  , timeLeft )
-    -- print(  timeLeft, 0.5 / timeLeft )
-    -- print( (1 - timeLeft)*2, timeLeft)
     
-    -- print( r, g )
+    if timeLeft < 0.2 then
+        diggingText.text = "Dig faster! Hurry!"
+    elseif timeLeft < 0.5 then
+        diggingText.text = "Deeper and deeper!"
+    elseif timeLeft < 0.75 then
+        diggingText.text = "Dig deeper!"
+    end
     
     diggingMeter.width = diggingMeter.maxWidth*timeLeft
     diggingMeter:setFillColor( r, g, 0 )
-    -- local timeBeforeGameover = 10000
-    -- local extraTimeFromGold = 100
-    -- diggingMeter.maxWidth = diggingMeter.width
 end
 
 
@@ -148,6 +172,7 @@ local function generateWorld( seed )
     bonusTime = 0
     firstMove = true
     goldCounter.text = "0"
+    diggingText.text = "Dig for gold!"
 
     -- Position the world and calculate initial rotation values, plus how much to rate per move.
     local scaleFactor, playerStartY = 0, 0
@@ -263,14 +288,16 @@ local function movePlayer( direction )
             local backdrop = ring[activeLayer].backdrop[activeColumn]
             if not overlay.isVisited then
                 overlay.isVisited = true
-                overlay.isVisible = false
+                -- overlay.isVisible = false
                 
+                local activeEmitter = emitterGround
                 if overlay.isGold then
                     goldCount = goldCount+1
                     goldCounter.text = goldCount
                     bonusTime = bonusTime + extraTimeFromGold
+                    activeEmitter = emitterGold
                 end
-                
+                    
                 ----------------------------------------------------------------------------------------------------------------
                 -- We can get by using simple bitmasking value calculations since the player can only move left, right or down.
                 -- This means that we only ever need to update the new segment where the player moves to, as well as the segment
@@ -282,16 +309,23 @@ local function movePlayer( direction )
                 -- to where the player moved to.
                 ----------------------------------------------------------------------------------------------------------------
                 
+                local particleOffsetX = 78
                 local dirComing, dirGoing
                 if direction == "left" then
                     dirComing = 2
                     dirGoing = 4
+                    activeEmitter.x = screen.centreX - particleOffsetX
+                    activeEmitter.y = player.y
                 elseif direction == "right" then
                     dirComing = 4
                     dirGoing = 2
+                    activeEmitter.x = screen.centreX + particleOffsetX
+                    activeEmitter.y = player.y
                 else
                     dirComing = 1
                     dirGoing = 8
+                    activeEmitter.x = screen.centreX
+                    activeEmitter.y = player.y + 40
                 end
                 
                 if previousSegment then
@@ -299,15 +333,16 @@ local function movePlayer( direction )
                     previousSegment.fill = diggingPath[previousSegment.bitmask]
                 end
                 backdrop.bitmask = dirComing
+                backdrop.fill = diggingPath[dirComing]
                 
-                -- transition.to( overlay, { time=transitionTime, alpha=0, onComplete=function()
-                --     overlay.isVisible = false
-                --     overlay.alpha = 1
-                --     backdrop.fill = diggingPath[dirComing]
-                -- end })
-                timer.performWithDelay( transitionTime, function()
-                    backdrop.fill = diggingPath[dirComing]
-                end )
+                if ring[activeLayer].isVisible then
+                    activeEmitter:start()
+                end
+                
+                transition.to( overlay, { time=transitionTime, alpha=0, onComplete=function()
+                    overlay.isVisible = false
+                    overlay.alpha = 1
+                end })
             end
             -- Store previous segment so that its digging path can be updated.
             previousSegment = backdrop
@@ -318,7 +353,7 @@ end
 function gameover()
     Runtime:removeEventListener( "enterFrame", update )
     Runtime:removeEventListener( "key", keyEvent )
-    transition.to( diggingCounter, {time=350, y=screen.maxY+100, transition=easing.outBack })
+    transition.to( diggingCounter, { delay=250, time=500, y=screen.maxY+100, transition=easing.outBack })
     transition.to( gameoverBackground, {time=firstMove and 0 or gameoverTransitionTime, alpha=1, onComplete=function()
         generateWorld()
         gameoverBackground.alpha = 0
