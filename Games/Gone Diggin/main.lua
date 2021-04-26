@@ -1,6 +1,7 @@
 display.setStatusBar( display.HiddenStatusBar )
 
 local json = require( "json" )
+local sfx = require("scripts.sfx")
 local screen = require("scripts.screen")
 local newRing = require("scripts.newRing")
 local diggingPath = require("data.paths")
@@ -16,6 +17,9 @@ local groupPlayer = display.newGroup()
 local groupWorldFront = display.newGroup()
 local groupEmitter = display.newGroup()
 local groupUI = display.newGroup()
+
+-------------------------------------------------------------
+-- Setting up stationary UI elements
 
 local bgShading = display.newRect( groupBG, screen.centreX, screen.centreY, screen.width, screen.height )
 bgShading:setFillColor(0)
@@ -46,6 +50,7 @@ diggingMeter.x = diggingBG.x - diggingBG.width*0.5 + (diggingBG.width-diggingMet
 diggingMeter.maxWidth = diggingMeter.width
 diggingMeter.anchorX = 0
 
+-- Create a text object with a duplicate text as a shadow to make reading easier.
 local function generateText( group, text, x, y, anchorX, anchorY, fontSize )
     local textObject = display.newGroup()
     textObject.x, textObject.y = x, y
@@ -91,6 +96,26 @@ function logoT2()
     end })
 end
 logoT1()
+
+-------------------------------------------------------------
+-- Audio setup:
+
+-- Creating audio button and function for controlling audio levels in the game.
+local buttonAudio = display.newImageRect( groupUI, "images/logo.png", 48, 48 )
+buttonAudio.x, buttonAudio.y = screen.maxX - buttonAudio.width*0.5 - 4, screen.minY + buttonAudio.height*0.5 + 4
+buttonAudio.state = true
+buttonAudio:addEventListener( "touch", function(event)
+    if event.phase == "began" then
+        event.target.state = not event.target.state
+        if event.target.state then
+            audio.setVolume( sfx.maxVolume )
+        else
+            -- Lazy sound controller, i.e. everything plays, they are just quieted.
+            audio.setVolume( 0 )
+        end
+    end
+end )
+
 -------------------------------------------------------------
 -- World generation, gameplay & other parameters:
 local startingLayer = 5
@@ -110,14 +135,17 @@ local ringParameters = {
     surfaceLayers = 2,
     segmentsPerRing = 24
 }
+
 -------------------------------------------------------------
 -- Forward declaring variables.
 local ring, ringScales, currentDifficulty, previousSegment, keyEvent
 local activeLayer, activeColumn, goldCount, activeKey, gameover
 local rotationAngle = 360/ringParameters.segmentsPerRing -- How many angles each rotation is.
-local canMove, bgColourToggled, firstMove, startTime, bonusTime
+local canMove, bgColourToggled, firstMove, startTime, bonusTime, timerStarted
 local highscoreVal, lastScoreVal = 0, 0
+
 -------------------------------------------------------------
+-- Create particle emitters.
 
 local function createEmitter( filename, x, y )
     local filePath = system.pathForFile( filename )
@@ -137,20 +165,38 @@ end
 local emitterGold = createEmitter( "data/particleGold.json", screen.centreX, screen.centreY )
 local emitterGround = createEmitter( "data/particleGround.json", screen.centreX, screen.centreY )
 
-local player = display.newCircle( groupPlayer, screen.centreX, 0, 24 )
-player:setFillColor(0.8,0,0)
+-------------------------------------------------------------
+-- Create character
+
+local sheetOptions = {
+    width = 64,
+    height = 64,
+    numFrames = 4,
+    
+    sheetContentWidth = 64,
+    sheetContentHeight = 256
+}
+local sequenceData =
+{
+    name="idle",
+    frames= { 1, 2, 1, 3, 1, 4 }, -- frame indexes of animation, in image sheet
+    time = 500,
+    loopCount = 0
+}
+local characterSheet = graphics.newImageSheet( "images/characterSheet.png", sheetOptions )
+
+-- local player = display.newImageRect( groupPlayer, "images/character.png", 48, 48 )
+local player = display.newSprite( characterSheet, sequenceData )
+local playerScale = 48 / player.width
+player.xScale, player.yScale = playerScale, playerScale
+player.x = screen.centreX
 player.isVisible = false
+player:play()
 
+-------------------------------------------------------------
+-- General gameplay functions
 
-
-local debugText
-if debugMode then
-    debugText = display.newText( "", screen.centreX, screen.minY + 40, font, 20 )
-    debugText:setFillColor(1)
-end
-
-
-
+-- enterFrame listener that updates the time left counter
 local function update()
     local timeLeft = 1-(getTimer()-startTime-bonusTime)/(timeBeforeGameover)
     if timeLeft <= 0 then
@@ -179,13 +225,12 @@ local function update()
     diggingMeter:setFillColor( r, g, 0 )
 end
 
-
+-- Recreates the gameworld and sets it up for play.
 local function generateWorld( seed )
     if type( seed ) == "number" then
         math.randomseed( seed )
     end
     
-    -- Reset the game world.
     if ring then
         for i = 1, #ring do
             for j = 1, #ring[i].overlay do
@@ -216,6 +261,7 @@ local function generateWorld( seed )
     firstMove = true
     goldCounter:text(0)
     goldCounter.isVisible = true
+    timerStarted = false
     diggingText.text = "Dig for gold!"
 
     -- Position the world and calculate initial rotation values, plus how much to rate per move.
@@ -233,29 +279,28 @@ local function generateWorld( seed )
     
     -- ring[activeLayer].overlay[activeColumn].bitmask = 0
     
-    player.y = groupWorldBack.y - groupWorldBack.height*0.5 + playerStartY
+    player.y = groupWorldBack.y - groupWorldBack.height*0.5 + playerStartY + 14
+    player.startY = player.y
     player.isVisible = true
 end
 
-
+-- Handle all player movements and the related segment state and visual updates.
 local function movePlayer( direction )
     local didMove = false
     if canMove then
         local impassable = false
         if direction == "down" then
-            if firstMove then
-                firstMove = false
-                startTime = getTimer()
-                transition.to( howToPlay, { time=350, alpha=0 } )
-                transition.to( logo, { time=350, y=screen.minY - logo.height*2 } )
-                transition.to( diggingCounter, {time=350, y=screen.maxY-64, transition=easing.inSine} )
-                diggingMeter:setFillColor(0,1,0)
-                Runtime:addEventListener( "enterFrame", update )
-            end
             local nextLayer = activeLayer+1 > ringParameters.ringCount and 1 or activeLayer+1
             if not ring[nextLayer][activeColumn].isPassable then
                 impassable = true
             else
+                if firstMove then
+                    firstMove = false
+                    transition.to( player, { time=350, y=player.y - 12 } )
+                    transition.to( howToPlay, { time=350, alpha=0 } )
+                    transition.to( logo, { time=350, y=screen.minY - logo.height*2 } )
+                end
+                
                 canMove = false
                 currentDifficulty = currentDifficulty + 1
                 if bgShading.alpha < 1 then
@@ -297,12 +342,14 @@ local function movePlayer( direction )
             local nextColumn = activeColumn
             local rotateTo
             if direction == "left" then
+                player.xScale = playerScale
                 rotateTo = rotationAngle
                 nextColumn = nextColumn-1
                 if nextColumn < 1 then
                     nextColumn = ringParameters.segmentsPerRing
                 end
             else
+                player.xScale = -playerScale
                 rotateTo = -1*rotationAngle
                 nextColumn = nextColumn+1
                 if nextColumn > ringParameters.segmentsPerRing then
@@ -320,14 +367,6 @@ local function movePlayer( direction )
                 didMove = true
             end
         end
-        if debugText then
-            if impassable then
-                debugText.text = "We can't dig there!"
-            else
-                local t = ring[activeLayer].overlay[activeColumn]
-                debugText.text = didMove and (t.isVisited and "" or (t.isGold and "Found gold!" or "Just dirt.") or "")
-            end
-        end
         
         if didMove then
             local overlay = ring[activeLayer].overlay[activeColumn]
@@ -336,17 +375,38 @@ local function movePlayer( direction )
                 overlay.isVisited = true
                 -- overlay.isVisible = false
                 
+                local whichAudio = sfx["surface"]
+                
                 local activeEmitter = emitterGround
                 if overlay.isGold then
+                    whichAudio = sfx["gold"]
+                    
                     goldCount = goldCount+1
                     goldCounter:text(goldCount)
                     goldCounter.front:setFillColor(1,210/255,0)
                     transition.from( goldCounter, { time=100, xScale=1.5, yScale=1.5, onComplete=function()
                         goldCounter.front:setFillColor(1)
                     end })
-                    bonusTime = bonusTime + extraTimeFromGold
+                    if timerStarted then
+                        bonusTime = bonusTime + extraTimeFromGold
+                    end
                     activeEmitter = emitterGold
+                    
+                    -- To make the game slightly easier at immediate start, only start
+                    -- the timer after the player has already picked a few gold segments.
+                    if not timerStarted and goldCount > 2 then
+                        timerStarted = true
+                        startTime = getTimer()
+                        
+                        transition.to( diggingCounter, {time=350, y=screen.maxY-64, transition=easing.inSine} )
+                        diggingMeter:setFillColor(0,1,0)
+                        Runtime:addEventListener( "enterFrame", update )
+                        audio.play( "timerStart" )
+                    end
+                else
+                    whichAudio = sfx["ground"]
                 end
+                audio.play( whichAudio )
                     
                 ----------------------------------------------------------------------------------------------------------------
                 -- We can get by using simple bitmasking value calculations since the player can only move left, right or down.
@@ -400,9 +460,11 @@ local function movePlayer( direction )
     end
 end
 
+-- Prevent further gameplay actions, handle score and prepare to restart the game.
 function gameover()
     Runtime:removeEventListener( "enterFrame", update )
     Runtime:removeEventListener( "key", keyEvent )
+    audio.play( "gameover" )
     
     goldCounterCopy.x, goldCounterCopy.y = goldCounterCopy.xStart, goldCounterCopy.yStart
     goldCounterCopy:text(goldCount)
@@ -410,9 +472,11 @@ function gameover()
     goldCounter.isVisible = false
     
     transition.to( goldCounterCopy, { delay=250, time=gameoverTransitionTime*0.5, x=240, y=88+goldCounterCopy.height*0.5, onComplete=function()
+        transition.to( player, { time=350, y=player.startY } )
         transition.from( highscore, { time=100, xScale=1.5, yScale=1.5 })
         transition.from( lastScore, { time=100, xScale=1.5, yScale=1.5 })
-            goldCounterCopy.isVisible = false
+        goldCounterCopy.isVisible = false
+        
         
         if goldCount > highscoreVal then
             highscoreVal = goldCount
@@ -440,9 +504,9 @@ function gameover()
     end })
 end
 
+-- Keep track of currently held key and prevent additional keystrokes.
 function keyEvent( event )
     if event.phase == "down" then
-        -- Keep track of currently held key and prevent additional keystrokes.
         if not activeKey then
             activeKey = event.keyName
             if activeKey == "a" or activeKey == "left" then
@@ -452,9 +516,7 @@ function keyEvent( event )
             elseif activeKey == "s" or activeKey == "down" then
                 movePlayer("down")
             elseif activeKey == "w" or activeKey == "up" then
-                if debugText then
-                    debugText.text = "No can do! This'll only go deeper!"
-                end
+                
             elseif activeKey == "q" then
                 gameover()
             end
