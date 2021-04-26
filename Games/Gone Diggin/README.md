@@ -1,6 +1,6 @@
 # Gone Diggin'
 The Gone Diggin' is my COMPO entry for Ludum Dare 48. The theme is "Deeper and deeper".
-The game's Ludum Dare page is: TBD
+The game's Ludum Dare page is: https://ldjam.com/events/ludum-dare/48/gone-diggin
 
 ## Overall rating
 TBD
