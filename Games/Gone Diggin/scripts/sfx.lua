@@ -1,12 +1,11 @@
 local sfx = {}
 
 local audioFiles = {
-	"gold.ogg",
-	"ground.ogg",
-	"surface.ogg",
-	"timerStart.ogg",
-	"gameover.ogg",
-	"bg.ogg"
+	"gold.wav",
+	"ground.wav",
+	"timerStart.wav",
+	"gameover.wav",
+	"bg.wav"
 }
 
 for i = 1, #audioFiles do
@@ -17,6 +16,7 @@ end
 sfx.maxVolume = 0.35
 audio.setVolume( sfx.maxVolume )
 audio.reserveChannels( 1 )
+audio.setVolume( 0.5, { channel=1 } )
 audio.play( sfx["bg"], { channel=1, loops=-1 } )
 
 return sfx

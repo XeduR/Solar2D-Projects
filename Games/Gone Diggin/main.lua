@@ -104,14 +104,26 @@ logoT1()
 local buttonAudio = display.newImageRect( groupUI, "images/logo.png", 48, 48 )
 buttonAudio.x, buttonAudio.y = screen.maxX - buttonAudio.width*0.5 - 4, screen.minY + buttonAudio.height*0.5 + 4
 buttonAudio.state = true
+buttonAudio.fillOn = {
+    type = "image",
+    filename = "images/buttonMusicOn.png"
+}
+buttonAudio.fillOff = {
+    type = "image",
+    filename = "images/buttonMusicOff.png"
+}
+buttonAudio.fill = buttonAudio.fillOn
+
 buttonAudio:addEventListener( "touch", function(event)
     if event.phase == "began" then
         event.target.state = not event.target.state
         if event.target.state then
             audio.setVolume( sfx.maxVolume )
+            buttonAudio.fill = buttonAudio.fillOn
         else
             -- Lazy sound controller, i.e. everything plays, they are just quieted.
             audio.setVolume( 0 )
+            buttonAudio.fill = buttonAudio.fillOff
         end
     end
 end )
@@ -375,7 +387,7 @@ local function movePlayer( direction )
                 overlay.isVisited = true
                 -- overlay.isVisible = false
                 
-                local whichAudio = sfx["surface"]
+                local whichAudio
                 
                 local activeEmitter = emitterGround
                 if overlay.isGold then
@@ -401,7 +413,7 @@ local function movePlayer( direction )
                         transition.to( diggingCounter, {time=350, y=screen.maxY-64, transition=easing.inSine} )
                         diggingMeter:setFillColor(0,1,0)
                         Runtime:addEventListener( "enterFrame", update )
-                        audio.play( "timerStart" )
+                        audio.play( sfx["timerStart"] )
                     end
                 else
                     whichAudio = sfx["ground"]
@@ -464,7 +476,7 @@ end
 function gameover()
     Runtime:removeEventListener( "enterFrame", update )
     Runtime:removeEventListener( "key", keyEvent )
-    audio.play( "gameover" )
+    audio.play( sfx["gameover"] )
     
     goldCounterCopy.x, goldCounterCopy.y = goldCounterCopy.xStart, goldCounterCopy.yStart
     goldCounterCopy:text(goldCount)
