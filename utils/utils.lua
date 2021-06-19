@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021 Eetu Rantanen                    Last Updated: 17 June 2021 --
+--  © 2021 Eetu Rantanen                    Last Updated: 19 June 2021 --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -23,6 +23,11 @@
 	
 	CHANGE LOG:
 	-----------
+	
+	[1.2] - 19 June 2021
+			-	Add the following new functions:
+				table.getRandom( t )
+				table.count( t )
 	
 	[1.1] - 17 June 2021
 			-	Add two new string functions:
@@ -94,7 +99,7 @@ end
 -- table
 --------------------------------------------------------------------------------------------------
 
--- Create a deep copy of a table and all of its entries.
+-- Create a deep copy of a table and all of its entries (doesn't copy metatables).
 function table.copy( t )
 	local copy = {}
 	for k, v in pairs(t) do
@@ -123,6 +128,15 @@ function table.getNext( t, shuffle )
 	end
 	
 	return t[t._index]
+end
+
+-- Returns a random entry from a given table (non-recursive).
+function table.getRandom( t )
+	local temp = {}
+	for i, v in pairs( t ) do
+		temp[#temp+1] = v
+	end
+	return temp[random(#temp)]
 end
 
 -- Perform a Fisher-Yates shuffle on a table. Optionally, don't shuffle the existing
@@ -179,6 +193,15 @@ function table.print( t )
     else
         printSubtable( t, "  " )
     end
+end
+
+-- Count the number of entries in a given table (non-recursive).
+function table.count( t )
+	local count = 0
+	for i, v in pairs( t ) do
+		count = count+1
+	end
+	return count
 end
 
 --------------------------------------------------------------------------------------------------
