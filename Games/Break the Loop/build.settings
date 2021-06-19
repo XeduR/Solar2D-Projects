@@ -1,0 +1,19 @@
+settings =
+{
+	splashScreen =
+	{
+		enable = false
+	},
+
+	orientation =
+	{
+		default = "landscapeRight",
+		supported = { "landscapeRight" },
+	},
+
+	excludeFiles =
+	{
+		-- Excluse all files that aren't actually used in the game once it's built.
+		all = { "development files/*", "LICENSE", "README.md", "*.txt" },
+	},
+}
