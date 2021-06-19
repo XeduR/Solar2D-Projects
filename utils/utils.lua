@@ -24,6 +24,10 @@
 	CHANGE LOG:
 	-----------
 	
+	[1.3] - 19 June 2021
+			-	Add the following new functions:
+				utils.benchmark( f, iterations )
+				
 	[1.2] - 19 June 2021
 			-	Add the following new functions:
 				table.getRandom( t )
@@ -77,6 +81,25 @@ function utils.timer( printResult )
 		startTime = nil
 		return time
 	end
+end
+
+-- Simple benchmarking: check how long it takes for a function, f, to be run over n iterations.
+function utils.benchmark( f, iterations )
+	if type(f) ~= "function" then
+		print( "WARNING: bad argument #1 to 'benchmark' (function expected, got " .. type(f) .. ")." )
+		return 0
+	end
+	
+	local startTime = getTimer()
+	local iterations = iterations or 1
+	
+	for i = 1, iterations do
+		f()
+	end
+	
+	local result = getTimer() - startTime
+	print( "TIME: " .. result )
+	return result
 end
 
 --------------------------------------------------------------------------------------------------
