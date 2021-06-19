@@ -46,6 +46,7 @@
 
 local utils = {}
 
+-- Localised global functions.
 local getTimer = system.getTimer
 local dRemove = display.remove
 local random = math.random
