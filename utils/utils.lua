@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021 Eetu Rantanen                    Last Updated: 19 June 2021 --
+--  © 2021 Eetu Rantanen                    Last Updated: 24 June 2021 --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -23,6 +23,11 @@
 	
 	CHANGE LOG:
 	-----------
+	
+	[1.4] - 24 June 2021
+			-	Add the following new functions:
+				utils.checkForFile( filename, directory )
+				utils.getBoolean( var )
 	
 	[1.3] - 19 June 2021
 			-	Add the following new functions:
@@ -66,6 +71,27 @@ local type = type
 --------------------------------------------------------------------------------------------------
 -- utils
 --------------------------------------------------------------------------------------------------
+
+-- Check if a given file exists or not.
+function utils.checkForFile( filename, directory )
+    if type(filename) ~= "string" then
+        print( "WARNING: bad argument #1 to 'checkForFile' (string expected, got " .. type(filename) .. ")." )
+        return false
+    end
+	
+	local path = system.pathForFile( filename, directory or system.ResourceDirectory )
+	local file = open( path, "r" )
+	if file then
+		file:close()
+		return true
+	end
+	return false
+end
+
+-- Check if the input exists and isn't false, and return boolean.
+function utils.getBoolean( var )
+	return not not var
+end
 
 -- Calculate how many milliseconds has passed between when the timer was first called (started)
 -- and when the timer was called the next (finished). Mainly used for benchmarking, etc.
