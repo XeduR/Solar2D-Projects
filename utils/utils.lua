@@ -14,16 +14,22 @@
 -------------------------------------------------------------------------
 
 --[[
-	utils.lua is a simple and expanding Lua module that I personally use
-	in my projects to in order to add frequently used functions to my
-	projects without having to rewrite them every time.
+	utils.lua is a simple and expanding Lua library of functions that I
+	regularly use in many of my various projects.
 	
-	Some of these functions are part of the utils module, whereas others
+	Some of these functions are added to the utils table, whereas others
 	are added straight to their respective global library, e.g. _G.table.
 	
 	CHANGE LOG:
 	-----------
 	
+	[1.4.1] - 24 June 2021
+			-	Add the following new functions:
+				string.formatThousands( number, separator )
+				math.getseed()
+			-	Overwrite the functionality of the following function:
+				math.randomseed( seed )
+				
 	[1.4] - 24 June 2021
 			-	Add the following new functions:
 				utils.checkForFile( filename, directory )
@@ -59,10 +65,13 @@ local utils = {}
 local getTimer = system.getTimer
 local dRemove = display.remove
 local random = math.random
-local sGmatch = string.gmatch
-local sSub = string.sub
-local sLen = string.len
-local sRep = string.rep
+local reverse = string.reverse
+local gmatch = string.gmatch
+local find = string.find
+local gsub = string.gsub
+local sub = string.sub
+local len = string.len
+local rep = string.rep
 local tostring = tostring
 local pairs = pairs
 local print = print
@@ -222,8 +231,8 @@ function table.print( t )
                 for pos,val in pairs( t ) do
                     if ( type(val) == "table" ) then
                         print( indent .. "[" .. pos .. "] => " .. tostring( t ).. " {" )
-                        printSubtable( val, indent .. sRep( " ", sLen(pos)+8 ) )
-                        print( indent .. sRep( " ", sLen(pos)+6 ) .. "}" )
+                        printSubtable( val, indent .. rep( " ", len(pos)+8 ) )
+                        print( indent .. rep( " ", len(pos)+6 ) .. "}" )
                     elseif ( type(val) == "string" ) then
                         print( indent .. "[" .. pos .. '] => "' .. val .. '"' )
                     else
@@ -258,10 +267,28 @@ end
 -- string
 --------------------------------------------------------------------------------------------------
 
+
+-- Format a number so that it the thousands are split from another using a separator (space by default).
+-- i.e. input: 123456790 -> 1 234 567 890, or -1234.5678 -> -1 234.5678
+function string.formatThousands( number, separator )
+    if type(number) ~= "number" then
+		print( "WARNING: bad argument #1 to 'formatThousands' (number expected, got " .. type(number) .. ")." )
+		return number
+	end
+    separator = separator or " "
+	-- Separate the integer from the possible minus and fraction.
+	local _, _, minus, integer, fraction = find( tostring(number), '([-]?)(%d+)([.]?%d*)' )
+	-- Reverse the integer, add a thousands separator every 3 digits and restore the integer.
+	integer = reverse( gsub( reverse(integer), "(%d%d%d)", "%1"..separator ))
+	-- Remove the possible space from the start of the integer and merge the strings.
+	if sub( integer, 1, 1 ) == " " then integer = sub( integer, 2 ) end
+	return minus .. integer .. fraction
+end
+
 -- Pass a string (s) to split and character by which to split the string.
 function string.split( s, character )
 	local t = {}
-	for _s in sGmatch(s, "([^"..character.."]+)") do
+	for _s in gmatch(s, "([^"..character.."]+)") do
 		t[#t+1] = _s
 	end
 	return t
@@ -269,7 +296,32 @@ end
 
 -- Pass a string (s) to split in two and an index from where to split.
 function string.splitInTwo( s, index )
-	return sSub(s,1,index), sSub(s,index+1)
+	return sub(s,1,index), sub(s,index+1)
+end
+
+--------------------------------------------------------------------------------------------------
+-- math
+--------------------------------------------------------------------------------------------------
+
+-- Overwrite and fix the existing math.randomseed function.
+local _randomseed = math.randomseed
+function math.randomseed( seed )
+    if type(seed) ~= "number" then
+        print( "WARNING: bad argument #1 to 'randomseed' (number expected, got " .. type(seed) .. ")." )
+		return
+    end
+	-- Address the integer overflow issue with Lua 5.1 (affects Solar2D):
+	-- Source: http://lua-users.org/lists/lua-l/2013-05/msg00290.html
+	local bitsize = 32
+	if seed >= 2^bitsize then
+		seed = seed - math.floor(seed / 2^bitsize) * 2^bitsize
+	end
+	_randomseed(seed - 2^(bitsize-1))
+end
+
+-- Return a simple and reliable random seed (integer).
+function math.getseed()
+	return os.time() + getTimer()*10
 end
 
 --------------------------------------------------------------------------------------------------
