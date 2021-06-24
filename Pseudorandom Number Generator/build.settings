@@ -1,0 +1,13 @@
+settings = 
+{
+	splashScreen = 
+	{
+		enable = false
+	},
+
+	orientation = 
+	{
+		default = "landscapeRight",
+		supported = { "landscapeRight", "landscapeLeft" },
+	},
+}
