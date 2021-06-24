@@ -80,7 +80,7 @@ function utils.checkForFile( filename, directory )
     end
 	
 	local path = system.pathForFile( filename, directory or system.ResourceDirectory )
-	local file = open( path, "r" )
+	local file = io.open( path, "r" )
 	if file then
 		file:close()
 		return true
