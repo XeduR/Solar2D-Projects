@@ -74,7 +74,6 @@ local len = string.len
 local rep = string.rep
 local tostring = tostring
 local pairs = pairs
-local print = print
 local type = type
 
 --------------------------------------------------------------------------------------------------
@@ -267,7 +266,6 @@ end
 -- string
 --------------------------------------------------------------------------------------------------
 
-
 -- Format a number so that it the thousands are split from another using a separator (space by default).
 -- i.e. input: 123456790 -> 1 234 567 890, or -1234.5678 -> -1 234.5678
 function string.formatThousands( number, separator )
@@ -277,7 +275,7 @@ function string.formatThousands( number, separator )
 	end
     separator = separator or " "
 	-- Separate the integer from the possible minus and fraction.
-	local _, _, minus, integer, fraction = find( tostring(number), '([-]?)(%d+)([.]?%d*)' )
+	local _, _, minus, integer, fraction = find( tostring(number), "([-]?)(%d+)([.]?%d*)" )
 	-- Reverse the integer, add a thousands separator every 3 digits and restore the integer.
 	integer = reverse( gsub( reverse(integer), "(%d%d%d)", "%1"..separator ))
 	-- Remove the possible space from the start of the integer and merge the strings.
