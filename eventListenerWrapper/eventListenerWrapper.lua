@@ -47,10 +47,10 @@ function Runtime.removeEventListener( ... )
     _removeEventListener( ... )
 end
 
--- Having the two extra wrappers below only makes sense on the Solar2D Simulator,
--- where the performance won't take any hit, so only add them when on Simulator.
+-- Add extra wrappers only when running on the Solar2D Simulator.
 if isSimulator then
     -- Scream bloody murder when trying to use "mouse" event listeners while simulating iOS.
+    -- (Just ensuring that no time is wasted with figuring why "mouse" events are not firing.)
     local __addEventListener = Runtime.addEventListener
     function Runtime.addEventListener( ... )
         local t = { ... }
@@ -64,6 +64,7 @@ if isSimulator then
         __addEventListener( ... )
     end
     -- Don't show warnings about how "key" events don't work on real device, since we aren't on real device.
+    -- (Since "key" events always work on Simulator and we already have a "key" wrapper, this warning isn't needed.)
     local _print = print
     function print(...)
         local t = {...}
