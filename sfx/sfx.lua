@@ -74,11 +74,13 @@ end
 
 -- Lists all audio handles created by the sfx module.
 function sfx.listAudioHandles()
+    local noHandles = true
     print("\nList of audio handles:\n")
     for i, _ in pairs( handle ) do
         print( "\t[\""..i.."\"]" )
+        noHandles = false
     end
-    print("")
+    print( noHandles and "\tNo audio handles found." or "")
 end
 
 -- Load a single audio file or all files in a folder and assign them a filepath based handle.
