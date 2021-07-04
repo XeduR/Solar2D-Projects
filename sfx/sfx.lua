@@ -95,16 +95,20 @@ function sfx.loadSound( filepath, directory )
         local folder = filepath or ""
         local path = system.pathForFile( folder, directory )
         
-        for file in lfs.dir( path ) do
-            if file ~= "." and file ~= ".." then
-                local filepath = folder .."/".. file
-                if audioFormats[lower(sub(file,-4))] then
-                    handle[filepath] = audio.loadSound( filepath, directory )
-                    audioCount = audioCount+1
-                else
-                    -- Check if it's a subfolder and recursively check it for audio files.
-                    if lfs.attributes( path .. "/" .. file, "mode" ) == "directory" then
-                        sfx.loadSound( filepath, directory )
+        if not path then
+            print( "WARNING: folder \"" .. filepath .. "\" does not exist." )
+        else
+            for file in lfs.dir( path ) do
+                if file ~= "." and file ~= ".." then
+                    local filepath = folder .."/".. file
+                    if audioFormats[lower(sub(file,-4))] then
+                        handle[filepath] = audio.loadSound( filepath, directory )
+                        audioCount = audioCount+1
+                    else
+                        -- Check if it's a subfolder and recursively check it for audio files.
+                        if lfs.attributes( path .. "/" .. file, "mode" ) == "directory" then
+                            sfx.loadSound( filepath, directory )
+                        end
                     end
                 end
             end
