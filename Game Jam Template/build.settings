@@ -1,0 +1,41 @@
+-------------------------------------------------------------------------
+--                                                                     --
+--    ooooooo  ooooo                 .o8              ooooooooo.       --
+--     `8888    d8'                 "888              `888   `Y88.     --
+--       Y888..8P     .ooooo.   .oooo888  oooo  oooo   888   .d88'     --
+--        `8888'     d88' `88b d88' `888  `888  `888   888ooo88P'      --
+--       .8PY888.    888ooo888 888   888   888   888   888`88b.        --
+--      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
+--    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
+--                                                                     --
+--  © 2021 Eetu Rantanen                    Last Updated: 25 July 2021 --
+-------------------------------------------------------------------------
+--  License: MIT                                                       --
+-------------------------------------------------------------------------
+
+settings = 
+{
+    splashScreen = 
+    {
+        enable = false
+    },
+
+    orientation = 
+    {
+        default = "landscapeRight",
+        supported = { "landscapeRight", "landscapeLeft" },
+    },
+
+    plugins =
+    {
+        
+    },
+
+    excludeFiles =
+    {
+        all =		{ "LICENSE", "development files/*", "*.md" },
+        web =		{ "Icon*.ico", "Icon*.icns", "*.txt" },
+        win32 =		{ "Icon*.icns" },
+        macos =		{ "Icon*.ico" },
+    },
+}
