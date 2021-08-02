@@ -48,7 +48,7 @@ function rng.randomseed(n)
     if _type(n) == "number" then
         seed = _floor(_abs(n+0.5))
     else
-        print( "WARNING: bad argument to 'randomseed' (number expected, got "..type(n)..")" )
+        print( "WARNING: bad argument to 'randomseed' (number expected, got ".._type(n)..")" )
     end
 end
 
