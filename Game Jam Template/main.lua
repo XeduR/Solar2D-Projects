@@ -105,7 +105,7 @@ if launchParams.usesSavedata then
     -- Create simple wrappers for the loadsave plugin that will automatically
     -- provide a simple, static salt to the save files (to keep things easy).
     local loadsave = require("classes.loadsave")
-    loadsave.reportErrors = launchParams.debugMode
+    loadsave.debugMode( launchParams.debugMode )
 
     local _save = loadsave.save
     function loadsave.save( data, filename )
