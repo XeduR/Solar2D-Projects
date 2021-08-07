@@ -9,7 +9,7 @@ The template flows from main.lua → launchScreen.lua → game.lua. When working
 
 You can use the launchScreen scene to add your own logo and copyright disclaimer. The game scene is all set up for you to start writing your game.
 
-*This game template is only designed for Windows, MacOS and HTML5 platforms. It does not contain the necessary files and build.settings parameters to build for Android/iOS.*
+*NB! This game template is only designed for Windows, MacOS and HTML5 platforms. It does not contain the necessary files and build.settings parameters to build for Android/iOS.*
 
 ---
 

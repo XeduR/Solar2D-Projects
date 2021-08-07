@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021 Eetu Rantanen                    Last Updated: 25 July 2021 --
+--  © 2021 Eetu Rantanen                   Last Updated: 7 August 2021 --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -35,7 +35,7 @@ settings =
     {
         all =		{ "LICENSE", "development files/*", "*.md" },
         web =		{ "Icon*.ico", "Icon*.icns", "*.txt" },
-        win32 =		{ "Icon*.icns" },
-        macos =		{ "Icon*.ico" },
+        win32 =		{ "Icon*.icns", "*.js" },
+        macos =		{ "Icon*.ico", "*.js" },
     },
 }

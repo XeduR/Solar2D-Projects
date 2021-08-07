@@ -5,9 +5,9 @@ local scene = composer.newScene()
 
 -- Common plugins, modules, libraries & classes.
 local screen = require("classes.screen")
-local loadsave = require("classes.loadsave")
 local sfx = require("classes.sfx")
 local utils = require("libs.utils")
+local loadsave, savedata
 
 ---------------------------------------------------------------------------
 
@@ -23,6 +23,19 @@ local utils = require("libs.utils")
 
 function scene:create( event )
     local sceneGroup = self.view
+    -- If the project uses savedata, then load existing data or set it up.
+    if event.params and event.params.usesSavedata then
+        loadsave = require("classes.loadsave")
+        savedata = loadsave.load("data.json")
+        
+        if not savedata then
+            -- Assign initial values for save data.
+            savedata = {
+                
+            }
+            loadsave.save( savedata, "data.json" )
+        end
+    end
     
 end
 
