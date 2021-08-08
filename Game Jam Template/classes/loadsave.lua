@@ -38,13 +38,6 @@
     The main purpose of this module is to be a fast and easy way to obfuscate
     save files while also providing reasonable protection against data tampering
     and a basic save data backup feature against possible file errors/problems.
-    
-    ---------------------------------------------------------------------------
-    
-    NB! Spyric Loadsave does not have an option for saving human-readable files.
-    If you need to view your save files, then you need view the data once it has
-    been loaded to a Lua table or string. For printing Lua tables, please see:
-    https://docs.coronalabs.com/tutorial/data/outputTable/#convenience-function
 ]]
 
 ---------------------------------------------------------------------------
