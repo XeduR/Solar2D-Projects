@@ -26,6 +26,8 @@ local launchParams = {
     debugMode = true,
     -- Whether or not the project utilises persistent data via Spyric Loadsave.
     usesSavedata = false,
+    -- Whether or not the project encodes and protects the save data or not.
+    protectSavedata = true,
     
     -- launchScreen.lua visual options --
     logoFilename = "assets/images/launchScreen/XeduR.png",
@@ -72,17 +74,17 @@ if launchParams.debugMode and system.getInfo("platform") == "html5" then
     local newPrint = printToBrowser.print
     
     -- Hijack the standard print function.
-	local printList = {}
-	function print( ... )
+    local printList = {}
+    function print( ... )
         for i = 1, arg.n do
             printList[i] = _tostring( arg[i] )
         end
-		newPrint( _gsub( _concat( printList, "    " ), "\t", "    " ) )
-	    -- Reduce, reuse and recycle.
-	    for i = 1, arg.n do
-	        printList[i] = nil
-	    end
-	end
+        newPrint( _gsub( _concat( printList, "    " ), "\t", "    " ) )
+        -- Reduce, reuse and recycle.
+        for i = 1, arg.n do
+            printList[i] = nil
+        end
+    end
     
     -- Release widgets folder from LFS' control and clean it up.
     lfs.chdir( system.pathForFile() )
@@ -106,6 +108,7 @@ if launchParams.usesSavedata then
     -- provide a simple, static salt to the save files (to keep things easy).
     local loadsave = require("classes.loadsave")
     loadsave.debugMode( launchParams.debugMode )
+    loadsave.protectData( launchParams.protectSavedata )
 
     local _save = loadsave.save
     function loadsave.save( data, filename )

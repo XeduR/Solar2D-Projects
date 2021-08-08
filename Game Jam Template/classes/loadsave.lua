@@ -53,6 +53,7 @@ local loadsave = {}
 
 -- hash consists of [1]: pepper, [2]: the data being saved or loaded, and [3]: salt.
 local hash = {"a4f4bf1c15c61507254b2db0077120d8981d0e39ac03ec6dfcbd86caba5a7d16", "", ""}
+local isDataProtected = true
 local isDebugMode = false
 
 local json = require("json")
@@ -345,6 +346,14 @@ end
 
 ---------------------------------------------------------------------------
 
+-- Toggle encoding and data validation on or off, and handle a possible method call.
+function loadsave.protectData( input, enable )
+	local enable = input == lib and enable or input
+	isDataProtected = type(enable) == "boolean" and enable or false
+end
+
+---------------------------------------------------------------------------
+
 function loadsave.setPepper( pepper )
     if _type(pepper) ~= "string" then
         if isDebugMode then
@@ -370,7 +379,7 @@ local function writeToFile( filename, savedata, directory )
     return true
 end
 
--- Encode a string or a table, secure it with a hash, and save the encoded output to a file.
+-- Save a string or a table to a file, create a backup of it, and optionally protect the files from tampering.
 function loadsave.save( data, filename, salt, directory )
     local typeData = _type(data)
     if typeData ~= "table" and typeData ~= "string" then
@@ -412,7 +421,7 @@ function loadsave.save( data, filename, salt, directory )
     
     -- Write the save data to the main and backup save files.
     local directory = directory or system.DocumentsDirectory
-    local savedata = _concat(t)
+    local savedata = isDataProtected and _concat(t) or contents
     local didSave, errorMessage = writeToFile( filename, savedata, directory )
     local didSaveBackup, errorMessageBackup = writeToFile( "backup_"..filename, savedata, directory )
     
@@ -433,32 +442,46 @@ local function readFromFile( filename, directory )
     if file then
         local contents = file:read("*a")
         _close(file)
-        -- Ignore the feint, and retrieve the hash and the encoded data from the file.
-        local fileHash = _sub(contents, 1, 64)
-        local data = unb64(_sub(contents, 66))
-        hash[2] = data
-        -- Check for file tampering and then return the data in its original form.
-        if not data then
-            errorString = "The file has been tampered with (failed to decode data)"
+        
+        -- If data isn't protected, then just read and return it.
+        if not isDataProtected then
+            local output = jsonDecode(contents)
+            if not output then
+                output = contents
+            end
+            return output, contents
+            
+        -- If the data is protected, then check it for tampering.
         else
-            if sha256(_concat(hash)) ~= fileHash then
-                errorString = "The file has been tampered with, or 'salt' and/or 'pepper' are incorrect (hashes didn't match)"
+            -- Ignore the feint, and retrieve the hash and the encoded data from the file.
+            local fileHash = _sub(contents, 1, 64)
+            local data = unb64(_sub(contents, 66))
+            hash[2] = data
+            -- Check for file tampering and then return the data in its original form.
+            if not data then
+                errorString = "The file has been tampered with (failed to decode data)"
             else
-                local output = jsonDecode(data)
-                if not output then
-                    output = data
+                if sha256(_concat(hash)) ~= fileHash then
+                    errorString = "The file has been tampered with, or 'salt' and/or 'pepper' are incorrect (hashes didn't match)"
+                else
+                    local output = jsonDecode(data)
+                    if not output then
+                        output = data
+                    end
+                    -- Return the encoded contents in order to retrieve
+                    -- possible lost/corrupted/tampered data via backup.
+                    return output, contents
                 end
-                -- Return the encoded contents in order to retrieve
-                -- possible lost/corrupted/tampered data via backup.
-                return output, contents
             end
         end
     end
     return false, errorString
 end
 
--- Load an encoded file, check for file tampering, and return the decoded string or table.
+-- Load a file or restore from a backup, optionally check it for tampering, and return the decoded string or table.
 function loadsave.load( filename, salt, directory )
+    -- NB! load() function will attempt to load data based on whether data is protected or not.
+    -- It cannot be used to load protected data when isDataProtected is false, and vice versa.
     if _type(filename) ~= "string" then
         if isDebugMode then
             print( "WARNING: bad argument #1 to 'load' (string expected, got " .. _type(filename) .. ")." )
@@ -478,25 +501,25 @@ function loadsave.load( filename, salt, directory )
     -- Read both save files in order to verify them.
     local data, dataEncoded = readFromFile( filename, directory )
     local backupData, backupEncoded = readFromFile( "backup_"..filename, directory )
-    
+
     -- If data or backupData is false, it means that either the file doesn't exist, or it has been
     -- removed, corrupted or tampered with, so try to use the other save file to resolve the issue.
     if data then
         if not backupData or dataEncoded ~= backupEncoded then
             if isDebugMode then
-                -- NB! If a save file fails to load, then the "encoded" variables will contain error messages.
-                print( "WARNING: \"backup_" .. filename .. "\" to 'load'. Reason: " .. backupEncoded )
+                --NB! If a save file fails to load, then the "encoded" variables will contain the reason for failure.
+                print( "WARNING: Failed to load \"backup_" .. filename .. "\" in 'load'. Reason: " .. backupEncoded )
             end
             writeToFile( "backup_"..filename, dataEncoded, directory )
         end
     else
         if backupData then
             if isDebugMode then
-                print( "WARNING: \"" .. filename .. "\" to 'load'. Reason: " .. dataEncoded )
+                print( "WARNING: Failed to load \"" .. filename .. "\" in 'load'. Reason: " .. dataEncoded )
             end
             writeToFile( filename, backupEncoded, directory )
         elseif isDebugMode then
-            print( "WARNING: \"" .. filename .. "\" to 'load'. Reason: " .. dataEncoded )
+            print( "WARNING: Failed to load \"" .. filename .. "\" or its backup in 'load'. Reason: " .. dataEncoded )
         end
     end
     return data or backupData
