@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021 Eetu Rantanen                    Last Updated: 24 June 2021 --
+--  © 2021 Eetu Rantanen                   Last Updated: 8 August 2021 --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -22,6 +22,10 @@
 	
 	CHANGE LOG:
 	-----------
+	
+	[1.4.2] - 8 August 2021
+			-	Add the following new functions:
+				string.findLast( character )
 	
 	[1.4.1] - 24 June 2021
 			-	Add the following new functions:
@@ -265,6 +269,12 @@ end
 --------------------------------------------------------------------------------------------------
 -- string
 --------------------------------------------------------------------------------------------------
+
+-- Pass a string (s) and find the last occurance of a specific character.
+function string.findLast( s, character )
+    local n = find( s, character.."[^"..character.."]*$" ) )
+	return n
+end
 
 -- Format a number so that it the thousands are split from another using a separator (space by default).
 -- i.e. input: 123456790 -> 1 234 567 890, or -1234.5678 -> -1 234.5678
