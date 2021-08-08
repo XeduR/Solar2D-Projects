@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021 Eetu Rantanen                   Last Updated: 7 August 2021 --
+--  © 2021 Eetu Rantanen                   Last Updated: 8 August 2021 --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -22,6 +22,8 @@ settings =
 
     orientation = 
     {
+        -- default = "portrait",
+        -- supported = { "portrait", "portraitUpsideDown" },
         default = "landscapeRight",
         supported = { "landscapeRight", "landscapeLeft" },
     },
@@ -30,12 +32,55 @@ settings =
     {
         
     },
+    
+    android =
+    {
+        usesPermissions =
+        {
+            -- "android.permission.INTERNET",
+        },
+    },
+
+    iphone =
+    {
+        xcassets = "Images.xcassets",
+        plist =
+        {
+            UIStatusBarHidden = true,
+            UILaunchStoryboardName = "LaunchScreen",
+        },
+    },
+    
+    win32 =
+    {
+        singleInstance = true,
+    },
+
+    window =
+    {
+        titleText = {
+            default = "Game Jam Template",
+        },
+        defaultMode = "normal", -- "normal", "minimized", "maximized", "fullscreen"
+        defaultViewWidth = 640,
+        defaultViewHeight = 960,
+        resizable = false,
+        minViewWidth = 640,
+        minViewHeight = 960,
+        
+        enableCloseButton = true,
+        enableMaximizeButton = false,
+        enableMinimizeButton = true,
+        suspendWhenMinimized = true,
+    },
 
     excludeFiles =
     {
-        all =		{ "LICENSE", "development files/*", "*.md" },
-        web =		{ "Icon*.ico", "Icon*.icns", "*.txt" },
-        win32 =		{ "Icon*.icns", "*.js" },
-        macos =		{ "Icon*.ico", "*.js" },
+        all =		{ "LICENSE", "development files/*", "*.md", },
+        ios =		{ "*AndroidResources*", "Icon*.ico", "Icon*.icns", "*.js", },
+        android =	{ "*.xcassets*", "*.storyboardc*", "Icon*.ico", "Icon*.icns", "*.js", },
+        web =		{ "*.xcassets*", "*.storyboardc*", "*AndroidResources*", "Icon*.ico", "Icon*.icns", "*.txt", },
+        win32 =		{ "*.xcassets*", "*.storyboardc*", "*AndroidResources*", "Icon*.icns", "*.js", },
+        macos =		{ "*.xcassets*", "*.storyboardc*", "*AndroidResources*", "Icon*.ico", "*.js", },
     },
 }

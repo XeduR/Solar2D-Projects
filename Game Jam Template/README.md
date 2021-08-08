@@ -9,8 +9,6 @@ The template flows from main.lua → launchScreen.lua → game.lua. When working
 
 You can use the launchScreen scene to add your own logo and copyright disclaimer. The game scene is all set up for you to start writing your game.
 
-*NB! This game template is only designed for Windows, MacOS and HTML5 platforms. It does not contain the necessary files and build.settings parameters to build for Android/iOS.*
-
 ---
 
 ### Included plugins, modules, libraries, etc.
@@ -21,6 +19,7 @@ You can use the launchScreen scene to add your own logo and copyright disclaimer
 - [utils - XeduR](https://github.com/XeduR/Solar2D-Projects/blob/master/utils/utils.lua)
 
 *To be added later (pending license changes)*
+- Resolution - Spyric
 - BitmapFont - Spyric
 - ComposerX - Spyric
 - JoyPad - Spyric

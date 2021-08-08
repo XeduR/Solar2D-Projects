@@ -62,8 +62,8 @@ local launchParams = {
 
 -- If debug mode is active and the project is running on the
 -- HTML5 platform then send any prints to the browser console.
-if launchParams.debugMode and system.getInfo("platform") == "html5" then
-	local _print = print
+local platform = system.getInfo("platform")
+if launchParams.debugMode and platform == "html5" then
     local _tostring = tostring
     local _concat = table.concat
     local _gsub = string.gsub
@@ -71,7 +71,7 @@ if launchParams.debugMode and system.getInfo("platform") == "html5" then
     local lfs = require("lfs")
     lfs.chdir( "widgets" )
 	local printToBrowser = require("printToBrowser")
-    local newPrint = printToBrowser.print
+    local _print = printToBrowser.print
     
     -- Hijack the standard print function.
     local printList = {}
@@ -79,7 +79,7 @@ if launchParams.debugMode and system.getInfo("platform") == "html5" then
         for i = 1, arg.n do
             printList[i] = _tostring( arg[i] )
         end
-        newPrint( _gsub( _concat( printList, "    " ), "\t", "    " ) )
+        _print( _gsub( _concat( printList, "    " ), "\t", "    " ) )
         -- Reduce, reuse and recycle.
         for i = 1, arg.n do
             printList[i] = nil
@@ -125,8 +125,7 @@ end
 transition.ignoreEmptyReference = true
 math.randomseed( math.getseed() )
 
--- Handle a few annoying issues with simulated iOS devices.
-if system.getInfo("environment") == "simulator" then
+if system.getInfo("environment") == "simulator" or platform == "ios" then
     require("widgets.eventListenerWrapper")
 end
 
