@@ -13,7 +13,7 @@
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
 -- A simple game template for game jams and other prototype projects   --
--- for Windows, MacOS and HTML5 platforms. This template is intended   --
+-- for all platforms supported by Solar2D. This template is intended   --
 -- to be used with small projects that require only a single composer  --
 -- scene, game.lua, and it has been set up with that in mind. However, --
 -- you are free to customise this game template as you see fit.        --
