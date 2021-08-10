@@ -222,38 +222,39 @@ end
 
 -- Print out all values within a table and its possible subtables (for debugging).
 -- (source: Solar2D Docs - https://docs.coronalabs.com/tutorial/data/outputTable)
+local function printSubtable( printCache, t, indent )
+    if ( printCache[tostring(t)] ) then
+        print( indent .. "*" .. tostring(t) )
+    else
+        printCache[tostring(t)] = true
+        if ( type( t ) == "table" ) then
+            for pos,val in pairs( t ) do
+                local key = type(pos) == "string" and "[\"" .. pos .. "\"] => " or "[" .. pos .. "] => "
+                if ( type(val) == "table" ) then
+                    print( indent .. key .. tostring( t ).. " {" )
+                    printSubtable( printCache, val, indent .. rep( " ", len(pos)+8 ) )
+                    print( indent .. rep( " ", len(pos)+6 ) .. "}" )
+                elseif ( type(val) == "string" ) then
+                    print( indent .. key .. "\"" .. val .. "\"" )
+                else
+                    print( indent .. key .. tostring(val) )
+                end
+            end
+        else
+            print( indent..tostring(t) )
+        end
+    end
+end
+
 function table.print( t )
     local printCache = {}
 
-    local function printSubtable( t, indent )
-        if ( printCache[tostring(t)] ) then
-            print( indent .. "*" .. tostring(t) )
-        else
-            printCache[tostring(t)] = true
-            if ( type( t ) == "table" ) then
-                for pos,val in pairs( t ) do
-                    if ( type(val) == "table" ) then
-                        print( indent .. "[" .. pos .. "] => " .. tostring( t ).. " {" )
-                        printSubtable( val, indent .. rep( " ", len(pos)+8 ) )
-                        print( indent .. rep( " ", len(pos)+6 ) .. "}" )
-                    elseif ( type(val) == "string" ) then
-                        print( indent .. "[" .. pos .. '] => "' .. val .. '"' )
-                    else
-                        print( indent .. "[" .. pos .. "] => " .. tostring(val) )
-                    end
-                end
-            else
-                print( indent..tostring(t) )
-            end
-        end
-    end
-
     if ( type(t) == "table" ) then
         print( tostring(t) .. " {" )
-        printSubtable( t, "  " )
+        printSubtable( printCache, t, "  " )
         print( "}" )
     else
-        printSubtable( t, "  " )
+        printSubtable( printCache, t, "  " )
     end
 end
 
@@ -272,7 +273,7 @@ end
 
 -- Pass a string (s) and find the last occurance of a specific character.
 function string.findLast( s, character )
-    local n = find( s, character.."[^"..character.."]*$" ) )
+    local n = find( s, character.."[^"..character.."]*$" )
 	return n
 end
 
