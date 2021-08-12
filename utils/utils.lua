@@ -22,10 +22,14 @@
 	
 	CHANGE LOG:
 	-----------
-	
+	[1.4.3] - 11 August 2021
+			-	Add the following new functions:
+				string.count( s, character )
+            -   Removed dummy variables via select()
+    
 	[1.4.2] - 8 August 2021
 			-	Add the following new functions:
-				string.findLast( character )
+				string.findLast( s, character )
 	
 	[1.4.1] - 24 June 2021
 			-	Add the following new functions:
@@ -286,7 +290,7 @@ function string.formatThousands( number, separator )
 	end
     separator = separator or " "
 	-- Separate the integer from the possible minus and fraction.
-	local _, _, minus, integer, fraction = find( tostring(number), "([-]?)(%d+)([.]?%d*)" )
+	local minus, integer, fraction = select( 3, find( tostring(number), "([-]?)(%d+)([.]?%d*)" ) )
 	-- Reverse the integer, add a thousands separator every 3 digits and restore the integer.
 	integer = reverse( gsub( reverse(integer), "(%d%d%d)", "%1"..separator ))
 	-- Remove the possible space from the start of the integer and merge the strings.
@@ -306,6 +310,11 @@ end
 -- Pass a string (s) to split in two and an index from where to split.
 function string.splitInTwo( s, index )
 	return sub(s,1,index), sub(s,index+1)
+end
+
+-- Pass a string (s) and find how many times a character (or pattern) occurs in it.
+function string.count( s, character )
+    return select( 2, gsub( s, character, "") )
 end
 
 --------------------------------------------------------------------------------------------------
