@@ -62,11 +62,11 @@ settings =
             default = "Game Jam Template",
         },
         defaultMode = "normal", -- "normal", "minimized", "maximized", "fullscreen"
-        defaultViewWidth = 640,
-        defaultViewHeight = 960,
+        defaultViewWidth = 960,
+        defaultViewHeight = 640,
         resizable = false,
-        minViewWidth = 640,
-        minViewHeight = 960,
+        minViewWidth = 960,
+        minViewHeight = 640,
         
         enableCloseButton = true,
         enableMaximizeButton = false,
