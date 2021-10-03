@@ -20,14 +20,21 @@ physics.setReportCollisionsInContentCoordinates( true )
 ---------------------------------------------------------------------------
 
 -- Forward declarations & variables.
+local groupHelaDagen = display.newGroup()
 local groupBack = display.newGroup()
 local groupObjects = display.newGroup()
 local groupWalls = display.newGroup()
 local groupWallOverlay = display.newGroup()
 local groupCore = display.newGroup()
-local groupFront = display.newGroup()
+
+-- Making new game / end game transition easier by stuffing everything into a single group:
+groupHelaDagen:insert(groupBack)
+groupHelaDagen:insert(groupObjects)
+groupHelaDagen:insert(groupWalls)
+groupHelaDagen:insert(groupWallOverlay)
+groupHelaDagen:insert(groupCore)
+
 local groupUI = display.newGroup()
--- groupFront.alpha = 0
 groupWallOverlay.alpha = 0
 
 
@@ -108,7 +115,8 @@ local function newNeutron( x, y )
     projectile.id = #neutron+1
     projectile:setFillColor( 0.95, 0.7, 0 )
     physics.addBody( projectile, "dynamic", { radius = neutronRadius, bounce = 1, friction = 0 } )
-    
+    projectile:toBack()
+       
     projectile.baseVelocity = neutronBaseSpeed+random(-neutronSpeedVariance,neutronSpeedVariance)
     
     local prevX, prevY
@@ -174,18 +182,18 @@ local function newCannon( position )
     local nozzle = display.newImageRect( cannon, "assets/images/nozzle.png", 40, 40 )
     cannon.overlay = display.newImageRect( cannon, "assets/images/nozzleOverlay.png", 40, 40 )
     
-    local indicator = display.newImageRect( cannon, "assets/images/indicator.png", 16, 16 )
-    indicator:setFillColor(0,1,1)
-    indicator.alpha = 0
+    cannon.indicator = display.newImageRect( cannon, "assets/images/indicator.png", 16, 16 )
+    cannon.indicator:setFillColor(0,1,1)
+    cannon.indicator.alpha = 0
     
     local xSpawn = display.contentCenterX + cos(angle)*(reactorRadius-nozzle.width*0.5)
     local ySpawn = display.contentCenterY + sin(angle)*(reactorRadius-nozzle.width*0.5)
     local angleFiring = atan2( display.contentCenterY - ySpawn, display.contentCenterX - xSpawn )
     
     function cannon.fire( self, chargeUp )
-        indicator.xScale = 0.5
-        indicator.yScale = 0.5
-        indicator.alpha = 0
+        cannon.indicator.xScale = 0.5
+        cannon.indicator.yScale = 0.5
+        cannon.indicator.alpha = 0
         
         if not chargeUp then
             local projectile = newNeutron( xSpawn, ySpawn )        
@@ -208,7 +216,7 @@ local function newCannon( position )
         end
         
         -- Set the cannon to fire again.
-        transition.to( indicator, {
+        transition.to( cannon.indicator, {
             time = cannonFireInterval+random( -cannonFireVariance, cannonFireVariance ),
             xScale = 1,
             yScale = 1,
@@ -245,8 +253,6 @@ local function updateTemperature( isTimer )
         neutronCannon[i].overlay:setFillColor( 1, 0.8*(1-tempRate), 0 )
         neutronCannon[i].overlay.alpha = tempRate*1.5
     end
-    
-    
     
     if coreTemp >= maxCoreTemp then
         stopGame()
@@ -322,6 +328,7 @@ end
 local function resetObjects()
     whiteBackground.alpha = 1
     
+    -- Reset the reactor components.
     for i = 1, #wall do
         local obj, overlay = wall[i], wallOverlay[i]
         local x, y, r = obj.xStart, obj.yStart, obj.rStart
@@ -336,26 +343,39 @@ local function resetObjects()
     for i = 1, #neutronCannon do
         local obj = neutronCannon[i]
         obj.x, obj.y, obj.rotation = obj.xStart, obj.yStart, obj.rStart
+        obj.indicator.alpha = 0
     end
     
     for i = 1, #leak do
         leak[i].alpha = 0
     end
     
-    core.xScale, core.yScale = 1, 1
-    coreBlur.xScale, coreBlur.yScale = 1, 1
-    coreEmitter.xScale, coreEmitter.yScale = 1, 1
-    coreGlare.xScale, coreGlare.yScale = 1, 1
+    -- Reset core's elements.
+    core.alpha, core.xScale, core.yScale = core.alphaStart, 1, 1
+    coreBlur.alpha, coreBlur.xScale, coreBlur.yScale = coreBlur.alphaStart, 1, 1
+    coreEmitter.alpha, coreEmitter.xScale, coreEmitter.yScale = coreEmitter.alphaStart, 1, 1
+    coreReaction.alpha, coreReaction.xScale, coreReaction.yScale = coreReaction.alphaStart, 1, 1
+    coreGlow.alpha, coreGlow.xScale, coreGlow.yScale = coreGlow.alphaStart, 1, 1
+    coreGlare.alpha, coreGlare.xScale, coreGlare.yScale = coreGlare.alphaStart, 1, 1
+    coreTransition = nil
 end
 
 
+local firstLaunch = true
 function startGame()
+    local timeFade, timeReveal
+    if firstLaunch then
+        timeFade = 0
+        timeReveal = 0
+    else
+        groupHelaDagen.y = screen.height
+        timeFade = 750
+        timeReveal = 500
+    end
     coreTemp = startTemp
     tempRate = coreTemp/maxCoreTemp
     neutronCount = 0
     gameover = false
-    
-    whiteBackground.alpha = 0
     
     -- Shuffle the cannon firing order. 
     local order = {}
@@ -371,17 +391,21 @@ function startGame()
     end
     shuffle(order)
     
-    for i = 1, #neutronCannon do
-        local n = order[i]
-        timer.performWithDelay( cannonFireInterval*0.25*i+random( -cannonFireVariance, cannonFireVariance ), function()
-            neutronCannon[n].fire( nil, true )
-        end )
-    end
-    
-    -- timer.performWithDelay( tempDecreaseInterval, updateTemperature, 0, "temperature" )
-    Runtime:addEventListener( "enterFrame", animateCore )
-    updateTemperature( true )
-    
+    transition.to( whiteBackground, { time=timeFade, alpha=0, onComplete=function()
+        transition.to( groupHelaDagen, { time=timeReveal, y=0, transition=easing.inOutBack, onComplete=function()
+            
+            for i = 1, #neutronCannon do
+                local n = order[i]
+                timer.performWithDelay( cannonFireInterval*0.25*i+random( -cannonFireVariance, cannonFireVariance ), function()
+                    neutronCannon[n].fire( nil, true )
+                end )
+            end
+            
+            Runtime:addEventListener( "enterFrame", animateCore )
+            updateTemperature( true )
+        end })
+    end })
+    firstLaunch = false
 end
 
 function stopGame()
@@ -389,22 +413,11 @@ function stopGame()
     transition.cancelAll()
     timer.cancelAll()
     
-    coreReaction.xScale, coreReaction.yScale = 1, 1
-    coreReaction.alpha = 0
-    coreTransition = nil
-    
     for i = 1, #spark do
         display.remove(spark[i])
         spark[i] = nil
     end
     
-    for i = 1, neutronCount do
-        if neutron[i] then
-            display.remove(neutron[i])
-            neutron[i] = nil
-        end
-    end
-        
     -- Determine scale factor based on coreGlare's size so that it'll cover the entire screen.
     local scaleFactor = display.actualContentWidth/coreGlare.width*2
     local time = 500
@@ -413,10 +426,7 @@ function stopGame()
     transition.to( core, { time=time, xScale=scaleFactor, yScale=scaleFactor, transition=easing.inBack  })
     transition.to( coreEmitter, { time=time, xScale=scaleFactor, yScale=scaleFactor, transition=easing.inBack  })
     transition.to( coreGlare, { delay=time*0.25, time=time, xScale=scaleFactor, yScale=scaleFactor, transition=easing.inBack, onComplete=function()
-        Runtime:removeEventListener( "enterFrame", animateCore )
-        resetObjects()
-        
-        -- TEMP: double check that all neutrons were in fact removed.
+        -- Remove existing neutrons and restart the game.
         for i = 1, neutronCount do
             if neutron[i] then
                 display.remove(neutron[i])
@@ -424,6 +434,8 @@ function stopGame()
             end
         end
         
+        Runtime:removeEventListener( "enterFrame", animateCore )
+        resetObjects()        
         startGame()
     end })
 end
@@ -554,11 +566,13 @@ function scene:show( event )
         core:setFillColor( 0.95, 0, 0 )
         physics.addBody( core, "static", { radius = coreRadius } )
         core.isCore = true
+        core.alphaStart = core.alpha
         
         -- A tiny "blur" effect for the core.
         coreBlur = display.newImageRect( groupCore, "assets/images/circleGlow.png", coreRadius*2, coreRadius*2 )
         coreBlur.x, coreBlur.y = display.contentCenterX, display.contentCenterY
         coreBlur:setFillColor( 0.95, 0, 0, 0.9 )
+        coreBlur.alphaStart = coreBlur.alpha
         
         local coreBlastArea = core.width*0.75 + neutronRadius*2
         
@@ -567,22 +581,26 @@ function scene:show( event )
         coreEmitter.x, coreEmitter.y = display.contentCenterX, display.contentCenterY
         coreEmitter:setFillColor( 1, 0.5, 0, 0.5 )    
         coreEmitter.xStart, coreEmitter.yStart = coreEmitter.x, coreEmitter.y
+        coreEmitter.alphaStart = coreEmitter.alpha
         
         -- The flash that occurs when a neutron hits the core.
         coreReaction = display.newImageRect( groupCore, "assets/images/circleGlow.png", coreRadius*3, coreRadius*3 )
         coreReaction.x, coreReaction.y = display.contentCenterX, display.contentCenterY
         coreReaction:setFillColor( 0.95, 0.75, 0 )
         coreReaction.alpha = 0
+        coreReaction.alphaStart = coreReaction.alpha
         
         -- The larger, but faint glow that is emitted across and beyond the reactor.
         coreGlow = display.newImageRect( groupCore, "assets/images/circleGlow.png", (reactorRadius+wallThickness)*2.5, (reactorRadius+wallThickness)*2.5 )
         coreGlow.x, coreGlow.y = display.contentCenterX, display.contentCenterY
         coreGlow.alpha = 0
+        coreGlow.alphaStart = coreGlow.alpha
         
         -- The white glow inside the core.
         coreGlare = display.newImageRect( groupCore, "assets/images/circleGlow.png", coreRadius, coreRadius )
         coreGlare.x, coreGlare.y = display.contentCenterX, display.contentCenterY
         coreGlare:setFillColor( 1 )
+        coreGlare.alphaStart = coreGlare.alpha
 
         local function onCollision( event )
             if event.phase == "began" and not gameover then
@@ -593,6 +611,7 @@ function scene:show( event )
                     neutron[event.object2.id] = nil -- remove on gameover.
                     coreTemp = coreTemp + tempIncreasePerHit
                     updateTemperature()
+                    
                     
                     if not coreTransition then
                         coreTransition = transition.from( coreReaction, {time=150, alpha=1, xScale=1.25, yScale=1.25, onComplete=function()
@@ -615,23 +634,25 @@ function scene:show( event )
                         end
                     end
                     
-                    -- Nuclear fission time, spawn 3 neutrons from core.
-                    for i = 1, 3 do
-                        -- Spawn the neutron near the core's outer edge.
-                        timer.performWithDelay( 1, function()
-                            local angle = rad(random(360))
-                            local radius = core.width*0.5 + neutronRadius*1.5
-                            local x, y = cos(angle)*radius, sin(angle)*radius
-                    
-                            local projectile = newNeutron( core.x + x, core.y + y )
-                    
-                            -- Fire the neutron projectile from the cannon with slight variation in its angle and velocity.
-                            projectile:setLinearVelocity(
-                                cos(angle)*projectile.baseVelocity,
-                                sin(angle)*projectile.baseVelocity
-                            )
-                    
-                        end, "cannon" )
+                    if not gameover then
+                        -- Nuclear fission time, spawn 3 neutrons from core.
+                        for i = 1, 3 do
+                            -- Spawn the neutron near the core's outer edge.
+                            timer.performWithDelay( 1, function()
+                                local angle = rad(random(360))
+                                local radius = core.width*0.5 + neutronRadius*1.5
+                                local x, y = cos(angle)*radius, sin(angle)*radius
+                        
+                                local projectile = newNeutron( core.x + x, core.y + y )
+                        
+                                -- Fire the neutron projectile from the cannon with slight variation in its angle and velocity.
+                                projectile:setLinearVelocity(
+                                    cos(angle)*projectile.baseVelocity,
+                                    sin(angle)*projectile.baseVelocity
+                                )
+                        
+                            end )
+                        end
                     end
                 
                 
