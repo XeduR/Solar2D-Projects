@@ -13,6 +13,7 @@ display.setDefault( "background", 0.075 )
 local physics = require("physics")
 physics.start()
 physics.setGravity( 0, 0 )
+physics.setReportCollisionsInContentCoordinates( true )
 -- physics.setDrawMode( "hybrid" )
 
 
@@ -21,22 +22,20 @@ physics.setGravity( 0, 0 )
 -- Forward declarations & variables.
 local groupBack = display.newGroup()
 local groupObjects = display.newGroup()
-local groupFront = display.newGroup()
 local groupWalls = display.newGroup()
 local groupWallOverlay = display.newGroup()
+local groupCore = display.newGroup()
+local groupFront = display.newGroup()
 local groupUI = display.newGroup()
-groupFront.alpha = 0
+-- groupFront.alpha = 0
 groupWallOverlay.alpha = 0
 
 
-local core, coreEmitter, coreReaction, coreTransition
-local sectorFront, sectorBack = {}, {}
-local wall, wallOverlay = {}, {}
-local neutron = {}
-local gameover = false
-
+local core, coreBlur, coreEmitter, coreGlare, coreGlow, coreReaction, coreTransition, reactorBack, whiteBackground
+local wall, wallOverlay, sectorFront, sectorBack, leak, neutronCannon, neutron, spark = {}, {}, {}, {}, {}, {}, {}, {}
 
 local random = math.random
+local sqrt = math.sqrt
 local atan2 = math.atan2
 local rad = math.rad
 local cos = math.cos
@@ -60,15 +59,19 @@ local coreRadius = 50
 
 -- Core temperature settings:
 local maxCoreTemp = 100
+local startTemp = 20
 local tempIncreasePerHit = 5
-local tempDecreaseInterval = 200
-local tempDecreaseAmount = 3
+local tempDecreaseInterval = 500
+local tempDecreaseAmount = 1
 
 -- NB! Automatically assigned properties (don't touch).
+local gameover = false
+local touchDistance = reactorRadius + wallThickness
 local panelCount = wallCount*0.5
 local wallWidth = 2*math.pi*reactorRadius/wallCount
-local coreTemp = 0
-local tempRate = 0
+local coreTemp = startTemp
+local tempRate = coreTemp/maxCoreTemp
+local neutronCount = 0
 
 -- wallCount must be divisible by 4 so that panelCount is divisible by 2.
 if wallCount % 4 ~= 0 then
@@ -80,8 +83,28 @@ end
 ---------------------------------------------------------------------------
 
 -- Functions.
+local startGame, stopGame
+
+
+local function releaseNeutron( target, x1, x2, y1, y2 )
+    display.getCurrentStage():setFocus( nil )
+    target.isFocus = false	
+    target.tempJoint:removeSelf()
+    
+    -- As player lets go, cause a tiny "explosion" to push it somewhere.
+    local angle = atan2( y1-y2, x1-x2 )
+    
+    -- Fire the neutron projectile from the cannon with slight variation in its angle and velocity.
+    target:setLinearVelocity(
+        cos(angle)*target.baseVelocity,
+        sin(angle)*target.baseVelocity
+    )
+end
+
 local function newNeutron( x, y )
-    local projectile = display.newCircle( groupObjects, x, y, neutronRadius )
+    local projectile = display.newImageRect( groupObjects, "assets/images/neutron.png", neutronRadius*2, neutronRadius*2 )
+    projectile.x, projectile.y = x, y
+    projectile.isNeutron = true
     projectile.id = #neutron+1
     projectile:setFillColor( 0.95, 0.7, 0 )
     physics.addBody( projectile, "dynamic", { radius = neutronRadius, bounce = 1, friction = 0 } )
@@ -92,16 +115,15 @@ local function newNeutron( x, y )
     
     function projectile.touch( self, event )
     	local phase = event.phase
-    	local stage = display.getCurrentStage()
 
         if phase == "began" then
-    		stage:setFocus( self )
+    		display.getCurrentStage():setFocus( self )
     		self.isFocus = true
     		self.tempJoint = physics.newJoint( "touch", self, event.x, event.y )
             prevX, prevY = self.x, self.y
             
         elseif not self.isFocus then
-    		stage:setFocus( self )
+    		display.getCurrentStage():setFocus( self )
     		self.isFocus = true
     		self.tempJoint = physics.newJoint( "touch", self, event.x, event.y )
             prevX, prevY = self.x, self.y
@@ -109,20 +131,13 @@ local function newNeutron( x, y )
         else
     		if phase == "moved" then
     			self.tempJoint:setTarget( event.x, event.y )
+                
+                local distance = sqrt((event.x - core.x)*(event.x - core.x) + (event.y - core.y)*(event.y - core.y))
+                if distance > touchDistance then
+                    releaseNeutron( self, event.x, prevX, event.y, prevY )
+                end
             else
-    			stage:setFocus( nil )
-    			self.isFocus = false	
-    			self.tempJoint:removeSelf()
-                
-                -- As player lets go, cause a tiny "explosion" to push it somewhere.
-                local angle = atan2( event.y - prevY, event.x - prevX )
-                
-                -- -- Fire the neutron projectile from the cannon with slight variation in its angle and velocity.
-                self:setLinearVelocity(
-                    cos(angle)*projectile.baseVelocity,
-                    sin(angle)*projectile.baseVelocity
-                )
-                
+                releaseNeutron( self, event.x, prevX, event.y, prevY )
             end
             
             if event.x ~= prevX or event.y ~= prevY then
@@ -134,7 +149,7 @@ local function newNeutron( x, y )
     end
     
     projectile:addEventListener( "touch" )
-    
+    neutronCount = projectile.id
     neutron[projectile.id] = projectile
     return projectile
 end
@@ -144,34 +159,63 @@ local function newCannon( position )
     local angle = rad( position )
     local x, y = display.contentCenterX + cos(angle)*reactorRadius, display.contentCenterY + sin(angle)*reactorRadius
     
-    local cannon = display.newRect( groupWalls, x, y, 40, 40 )
-    cannon:setFillColor( 0, 0.3, 0.75 )
+    local cannon = display.newGroup()
+    cannon.xStart, cannon.yStart, cannon.rStart = x, y, position
     cannon.rotation = position
+    cannon.x, cannon.y = x, y
+    groupCore:insert(cannon)
+    cannon:toBack()
     
-    cannon.spawn = {
-        x = display.contentCenterX + cos(angle)*(reactorRadius-cannon.width*0.5),
-        y = display.contentCenterY + sin(angle)*(reactorRadius-cannon.width*0.5) 
-    }
+    -- Push the cords further inside the walls.
+    local cords = display.newImageRect( cannon, "assets/images/cords.png", 100, 128 )
+    cords.x = -16
+    cords.anchorX = 0
     
-    local angleFiring = atan2( display.contentCenterY - cannon.spawn.y, display.contentCenterX - cannon.spawn.x )
+    local nozzle = display.newImageRect( cannon, "assets/images/nozzle.png", 40, 40 )
+    cannon.overlay = display.newImageRect( cannon, "assets/images/nozzleOverlay.png", 40, 40 )
     
-    function cannon.fire()
-        local projectile = newNeutron( cannon.spawn.x, cannon.spawn.y )
-        projectile.isActive = true
-        projectile.alpha = 0.25
-        projectile.xScale, projectile.yScale = 0.75, 0.75
-        transition.to( projectile, { time=250, alpha=1, xScale=1, yScale=1 } )
+    local indicator = display.newImageRect( cannon, "assets/images/indicator.png", 16, 16 )
+    indicator:setFillColor(0,1,1)
+    indicator.alpha = 0
+    
+    local xSpawn = display.contentCenterX + cos(angle)*(reactorRadius-nozzle.width*0.5)
+    local ySpawn = display.contentCenterY + sin(angle)*(reactorRadius-nozzle.width*0.5)
+    local angleFiring = atan2( display.contentCenterY - ySpawn, display.contentCenterX - xSpawn )
+    
+    function cannon.fire( self, chargeUp )
+        indicator.xScale = 0.5
+        indicator.yScale = 0.5
+        indicator.alpha = 0
         
-        
-        -- Fire the neutron projectile from the cannon with slight variation in its angle and velocity.
-        projectile:setLinearVelocity(
-            cos(angleFiring+random(-neutronFireAngleVariance,neutronFireAngleVariance))*projectile.baseVelocity,
-            sin(angleFiring+random(-neutronFireAngleVariance,neutronFireAngleVariance))*projectile.baseVelocity
-        )
+        if not chargeUp then
+            local projectile = newNeutron( xSpawn, ySpawn )        
+            
+            -- Fire the neutron projectile from the cannon with slight variation in its angle and velocity.
+            projectile:setLinearVelocity(
+                cos(angleFiring+random(-neutronFireAngleVariance,neutronFireAngleVariance))*projectile.baseVelocity,
+                sin(angleFiring+random(-neutronFireAngleVariance,neutronFireAngleVariance))*projectile.baseVelocity
+            )
+            
+            -- Create a spark effect to hide the newly spawned particle.
+            -- local t = display.newImageRect( groupCore, "assets/images/circleGlow.png", neutronRadius*1.5, neutronRadius*1.5 )
+            -- t.x, t.y = event.x, event.y
+            -- t:toBack()
+            -- spark[#spark+1] = t
+            -- transition.to( t, { time=150, xScale=0.1, yScale=0.1, alpha=0, onComplete=function()
+            --     display.remove(t)
+            --     t = nil
+            -- end })
+        end
         
         -- Set the cannon to fire again.
-        timer.performWithDelay( cannonFireInterval+random( -cannonFireVariance, cannonFireVariance ), cannon.fire, "cannon" )
-    end    
+        transition.to( indicator, {
+            time = cannonFireInterval+random( -cannonFireVariance, cannonFireVariance ),
+            xScale = 1,
+            yScale = 1,
+            alpha = 1,
+            onComplete = cannon.fire
+        } )
+    end
     
     return cannon
 end
@@ -186,62 +230,203 @@ local function updateTemperature( isTimer )
         end
     end
     
-    -- Increase the visibility of the wall overlay and adjust the colours.
+    -- Increase the visibility of the wall overlay and adjust all colours.
     tempRate = coreTemp/maxCoreTemp
     groupWallOverlay.alpha = tempRate*1.5
+    core:setFillColor( 1, tempRate, 0 )
+    coreGlow:setFillColor( 1, 0.8*(1-tempRate), 0 )
+    coreGlow.alpha = tempRate*0.25
     
     for i = 1, #wallOverlay do
         wallOverlay[i]:setFillColor( 1, 0.8*(1-tempRate), 0 )
     end
     
+    for i = 1, #neutronCannon do
+        neutronCannon[i].overlay:setFillColor( 1, 0.8*(1-tempRate), 0 )
+        neutronCannon[i].overlay.alpha = tempRate*1.5
+    end
+    
+    
+    
     if coreTemp >= maxCoreTemp then
-        gameover = true
-        display.setDefault( "background", 0.9, 0, 0 )
+        stopGame()
     end
 end
 
+local isCoreCold = false
 local function animateCore()
+    local xStart, yStart = coreEmitter.xStart, coreEmitter.yStart
+    
     -- Move the core emitter around a bit.
     local scale = random(95,105)*0.01
-    coreEmitter.x, coreEmitter.y = coreEmitter.xStart + random(-2,2), coreEmitter.yStart + random(-2,2)
-    coreEmitter.xScale, coreEmitter.yScale = scale, scale
+    coreEmitter.x, coreEmitter.y = xStart + random(-2,2), yStart + random(-2,2)
+    coreEmitter.xScale, coreEmitter.yScale = scale*(1+tempRate*0.3), scale*(1+tempRate*0.3)
     
-    -- print( tempRate )
-    if tempRate > 0.35 then
-        -- local xBounce, yBounce, rBounce
-        -- if tempRate < 0.7 then
-        --     xBounce, yBounce, rBounce = random(-1,1), random(-1,1), 0
-        -- else
-        --     xBounce, yBounce, rBounce = random(-2,2), random(-2,2), random(-1,1)
-        -- end
-        
-        for i = 1, #wall do
-            local xBounce, yBounce, rBounce
-            if tempRate < 0.7 then
-                xBounce, yBounce, rBounce = random(-1,1), random(-1,1), 0
-            else
-                xBounce, yBounce, rBounce = random(-2,2), random(-2,2), random(-1,1)
-            end
-            
-            local obj, overlay = wall[i], wallOverlay[i]
-            local x, y, r = obj.xStart + xBounce, obj.yStart + yBounce, obj.rStart + rBounce
-            obj.x, obj.y, obj.r, overlay.x, overlay.y, overlay.r = x, y, r, x, y, r
-        end
-        
-        for i = 1, #sectorBack do
-            local xBounce, yBounce, rBounce
-            if tempRate < 0.7 then
-                xBounce, yBounce, rBounce = random(-1,1), random(-1,1), 0
-            else
-                xBounce, yBounce, rBounce = random(-2,2), random(-2,2), random(-1,1)
-            end
-            
-            local obj = sectorBack[i]
-            obj.x, obj.y, obj.r = obj.xStart + xBounce, obj.yStart + yBounce, obj.rStart + rBounce
-        end
+    -- The core's "glare" effect will grow larger as temperature goes up.
+    coreGlare.x, coreGlare.y = xStart + random(-3,3), yStart + random(-3,3)
+    if not gameover then
+        coreGlare.xScale, coreGlare.yScale = scale*(1+tempRate), scale*(1+tempRate)
+    end
+    
+    -- Adjust core blur and glow.
+    coreBlur.x, coreBlur.y = xStart + random(-2,2), yStart + random(-2,2)
+    coreGlow.x, coreGlow.y = xStart + random(-1,1), yStart + random(-1,1)
+    coreGlow.xScale, coreGlow.yScale = scale, scale
+    
+    -- "Jiggle around" the reactor components.
+    ------------------------------------------
+    -- Set caps for x, y and rotation changes.
+    local dx, dy, dr
+    local leakAlpha = 0
+    
+    if tempRate > 0.85 then
+        dx, dy, dr = 5, 5, 3
+        leakAlpha = 0.8
+    elseif tempRate > 0.6 then
+        dx, dy, dr = 4, 4, 2
+        leakAlpha = 0.5
+    elseif tempRate > 0.45 then
+        dx, dy, dr = 3, 3, 2
+        leakAlpha = 0.2
+    elseif tempRate > 0.3 then
+        dx, dy, dr = 2, 2, 1
+    else
+        dx, dy, dr = 0, 0, 1
+    end
+    
+    for i = 1, #wall do
+        local xBounce, yBounce, rBounce = random(-dx,dx), random(-dy,dy), random(-dr,dr)
+        local obj, overlay = wall[i], wallOverlay[i]
+        local x, y, r = obj.xStart + xBounce, obj.yStart + yBounce, obj.rStart + rBounce
+        obj.x, obj.y, obj.rotation, overlay.x, overlay.y, overlay.rotation = x, y, r, x, y, r
+    end
+    
+    for i = 1, #sectorBack do
+        local xBounce, yBounce, rBounce = random(-dx,dx), random(-dy,dy), random(-dr,dr)
+        local obj = sectorBack[i]
+        obj.x, obj.y, obj.rotation = obj.xStart + xBounce, obj.yStart + yBounce, obj.rStart + rBounce
+    end
+    
+    for i = 1, #neutronCannon do
+        local xBounce, yBounce, rBounce = random(-dx,dx), random(-dy,dy), random(-dr,dr)
+        local obj = neutronCannon[i]
+        obj.x, obj.y, obj.rotation = obj.xStart + xBounce, obj.yStart + yBounce, obj.rStart + rBounce
+    end
+    
+    for i = 1, #leak do
+        leak[i].rotation = random(360)
+        leak[i].alpha = leak[i].baseAlpha*leakAlpha
     end
 end
 
+local function resetObjects()
+    whiteBackground.alpha = 1
+    
+    for i = 1, #wall do
+        local obj, overlay = wall[i], wallOverlay[i]
+        local x, y, r = obj.xStart, obj.yStart, obj.rStart
+        obj.x, obj.y, obj.rotation, overlay.x, overlay.y, overlay.rotation = x, y, r, x, y, r
+    end
+    
+    for i = 1, #sectorBack do
+        local obj = sectorBack[i]
+        obj.x, obj.y, obj.rotation = obj.xStart, obj.yStart, obj.rStart
+    end
+    
+    for i = 1, #neutronCannon do
+        local obj = neutronCannon[i]
+        obj.x, obj.y, obj.rotation = obj.xStart, obj.yStart, obj.rStart
+    end
+    
+    for i = 1, #leak do
+        leak[i].alpha = 0
+    end
+    
+    core.xScale, core.yScale = 1, 1
+    coreBlur.xScale, coreBlur.yScale = 1, 1
+    coreEmitter.xScale, coreEmitter.yScale = 1, 1
+    coreGlare.xScale, coreGlare.yScale = 1, 1
+end
+
+
+function startGame()
+    coreTemp = startTemp
+    tempRate = coreTemp/maxCoreTemp
+    neutronCount = 0
+    gameover = false
+    
+    whiteBackground.alpha = 0
+    
+    -- Shuffle the cannon firing order. 
+    local order = {}
+    for i = 1, #neutronCannon do
+        order[i] = i
+    end
+    
+    function shuffle(t)
+        for i = #t, 2, -1 do
+            local j = random(i)
+            t[i], t[j] = t[j], t[i]
+        end
+    end
+    shuffle(order)
+    
+    for i = 1, #neutronCannon do
+        local n = order[i]
+        timer.performWithDelay( cannonFireInterval*0.25*i+random( -cannonFireVariance, cannonFireVariance ), function()
+            neutronCannon[n].fire( nil, true )
+        end )
+    end
+    
+    -- timer.performWithDelay( tempDecreaseInterval, updateTemperature, 0, "temperature" )
+    Runtime:addEventListener( "enterFrame", animateCore )
+    updateTemperature( true )
+    
+end
+
+function stopGame()
+    gameover = true
+    transition.cancelAll()
+    timer.cancelAll()
+    
+    coreReaction.xScale, coreReaction.yScale = 1, 1
+    coreReaction.alpha = 0
+    coreTransition = nil
+    
+    for i = 1, #spark do
+        display.remove(spark[i])
+        spark[i] = nil
+    end
+    
+    for i = 1, neutronCount do
+        if neutron[i] then
+            display.remove(neutron[i])
+            neutron[i] = nil
+        end
+    end
+        
+    -- Determine scale factor based on coreGlare's size so that it'll cover the entire screen.
+    local scaleFactor = display.actualContentWidth/coreGlare.width*2
+    local time = 500
+        
+    -- Start gameover transitions.
+    transition.to( core, { time=time, xScale=scaleFactor, yScale=scaleFactor, transition=easing.inBack  })
+    transition.to( coreEmitter, { time=time, xScale=scaleFactor, yScale=scaleFactor, transition=easing.inBack  })
+    transition.to( coreGlare, { delay=time*0.25, time=time, xScale=scaleFactor, yScale=scaleFactor, transition=easing.inBack, onComplete=function()
+        Runtime:removeEventListener( "enterFrame", animateCore )
+        resetObjects()
+        
+        -- TEMP: double check that all neutrons were in fact removed.
+        for i = 1, neutronCount do
+            if neutron[i] then
+                display.remove(neutron[i])
+                neutron[i] = nil
+            end
+        end
+        
+        startGame()
+    end })
+end
 
 ---------------------------------------------------------------------------
 
@@ -276,26 +461,61 @@ function scene:show( event )
         
     elseif event.phase == "did" then
         
-        local background = display.newCircle( groupBack, display.contentCenterX, display.contentCenterY, reactorRadius )
-        background:setFillColor( math.random( 6, 8 )*0.1 )
+        local xedur = display.newImageRect( "assets/images/launchScreen/XeduR.png", 256, 128 )
+        xedur.anchorX, xedur.anchorY = 1, 0
+        xedur.x, xedur.y = screen.maxX + 20, screen.minY
+        
+        local title = display.newText( "LD49: Uranium-236", xedur.x - xedur.width*0.5, xedur.y + xedur.height, nil, 20 )        
+        title.anchorY = 0
+        
+        whiteBackground = display.newRect( groupUI, display.contentCenterX, display.contentCenterY, display.actualContentWidth, display.actualContentHeight )
+        whiteBackground.alpha = 0
+        
+        for i = 1, 12 do
+            leak[i] = display.newRect( groupBack, display.contentCenterX, display.contentCenterY, 512, 4 )
+            leak[i].baseAlpha = 1 / (1 + math.floor( (i-1) / 4 ))
+            leak[i].anchorX = 0
+            leak[i].alpha = 0
+        end
+        
+        reactorBack = display.newCircle( groupBack, display.contentCenterX, display.contentCenterY, reactorRadius )        
+        reactorBack.fill.effect = "generator.radialGradient"
+        reactorBack.fill.effect.color1 = { 0.1, 0.1, 0.1, 1 }
+        reactorBack.fill.effect.color2 = { 0.85, 0.85, 0.85, 1 }
+        reactorBack.fill.effect.center_and_radiuses  =  { 0.5, 0.5, 0, 0.75 }
+        reactorBack.fill.effect.aspectRatio  = 1
         
         -- Create the front and back sectors ("panels", visual only).
+        local prevFill 
         for i = 1, panelCount do
             local rotation = (360/panelCount)*(i-1)
             
-            -- Apply quadrilateral distortion to make adding the final visual styles easier.    
-            sectorFront[i] = display.newRect( groupFront, display.contentCenterX, display.contentCenterY, reactorRadius, wallWidth*2+2 )
-            sectorFront[i].path.y1, sectorFront[i].path.y2 = wallWidth, -wallWidth
-            sectorFront[i].rotation = rotation
-            sectorFront[i].anchorX = 0
-            sectorFront[i]:setFillColor( math.random( 6, 8 )*0.1 )
+            -- Apply quadrilateral distortion to make adding the final visual styles easier.
+            -- TODO: quadrilateral distortion doesn't work. :D
+            -- sectorFront[i] = display.newImageRect( groupFront, "assets/images/sectorFront.png", reactorRadius, wallWidth*2+2 )
+            -- sectorFront[i].x, sectorFront[i].y = display.contentCenterX, display.contentCenterY
+            -- sectorFront[i].path.y1, sectorFront[i].path.y2 = wallWidth, -wallWidth
+            
+            -- sectorFront[i] = display.newImageRect( groupFront, "assets/images/sectorFront.png", 256, 96 )
+            -- sectorFront[i].x, sectorFront[i].y = display.contentCenterX, display.contentCenterY
+            -- sectorFront[i].rotation = rotation
+            -- sectorFront[i].anchorX = 0
+            -- sectorFront[i]:setFillColor( 1, 0, 0 )
             
             sectorBack[i] = display.newRect( groupBack, display.contentCenterX, display.contentCenterY, reactorRadius, wallWidth*2+2 )
-            sectorBack[i].path.y1, sectorBack[i].path.y2 = wallWidth, -wallWidth
+            sectorBack[i].path.y1, sectorBack[i].path.y2 = wallWidth+1, -wallWidth-1
             sectorBack[i].rotation = rotation
             sectorBack[i].anchorX = 0
             sectorBack[i].xStart, sectorBack[i].yStart, sectorBack[i].rStart = sectorBack[i].x, sectorBack[i].y, sectorBack[i].rotation
-            sectorBack[i]:setFillColor( math.random( 6, 8 )*0.1 )
+            
+            local fill = random( 65, 75 )*0.01
+            if prevFill and prevFill == fill then
+                repeat
+                    fill = random( 65, 75 )*0.01
+                until prevFill ~= fill
+            end
+            sectorBack[i]:setFillColor( fill, 0.5 )
+            prevFill = fill
         end
         
         -- Create the reactor walls (side segments).
@@ -314,11 +534,12 @@ function scene:show( event )
             -- The physics body isn't a perfect fit, but it'll do for the game jam.
             physics.addBody( wallBody[i], "static", { friction = 0, bounce = 1 } )
             
-            wall[i] = display.newRect( groupWalls, display.contentCenterX + cos(angle)*reactorRadius, display.contentCenterY + sin(angle)*reactorRadius, wallThickness, wallWidth+2 )
+            wall[i] = display.newImageRect( groupWalls, "assets/images/wall.png", wallThickness, wallWidth+2 )
+            wall[i].x, wall[i].y = display.contentCenterX + cos(angle)*reactorRadius, display.contentCenterY + sin(angle)*reactorRadius
             wall[i].path.y1, wall[i].path.y2, wall[i].path.y3, wall[i].path.y4 = yOffset, -yOffset, yOffset, -yOffset
             wall[i].rotation = rotation
             wall[i].xStart, wall[i].yStart, wall[i].rStart = wall[i].x, wall[i].y, wall[i].rotation
-            wall[i]:setFillColor( math.random( 20, 30 )*0.01 )
+            -- wall[i]:setFillColor( random( 20, 30 )*0.01 )
             
             -- wallOverlay[i] = display.newRect( groupWalls, display.contentCenterX + cos(angle)*reactorRadius, display.contentCenterY + sin(angle)*reactorRadius, wallThickness, wallWidth+2 )
             wallOverlay[i] = display.newImageRect( groupWallOverlay, "assets/images/wallOverlay.png", wallThickness, wallWidth+2 )
@@ -327,33 +548,52 @@ function scene:show( event )
             wallOverlay[i].rotation = rotation
         end
 
-        core = display.newCircle( groupWalls, display.contentCenterX, display.contentCenterY, coreRadius )
+        -- The actual core with a physics body.
+        core = display.newImageRect( groupCore, "assets/images/circleGlow.png", coreRadius*2, coreRadius*2 )
+        core.x, core.y = display.contentCenterX, display.contentCenterY
         core:setFillColor( 0.95, 0, 0 )
         physics.addBody( core, "static", { radius = coreRadius } )
+        core.isCore = true
         
-        local coreBlastArea = core.width*0.5 + neutronRadius*2
+        -- A tiny "blur" effect for the core.
+        coreBlur = display.newImageRect( groupCore, "assets/images/circleGlow.png", coreRadius*2, coreRadius*2 )
+        coreBlur.x, coreBlur.y = display.contentCenterX, display.contentCenterY
+        coreBlur:setFillColor( 0.95, 0, 0, 0.9 )
         
-        coreEmitter = display.newCircle( groupWalls, display.contentCenterX, display.contentCenterY, coreRadius )
+        local coreBlastArea = core.width*0.75 + neutronRadius*2
+        
+        -- The larger glow "emitted" by the reactor.
+        coreEmitter = display.newImageRect( groupCore, "assets/images/circleGlow.png", coreRadius*2.5, coreRadius*2.5 )
+        coreEmitter.x, coreEmitter.y = display.contentCenterX, display.contentCenterY
         coreEmitter:setFillColor( 1, 0.5, 0, 0.5 )    
         coreEmitter.xStart, coreEmitter.yStart = coreEmitter.x, coreEmitter.y
         
-        coreReaction = display.newCircle( groupWalls, display.contentCenterX, display.contentCenterY, coreRadius*1.1 )
+        -- The flash that occurs when a neutron hits the core.
+        coreReaction = display.newImageRect( groupCore, "assets/images/circleGlow.png", coreRadius*3, coreRadius*3 )
+        coreReaction.x, coreReaction.y = display.contentCenterX, display.contentCenterY
         coreReaction:setFillColor( 0.95, 0.75, 0 )
         coreReaction.alpha = 0
+        
+        -- The larger, but faint glow that is emitted across and beyond the reactor.
+        coreGlow = display.newImageRect( groupCore, "assets/images/circleGlow.png", (reactorRadius+wallThickness)*2.5, (reactorRadius+wallThickness)*2.5 )
+        coreGlow.x, coreGlow.y = display.contentCenterX, display.contentCenterY
+        coreGlow.alpha = 0
+        
+        -- The white glow inside the core.
+        coreGlare = display.newImageRect( groupCore, "assets/images/circleGlow.png", coreRadius, coreRadius )
+        coreGlare.x, coreGlare.y = display.contentCenterX, display.contentCenterY
+        coreGlare:setFillColor( 1 )
 
-        local function onCoreCollision( self, event )
-            -- Prevent neutrons spawned from core by colliding with it immediately.
-            if event.phase == "began" and event.other.isActive then
-                display.remove( event.other )
-                neutron[event.other.id] = nil
-                coreTemp = coreTemp + tempIncreasePerHit
-                updateTemperature()
+        local function onCollision( event )
+            if event.phase == "began" and not gameover then
                 
-                if gameover then
-                    -- isActive
-                    timer.cancel( "cannon" )
-                    timer.cancel( "temperature" )
-                else
+                -- Neutron collides with the core.
+                if event.object1.isCore then
+                    display.remove( event.object2 )
+                    neutron[event.object2.id] = nil -- remove on gameover.
+                    coreTemp = coreTemp + tempIncreasePerHit
+                    updateTemperature()
+                    
                     if not coreTransition then
                         coreTransition = transition.from( coreReaction, {time=150, alpha=1, xScale=1.25, yScale=1.25, onComplete=function()
                             coreTransition = nil
@@ -364,12 +604,12 @@ function scene:show( event )
                     for i = 1, #neutron do
                         local obj = neutron[i]
                         if obj then
-                            local distance = (obj.x - core.x)*(obj.x - core.x) + (obj.y - core.y)*(obj.y - core.y)
+                            local distance = sqrt((obj.x - core.x)*(obj.x - core.x) + (obj.y - core.y)*(obj.y - core.y))
                             if distance < coreBlastArea then
                                 local angle = atan2( obj.y - core.y, obj.x - core.x )
                                 obj:setLinearVelocity(
-                                    cos(angle)*projectile.baseVelocity,
-                                    sin(angle)*projectile.baseVelocity
+                                    cos(angle)*obj.baseVelocity,
+                                    sin(angle)*obj.baseVelocity
                                 )
                             end
                         end
@@ -382,63 +622,43 @@ function scene:show( event )
                             local angle = rad(random(360))
                             local radius = core.width*0.5 + neutronRadius*1.5
                             local x, y = cos(angle)*radius, sin(angle)*radius
-                            
+                    
                             local projectile = newNeutron( core.x + x, core.y + y )
-                            projectile.xScale, projectile.yScale = 0.75, 0.75
-                            projectile.alpha = 0.25
-                            
+                    
                             -- Fire the neutron projectile from the cannon with slight variation in its angle and velocity.
                             projectile:setLinearVelocity(
                                 cos(angle)*projectile.baseVelocity,
                                 sin(angle)*projectile.baseVelocity
                             )
-                            
-                            transition.to( projectile, { time=250, alpha=1, xScale=1, yScale=1, onComplete=function()
-                                if projectile then
-                                    projectile.isActive = true
-                                end
-                            end})
+                    
                         end, "cannon" )
                     end
+                
+                
+                elseif event.object2.isNeutron then
+                    -- Create a new "spark" on the collision location.
+                    local t = display.newImageRect( groupCore, "assets/images/circleGlow.png", neutronRadius*1.5, neutronRadius*1.5 )
+                    t.x, t.y = event.x, event.y
+                    t:toBack()
+                    spark[#spark+1] = t
+                    transition.to( t, { time=150, xScale=0.1, yScale=0.1, alpha=0, onComplete=function()
+                        display.remove(t)
+                        t = nil
+                    end })
                 end
+
             end
         end
         
-        core.collision = onCoreCollision
-        core:addEventListener( "collision" )
+        Runtime:addEventListener( "collision", onCollision )
 
         -- Create the "neutron cannons".
-        local neutronCannon = {}
         neutronCannon[1] = newCannon( -28 )
         neutronCannon[2] = newCannon( 28 )
         neutronCannon[3] = newCannon( -152 )
         neutronCannon[4] = newCannon( 152 )
         
-        -- Start each cannon with increasing delay and shuffle them so they don't fire in order.
-        local delay = 0
-        
-        local order = {}
-        for i = 1, #neutronCannon do
-            order[i] = i
-        end
-        
-        function shuffle(t)
-            for i = #t, 2, -1 do
-                local j = math.random(i)
-                t[i], t[j] = t[j], t[i]
-            end
-        end
-        shuffle(order)
-        
-        for i = 1, #neutronCannon do
-            local n = order[i]
-            delay = delay + cannonFireInterval+random( -cannonFireVariance, cannonFireVariance )
-            timer.performWithDelay( delay, neutronCannon[n].fire, "cannon" )
-        end
-        
-        timer.performWithDelay( tempDecreaseInterval, updateTemperature, 0, "temperature" )
-        Runtime:addEventListener( "enterFrame", animateCore )
-        
+        startGame()
     end
 end
 
