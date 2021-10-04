@@ -95,11 +95,10 @@ local maxCoreTemp = 100
 local startTemp = 20
 local tempIncreasePerHit = 5 -- neutron hits core
 local tempDecreasePerHit = 10 -- antineutron hits core
-local tempDecreaseAmount = 0.05
+local tempDecreaseAmount = 0.03
 
 -- NB! Automatically assigned properties (don't touch).
 local gameover = true
-local playing = false
 local touchDistance = reactorRadius + wallThickness
 local panelCount = wallCount*0.5
 local wallWidth = 2*math.pi*reactorRadius/wallCount
@@ -131,40 +130,37 @@ playerTouch:setFillColor( 0.1, 0.5, 0.95 )
 
 local prevX, prevY
 local function moveField( event )
-    if playing then
-        if not playerTouch.isFocus then
-            groupTouch.isVisible = true
-            playerTouch.x, playerTouch.y = event.x, event.y
-    		display.getCurrentStage():setFocus( playerTouch )
-    		playerTouch.isFocus = true
-    		playerTouch.tempJoint = physics.newJoint( "touch", playerTouch, event.x, event.y )
-            prevX, prevY = playerTouch.x, playerTouch.y
+    if not playerTouch.isFocus then
+        groupTouch.isVisible = true
+        playerTouch.x, playerTouch.y = event.x, event.y
+		display.getCurrentStage():setFocus( playerTouch )
+		playerTouch.isFocus = true
+		playerTouch.tempJoint = physics.newJoint( "touch", playerTouch, event.x, event.y )
+        prevX, prevY = playerTouch.x, playerTouch.y
 
+    else
+		if event.phase == "moved" then
+			playerTouch.tempJoint:setTarget( event.x, event.y )
         else
-    		if event.phase == "moved" then
-    			playerTouch.tempJoint:setTarget( event.x, event.y )
-            else
-                groupTouch.isVisible = false
-                -- Move the touch sensor away when the touch ends.
-                playerTouch.x, playerTouch.y = 0, 0
-    			playerTouch.tempJoint:setTarget( 0, 0 )
+            groupTouch.isVisible = false
+            -- Move the touch sensor away when the touch ends.
+            playerTouch.x, playerTouch.y = 0, 0
+			playerTouch.tempJoint:setTarget( 0, 0 )
+        
+            display.getCurrentStage():setFocus( nil )
+            playerTouch.isFocus = false	
+            playerTouch.tempJoint:removeSelf()
             
-                display.getCurrentStage():setFocus( nil )
-                playerTouch.isFocus = false	
-                playerTouch.tempJoint:removeSelf()
-                
-                playerTouch:setLinearVelocity(0,0)
-            end
-
-            if event.x ~= prevX or event.y ~= prevY then
-                prevX, prevY = playerTouch.x, playerTouch.y
-            end
+            playerTouch:setLinearVelocity(0,0)
         end
 
-        return true
+        if event.x ~= prevX or event.y ~= prevY then
+            prevX, prevY = playerTouch.x, playerTouch.y
+        end
     end
+
+    return true
 end
-Runtime:addEventListener( "touch", moveField )
 
 ---------------------------------------------------------------------------
 
@@ -517,8 +513,8 @@ local function startGame()
         end )
     end
     
+    Runtime:addEventListener( "touch", moveField )
     Runtime:addEventListener( "enterFrame", enterFrameUpdate )
-    playing = true
 end
 
 
@@ -613,8 +609,8 @@ end
 
 function stopGame( coreFroze )    
     gameover = true
-    playing = false
     groupTouch.isVisible = false
+    Runtime:removeEventListener( "touch", moveField )
     Runtime:removeEventListener( "enterFrame", enterFrameUpdate )
     transition.cancelAll()
     timer.cancelAll()
@@ -695,6 +691,10 @@ function stopGame( coreFroze )
         showScores( coreFroze )
     end })
 end
+
+-- Runtime:addEventListener( "enterFrame", function()
+--      print( gameoverBackground.alpha, gameoverBackground.canPress )
+-- end )
 
 ---------------------------------------------------------------------------
 
@@ -842,6 +842,48 @@ local function onCollision( event )
     end
 end
 
+
+local function pressPlayAgain( event )
+    -- print( "HELLO", event.phase, event.target.canPress )
+    if event.phase == "began" and event.target.canPress then
+        sfx.play("assets/audio/newGame.wav")
+        event.target.canPress = false
+        newGame()
+    end
+end
+
+
+local function createTexts()
+    highscoreText = display.newText( groupUI, "YOUR HIGH SCORES:", display.contentCenterX, screen.minY + 70, "assets/fonts/PathwayGothicOne-Regular.ttf", 40 )  
+    highscoreText:setFillColor(0)
+    
+    for i = 1, scoreCount do
+        scoreText[i] = display.newText( groupUI, "#" .. i .. "   -   " .. (string.formatThousands( score[i], " " ) or "0") .. " kWh", display.contentCenterX, highscoreText.y + 80 + (i-1)*48, "assets/fonts/PathwayGothicOne-Regular.ttf", 26 )        
+        scoreText[i]:setFillColor(0)
+    end
+    
+    gameoverReason = display.newText( groupUI, "placeholder", display.contentCenterX, scoreText[#scoreText].y + 72, "assets/fonts/PathwayGothicOne-Regular.ttf", 36 )        
+    
+    -- Rewrote the texts, left this as is due to time constraints.
+    lastScore = display.newText(
+        {
+            parent = groupUI,
+            text = "placeholder",
+            x = display.contentCenterX,
+            y = gameoverReason.y + 50,
+            font = "assets/fonts/PathwayGothicOne-Regular.ttf",
+            align = "center",
+            fontSize = 30
+        }
+    )
+    lastScore.anchorY = 0
+    lastScore:setFillColor(0)
+    
+    playAgain = display.newText( groupUI, "PLAY AGAIN", display.contentCenterX, lastScore.y + lastScore.height + 60, "assets/fonts/PathwayGothicOne-Regular.ttf", 40 )  
+    playAgain:setFillColor(0)
+end
+
+
 function scene:show( event )
     local sceneGroup = self.view
     
@@ -921,41 +963,10 @@ function scene:show( event )
             return true
         end )
         
-        gameoverBackground:addEventListener( "touch", function(event)
-            if event.phase == "began" and event.target.canPress then
-                sfx.play("assets/audio/newGame.wav")
-                gameoverBackground.canPress = false
-                newGame()
-            end
-        end)
+        gameoverBackground:addEventListener( "touch", pressPlayAgain )
         
-        highscoreText = display.newText( groupUI, "YOUR HIGH SCORES:", display.contentCenterX, screen.minY + 70, "assets/fonts/PathwayGothicOne-Regular.ttf", 40 )  
-        highscoreText:setFillColor(0)
-        
-        for i = 1, scoreCount do
-            scoreText[i] = display.newText( groupUI, "#" .. i .. "   -   " .. (string.formatThousands( score[i], " " ) or "0") .. " kWh", display.contentCenterX, highscoreText.y + 80 + (i-1)*48, "assets/fonts/PathwayGothicOne-Regular.ttf", 26 )        
-            scoreText[i]:setFillColor(0)
-        end
-        
-        gameoverReason = display.newText( groupUI, "placeholder", display.contentCenterX, scoreText[#scoreText].y + 72, "assets/fonts/PathwayGothicOne-Regular.ttf", 36 )        
-        
-        -- Rewrote the texts, left this as is due to time constraints.
-        lastScore = display.newText(
-            {
-                parent = groupUI,
-                text = "placeholder",
-                x = display.contentCenterX,
-                y = gameoverReason.y + 50,
-                font = "assets/fonts/PathwayGothicOne-Regular.ttf",
-                align = "center",
-                fontSize = 30
-            }
-        )
-        lastScore.anchorY = 0
-        lastScore:setFillColor(0)
-        
-        playAgain = display.newText( groupUI, "PLAY AGAIN", display.contentCenterX, lastScore.y + lastScore.height + 60, "assets/fonts/PathwayGothicOne-Regular.ttf", 40 )  
-        playAgain:setFillColor(0)
+        -- hastily added function to remove locals from the function (issue with 60 upvalues).
+        createTexts()
         
         for i = 1, 12 do
             leak[i] = display.newRect( groupBack, xReactor, yReactor, 512, 4 )
@@ -1091,7 +1102,7 @@ function scene:show( event )
         vent.x, vent.y = xReactor, yReactor+reactorRadius+4
         vent.xStart, vent.yStart, vent.rStart = vent.x, vent.y, vent.rotation
         vent.isVent = true
-        physics.addBody( vent, "static" )
+        physics.addBody( vent, "static", {filter=filterWalls} )
         
         ventOverlay = display.newImageRect( groupCannon, "assets/images/ventOverlay.png", 120, 40 )
         ventOverlay.x, ventOverlay.y = vent.x, vent.y
