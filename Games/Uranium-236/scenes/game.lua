@@ -87,7 +87,8 @@ local coreRadius = 50
 local coreBlastArea = coreRadius*1.5 + neutronRadius*2
 
 local scoreCount = 5 -- how many highscores are kept.
-local kwhPerTemp = 2500 -- score value.
+local wattPerTemp = 2500000 -- score value.
+local timePerFrame = 1 / display.fps
 local antineutronRate = 0.75
 
 -- Core temperature settings:
@@ -345,10 +346,10 @@ local function enterFrameUpdate()
     totalOutputTxt:setFillColor( 1, 0.8*(1-tempRate), 0 )
     
     -- Update energy/score counters.
-    currentOutput = floor( coreTemp*kwhPerTemp )
+    currentOutput = floor( coreTemp*wattPerTemp*timePerFrame )
     totalOutput = totalOutput + currentOutput
 
-    currentOutputTxt.text = string.formatThousands( currentOutput, " " ) .. " kWh"
+    currentOutputTxt.text = string.formatThousands( currentOutput, " " ) .. " kW"
     totalOutputTxt.text = string.formatThousands( totalOutput, " " ) .. " kWh"
 
     local xStart, yStart = coreEmitter.xStart, coreEmitter.yStart
