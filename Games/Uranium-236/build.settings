@@ -59,7 +59,7 @@ settings =
     window =
     {
         titleText = {
-            default = "Game Jam Template",
+            default = "Uranium-236 - LD49",
         },
         defaultMode = "normal", -- "normal", "minimized", "maximized", "fullscreen"
         defaultViewWidth = 960,
