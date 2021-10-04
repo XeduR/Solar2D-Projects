@@ -616,6 +616,13 @@ function stopGame( coreFroze )
     transition.cancelAll()
     timer.cancelAll()
     
+    -- If touch focus was left active, remove it.
+    if playerTouch.isFocus then
+        display.getCurrentStage():setFocus( nil )
+        playerTouch.isFocus = false	
+        playerTouch.tempJoint:removeSelf()
+    end
+    
     for i = 1, neutronCount do
         if neutron[i] then
             transition.to( neutron[i], {time=250, alpha=0 })
@@ -692,10 +699,6 @@ function stopGame( coreFroze )
         showScores( coreFroze )
     end })
 end
-
--- Runtime:addEventListener( "enterFrame", function()
---      print( gameoverBackground.alpha, gameoverBackground.canPress )
--- end )
 
 ---------------------------------------------------------------------------
 
@@ -835,9 +838,6 @@ local function onCollision( event )
                 t = nil
             end })
             
-            -- isAntineutron
-            -- if event.object2.isNeutron then
-            
         end
 
     end
@@ -845,7 +845,6 @@ end
 
 
 local function pressPlayAgain( event )
-    -- print( "HELLO", event.phase, event.target.canPress )
     if event.phase == "began" and event.target.canPress then
         sfx.play("assets/audio/newGame.wav")
         event.target.canPress = false
