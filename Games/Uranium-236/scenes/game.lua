@@ -16,6 +16,8 @@ physics.setGravity( 0, 0 )
 physics.setReportCollisionsInContentCoordinates( true )
 -- physics.setDrawMode( "hybrid" )
 
+-- NB/TODO: audio bugs, audio is not always playing when game ends,
+-- this is possibly due to too many audio handles being active at once.
 
 ---------------------------------------------------------------------------
 
@@ -29,6 +31,7 @@ local groupWallOverlay = display.newGroup()
 local groupCannon = display.newGroup()
 local groupCore = display.newGroup()
 local groupTouch = display.newGroup()
+groupTouch.isVisible = false
 
 -- Making new game / end game transition easier by stuffing everything into a single group:
 groupHelaDagen:insert(groupBox)
@@ -39,17 +42,18 @@ groupHelaDagen:insert(groupWallOverlay)
 groupHelaDagen:insert(groupCannon)
 groupHelaDagen:insert(groupCore)
 
-local whiteBackground = display.newRect( display.contentCenterX, display.contentCenterY, display.actualContentWidth, display.actualContentHeight )
-whiteBackground.isHitTestable = true
-whiteBackground.canPress = false
-whiteBackground.alpha = 0
+local gameoverBackground = display.newRect( display.contentCenterX, display.contentCenterY, display.actualContentWidth, display.actualContentHeight )
+gameoverBackground.isHitTestable = true
+gameoverBackground.canPress = false
+gameoverBackground.alpha = 0
 
 local groupUI = display.newGroup()
 groupWallOverlay.alpha = 0
 groupUI.alpha = 0
 
-local furnace, core, coreBlur, coreEmitter, coreGlare, coreGlow, coreReaction, coreTransition, reactorBack, xedur, title
-local box, cordLeft, cordBottom, currentOutput, totalOutput, lastScore, currentOutputTxt, totalOutputTxt, highscoreText, playAgain, startButtonBG, startButton
+-- Terrible way of forward declaring local variables (but lack of time plus Ludum Dare => terrible choices).
+local furnace, core, coreBlur, coreEmitter, coreGlare, coreGlow, coreReaction, coreTransition, reactorBack, xedur, title, vent
+local box, cordLeft, cordBottom, currentOutput, totalOutput, lastScore, gameoverReason, currentOutputTxt, totalOutputTxt, highscoreText, playAgain, startButtonBG, startButton
 local wall, wallOverlay, sectorFront, sectorBack, leak, neutronCannon, neutron, spark, residue = {}, {}, {}, {}, {}, {}, {}, {}, {}
 local score, scoreText = {}, {}
 
@@ -72,7 +76,8 @@ local wallCount = 32
 local neutronRadius = 16
 local neutronBaseSpeed = 70
 local cannonFireInterval = 5000
-local cannonFireVariance = 1500
+local cannonFireVariance = 1000
+local fireIntervalReduction = 2 -- This is deducted from cannonFireInterval every frame.
 
 -- Neutron speed = neutronBaseSpeed +/- neutronSpeedVariance
 local neutronSpeedVariance = 10
@@ -83,23 +88,25 @@ local coreBlastArea = coreRadius*1.5 + neutronRadius*2
 
 local scoreCount = 5 -- how many highscores are kept.
 local kwhPerTemp = 2500 -- score value.
-local antineutronRate = 0.8
+local antineutronRate = 0.75
 
 -- Core temperature settings:
 local maxCoreTemp = 100
 local startTemp = 20
 local tempIncreasePerHit = 5 -- neutron hits core
 local tempDecreasePerHit = 10 -- antineutron hits core
-local tempDecreaseAmount = 0.01
+local tempDecreaseAmount = 0.05
 
 -- NB! Automatically assigned properties (don't touch).
-local gameover = false
+local gameover = true
+local playing = false
 local touchDistance = reactorRadius + wallThickness
 local panelCount = wallCount*0.5
 local wallWidth = 2*math.pi*reactorRadius/wallCount
 local coreTemp = startTemp
 local tempRate = coreTemp/maxCoreTemp
 local neutronCount = 0
+local currentFireInterval = cannonFireInterval
 
 -- wallCount must be divisible by 4 so that panelCount is divisible by 2.
 if wallCount % 4 ~= 0 then
@@ -119,38 +126,43 @@ local filterTouch = { categoryBits=4, maskBits=1 }
 
 -- Test and optional control method for the game.
 local playerTouch = display.newImageRect( groupTouch, "assets/images/circleGlow.png", 64, 64 )
-physics.addBody( playerTouch, "dynamic", {radius=playerTouch.width*0.5, density=1, bounce=1, friction=0, filter=touchFilter } )
+physics.addBody( playerTouch, "dynamic", {radius=playerTouch.width*0.5, density=1, bounce=1, friction=0, filter=filterTouch } )
+playerTouch:setFillColor( 0.1, 0.5, 0.95 )
 
 local prevX, prevY
 local function moveField( event )
-    if not playerTouch.isFocus then
-        playerTouch.x, playerTouch.y = event.x, event.y
-		display.getCurrentStage():setFocus( playerTouch )
-		playerTouch.isFocus = true
-		playerTouch.tempJoint = physics.newJoint( "touch", playerTouch, event.x, event.y )
-        prevX, prevY = playerTouch.x, playerTouch.y
-
-    else
-		if event.phase == "moved" then
-			playerTouch.tempJoint:setTarget( event.x, event.y )
-        else
-            -- Move the touch sensor away when the touch ends.
-            playerTouch.x, playerTouch.y = 0, 0
-			playerTouch.tempJoint:setTarget( 0, 0 )
-        
-            display.getCurrentStage():setFocus( nil )
-            playerTouch.isFocus = false	
-            playerTouch.tempJoint:removeSelf()
-            
-            playerTouch:setLinearVelocity(0,0)
-        end
-
-        if event.x ~= prevX or event.y ~= prevY then
+    if playing then
+        if not playerTouch.isFocus then
+            groupTouch.isVisible = true
+            playerTouch.x, playerTouch.y = event.x, event.y
+    		display.getCurrentStage():setFocus( playerTouch )
+    		playerTouch.isFocus = true
+    		playerTouch.tempJoint = physics.newJoint( "touch", playerTouch, event.x, event.y )
             prevX, prevY = playerTouch.x, playerTouch.y
-        end
-    end
 
-    return true
+        else
+    		if event.phase == "moved" then
+    			playerTouch.tempJoint:setTarget( event.x, event.y )
+            else
+                groupTouch.isVisible = false
+                -- Move the touch sensor away when the touch ends.
+                playerTouch.x, playerTouch.y = 0, 0
+    			playerTouch.tempJoint:setTarget( 0, 0 )
+            
+                display.getCurrentStage():setFocus( nil )
+                playerTouch.isFocus = false	
+                playerTouch.tempJoint:removeSelf()
+                
+                playerTouch:setLinearVelocity(0,0)
+            end
+
+            if event.x ~= prevX or event.y ~= prevY then
+                prevX, prevY = playerTouch.x, playerTouch.y
+            end
+        end
+
+        return true
+    end
 end
 Runtime:addEventListener( "touch", moveField )
 
@@ -280,7 +292,7 @@ local function newCannon( position )
         
         -- Set the cannon to fire again.
         transition.to( cannon.indicator, {
-            time = not firstShot and (cannonFireInterval+random( -cannonFireVariance, cannonFireVariance )) or 0,
+            time = not firstShot and (currentFireInterval+random(cannonFireVariance)) or 0,
             xScale = 1,
             yScale = 1,
             alpha = 1,
@@ -310,6 +322,11 @@ local function enterFrameUpdate()
         stopGame( coreTemp <= 0 )
     end
     
+    -- Reduce the cannon firing delay.
+    currentFireInterval = currentFireInterval - fireIntervalReduction
+    -- Animate the player touch area.
+    playerTouch.xScale, playerTouch.yScale, playerTouch.alpha = random(95,105)*0.01, random(95,105)*0.01, random(35,50)*0.01
+    
     -- Increase the visibility of the wall overlay and adjust all colours.
     tempRate = coreTemp/maxCoreTemp
     groupWallOverlay.alpha = tempRate*1.5
@@ -320,6 +337,8 @@ local function enterFrameUpdate()
     for i = 1, #wallOverlay do
         wallOverlay[i]:setFillColor( 1, 0.8*(1-tempRate), 0 )
     end
+    ventOverlay.alpha = tempRate*1.5
+    ventOverlay:setFillColor( 1, 0.8*(1-tempRate), 0 )
     
     for i = 1, #neutronCannon do
         neutronCannon[i].overlay:setFillColor( 1, 0.8*(1-tempRate), 0 )
@@ -423,7 +442,8 @@ end
 
 local function resetObjects()
     groupHelaDagen.x, groupHelaDagen.y = 0, 0
-    whiteBackground.alpha = 1
+    gameoverBackground.alpha = 1
+    ventOverlay.alpha = 0
     title:setFillColor(1)
     
     -- Reset the reactor components.
@@ -491,12 +511,14 @@ local function startGame()
     
     for i = 2, #neutronCannon do
         local n = order[i]
-        timer.performWithDelay( cannonFireInterval*0.25*i+random( -cannonFireVariance, cannonFireVariance ), function()
-            neutronCannon[n].fire()
+        timer.performWithDelay( currentFireInterval*0.25*i+random(cannonFireVariance), function()
+            -- Increase the chances that the other first shots are neutrons.
+            neutronCannon[n].fire( nil, random() > 0.3 )
         end )
     end
     
     Runtime:addEventListener( "enterFrame", enterFrameUpdate )
+    playing = true
 end
 
 
@@ -514,6 +536,7 @@ local function newGame()
         timeFade = 750
         timeReveal = 500
     end
+    currentFireInterval = cannonFireInterval
     currentOutput = 0
     totalOutput = 0
     coreTemp = startTemp
@@ -536,7 +559,7 @@ local function newGame()
     
     startButton.x, startButton.y = startButtonBG.x, startButtonBG.y
     transition.to( groupUI, {time=timeFade, alpha=0 })
-    transition.to( whiteBackground, { time=timeFade, alpha=0, onComplete=function()
+    transition.to( gameoverBackground, { time=timeFade, alpha=0, onComplete=function()
         transition.to( groupHelaDagen, { time=timeReveal, y=0, transition=easing.inOutBack, onComplete=function()
             startButton.canPress = true
         end })
@@ -567,19 +590,21 @@ local function showScores( coreFroze )
         end
         
         for i = pos, #score do
-            scoreText[i].text = string.formatThousands( score[i], " " ) .. " kWh"
+            scoreText[i].text =  "#" .. i .. "   -   " .. string.formatThousands( score[i], " " ) .. " kWh"
         end
         
         loadsave.save( score, "score.json" )
         transition.blink( scoreText[pos], { time=2000 } )
     end
-    lastScore.text = (coreFroze and "THE CORE FROZE!" or "THE CORE BLEW UP!") .. "\n\nENERGY GENERATED LAST ROUND: " .. string.formatThousands( totalOutput, " " ) .. " MW"
+    gameoverReason.text = coreFroze and "THE CORE FROZE!" or "THE CORE BLEW UP!"
+    lastScore.text = "ENERGY GENERATED LAST ROUND: " .. string.formatThousands( totalOutput, " " ) .. " kWh"
     
+    gameoverBackground.alpha = 1 -- NB! there's an issue with this, so hardsetting it to visible makes it touchable.
     playAgain.alpha = 0
-    whiteBackground.canPress = false
+    gameoverBackground.canPress = false
     transition.to( groupUI, {time=1500, alpha=1, onComplete=function()
         transition.to( playAgain, {time=500, alpha=1, onComplete=function()
-            whiteBackground.canPress = true
+            gameoverBackground.canPress = true
             transition.blink( playAgain, { time=1500 } )
         end})
     end})    
@@ -588,6 +613,8 @@ end
 
 function stopGame( coreFroze )    
     gameover = true
+    playing = false
+    groupTouch.isVisible = false
     Runtime:removeEventListener( "enterFrame", enterFrameUpdate )
     transition.cancelAll()
     timer.cancelAll()
@@ -614,12 +641,34 @@ function stopGame( coreFroze )
     
     if coreFroze then
         sfx.play("assets/audio/froze.wav")
-        whiteBackground:setFillColor( 0.5, 0.8, 1 )
-        transition.to( whiteBackground, { delay=250, time=time, alpha=1  })
+        
+        -- Adjust text colours based on gameover reason.
+        gameoverBackground:setFillColor(0)
+        title:setFillColor(1)
+        gameoverReason:setFillColor( 0.5, 1, 1 )
+        highscoreText:setFillColor(1)
+        lastScore:setFillColor(1)
+        playAgain:setFillColor(1)
+        
+        for i = 1, scoreCount do
+            scoreText[i]:setFillColor(1)
+        end                
     else
         sfx.play("assets/audio/meltdown.wav")
-        whiteBackground:setFillColor( 1 )
+        
+        -- Adjust text colours based on gameover reason.
+        gameoverBackground:setFillColor(1)
+        title:setFillColor(0)
+        gameoverReason:setFillColor( 0.9, 0, 0 )
+        highscoreText:setFillColor(0)
+        lastScore:setFillColor(0)
+        playAgain:setFillColor(0)
+        
+        for i = 1, scoreCount do
+            scoreText[i]:setFillColor(0)
+        end
     end
+    transition.to( gameoverBackground, { delay=time, time=time, alpha=1  })
     
     -- Start gameover transitions.
     transition.to( core, { time=time, xScale=scaleFactor, yScale=scaleFactor, transition=easing.inBack  })
@@ -643,7 +692,6 @@ function stopGame( coreFroze )
         xedur.x, xedur.y, xedur.rotation = xedur.xStart, xedur.yStart, 0
         title.x, title.y, title.rotation = title.xStart, title.yStart, 0
         
-        title:setFillColor(0)
         showScores( coreFroze )
     end })
 end
@@ -662,11 +710,24 @@ end
 
 ---------------------------------------------------------------------------
 
-
+local function ventRemoveParticle( target )
+    -- Keep trying to remove the body.
+    if not ( physics.removeBody( target ) ) then
+        timer.performWithDelay( 1, function()
+            ventRemoveParticle( target )
+        end )
+    else
+        sfx.play("assets/audio/vent.wav")
+        target.isRemoved = true
+        
+        transition.to( target, { time=250, alpha=0, x=vent.x, y=vent.y, onCompete=function()
+            display.remove( target )
+        end })
+    end
+end
 
 local function onCollision( event )
-    if event.phase == "began" and not gameover then
-        
+    if event.phase == "began" and not gameover then        
         -- Neutron collides with the core.
         if event.object1.isCore then
             display.remove( event.object2 )
@@ -738,6 +799,12 @@ local function onCollision( event )
                     end )
                 end
             end
+        
+        -- Collision with vent, so get rid of the particle.
+        elseif event.object1.isVent and event.object2.isParticle then
+            timer.performWithDelay( 1, function()
+                ventRemoveParticle( event.object2 )
+            end )
         else
             
             if event.object1.isParticle and event.object2.isParticle then
@@ -854,10 +921,10 @@ function scene:show( event )
             return true
         end )
         
-        whiteBackground:addEventListener( "touch", function(event)
+        gameoverBackground:addEventListener( "touch", function(event)
             if event.phase == "began" and event.target.canPress then
                 sfx.play("assets/audio/newGame.wav")
-                whiteBackground.canPress = false
+                gameoverBackground.canPress = false
                 newGame()
             end
         end)
@@ -866,16 +933,19 @@ function scene:show( event )
         highscoreText:setFillColor(0)
         
         for i = 1, scoreCount do
-            scoreText[i] = display.newText( groupUI, (string.formatThousands( score[i], " " ) or "0") .. " kWh", display.contentCenterX, highscoreText.y + 80 + (i-1)*48, "assets/fonts/PathwayGothicOne-Regular.ttf", 26 )        
+            scoreText[i] = display.newText( groupUI, "#" .. i .. "   -   " .. (string.formatThousands( score[i], " " ) or "0") .. " kWh", display.contentCenterX, highscoreText.y + 80 + (i-1)*48, "assets/fonts/PathwayGothicOne-Regular.ttf", 26 )        
             scoreText[i]:setFillColor(0)
         end
         
+        gameoverReason = display.newText( groupUI, "placeholder", display.contentCenterX, scoreText[#scoreText].y + 72, "assets/fonts/PathwayGothicOne-Regular.ttf", 36 )        
+        
+        -- Rewrote the texts, left this as is due to time constraints.
         lastScore = display.newText(
             {
                 parent = groupUI,
-                text = "n\n\n\placeholder",
+                text = "placeholder",
                 x = display.contentCenterX,
-                y = scoreText[#scoreText].y + 60,
+                y = gameoverReason.y + 50,
                 font = "assets/fonts/PathwayGothicOne-Regular.ttf",
                 align = "center",
                 fontSize = 30
@@ -1015,6 +1085,24 @@ function scene:show( event )
         neutronCannon[2] = newCannon( 28 )
         neutronCannon[3] = newCannon( -152 )
         neutronCannon[4] = newCannon( 152 )
+        
+        -- Add a vent to the bottom of the reactor for removing neutrons.
+        vent = display.newImageRect( groupCannon, "assets/images/ventNozzle.png", 120, 40 )
+        vent.x, vent.y = xReactor, yReactor+reactorRadius+4
+        vent.xStart, vent.yStart, vent.rStart = vent.x, vent.y, vent.rotation
+        vent.isVent = true
+        physics.addBody( vent, "static" )
+        
+        ventOverlay = display.newImageRect( groupCannon, "assets/images/ventOverlay.png", 120, 40 )
+        ventOverlay.x, ventOverlay.y = vent.x, vent.y
+        -- ventOverl"ay.xStart, ventOverlay.yStart, ventOverlay.rStart = ventOverlay.x, ventOverlay.y, ventOverlay.rotation
+        
+        ventCord = display.newImageRect( groupCannon, "assets/images/cordBottom.png", 100, 200 )
+        ventCord.x, ventCord.y = vent.x - 6, vent.y
+        ventCord.xScale = -1
+        ventCord.anchorY = 0
+        ventCord.xStart, ventCord.yStart, ventCord.rStart = ventCord.x, ventCord.y, ventCord.rotation
+        ventCord:toBack()
         
         newGame()
     end
