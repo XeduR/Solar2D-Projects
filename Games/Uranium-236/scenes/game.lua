@@ -64,6 +64,7 @@ local atan2 = math.atan2
 local rad = math.rad
 local cos = math.cos
 local sin = math.sin
+local max = math.max
 
 -- Reactor properties:
 local xReactor = display.contentCenterX - 140
@@ -77,6 +78,7 @@ local neutronRadius = 16
 local neutronBaseSpeed = 70
 local cannonFireInterval = 5000
 local cannonFireVariance = 1000
+local minimumCannonFireInterval = 1500
 local fireIntervalReduction = 2 -- This is deducted from cannonFireInterval every frame.
 
 -- Neutron speed = neutronBaseSpeed +/- neutronSpeedVariance
@@ -320,7 +322,7 @@ local function enterFrameUpdate()
     end
     
     -- Reduce the cannon firing delay.
-    currentFireInterval = currentFireInterval - fireIntervalReduction
+    currentFireInterval = max( currentFireInterval - fireIntervalReduction, minimumCannonFireInterval )
     -- Animate the player touch area.
     playerTouch.xScale, playerTouch.yScale, playerTouch.alpha = random(95,105)*0.01, random(95,105)*0.01, random(35,50)*0.01
     
