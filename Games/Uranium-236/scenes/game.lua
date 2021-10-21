@@ -717,6 +717,9 @@ end
 ---------------------------------------------------------------------------
 
 local function ventRemoveParticle( target )
+    -- NB/TODO: There's a bug with how some particle gets thrown into a removeBody loop.
+    -- Last occurred with antineutron hitting the core. 
+    
     -- Keep trying to remove the body.
     if not ( physics.removeBody( target ) ) then
         timer.performWithDelay( 1, function()
