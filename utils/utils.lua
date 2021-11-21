@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021 Eetu Rantanen                   Last Updated: 8 August 2021 --
+--  © 2021 Eetu Rantanen                                               --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -22,6 +22,12 @@
 	
 	CHANGE LOG:
 	-----------
+    
+	[1.4.4] - 21 November 2021
+			-	Add the following new functions:
+				utils.addRepeatingFill( target, filename, textureSize, textureScale, textureWrapX, textureWrapY )
+				utils.scaleDisplayObject( target, requiredWidth, requiredHeight )
+    
 	[1.4.3] - 11 August 2021
 			-	Add the following new functions:
 				string.count( s, character )
@@ -88,6 +94,29 @@ local type = type
 -- utils
 --------------------------------------------------------------------------------------------------
 
+-- Add a power-of-two sized repeating texture fill to a target display object.
+function utils.addRepeatingFill( target, filename, textureSize, textureScale, textureWrapX, textureWrapY )
+    display.setDefault( "textureWrapX", textureWrapX or "repeat" )
+    display.setDefault( "textureWrapY", textureWrapY or "repeat" )
+    
+    target.fill = {
+        type = "image",
+        filename = filename,
+    }
+    target.fill.scaleX = (textureSize / target.width)*(textureScale or 1)
+    target.fill.scaleY = (textureSize / target.height)*(textureScale or 1)
+    
+    display.setDefault( "textureWrapX", "clampToEdge" )
+    display.setDefault( "textureWrapY", "clampToEdge" )
+end
+
+-- Scale a display object to the smallest possible size where it satisfies both  
+-- required width and height requirements without distorting the aspect ratio.
+function utils.scaleDisplayObject( target, requiredWidth, requiredHeight )
+    local scale = math.max( requiredWidth/target.width, requiredHeight/target.height )
+    target.xScale, target.yScale = scale, scale
+end
+
 -- Check if a given file exists or not.
 function utils.checkForFile( filename, directory )
     if type(filename) ~= "string" then
@@ -96,11 +125,13 @@ function utils.checkForFile( filename, directory )
     end
 	
 	local path = system.pathForFile( filename, directory or system.ResourceDirectory )
-	local file = io.open( path, "r" )
-	if file then
-		file:close()
-		return true
-	end
+    if path then
+    	local file = io.open( path, "r" )
+    	if file then
+    		file:close()
+    		return true
+    	end
+    end
 	return false
 end
 
