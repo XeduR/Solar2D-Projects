@@ -22,12 +22,10 @@ object:addEventListener( "propertyUpdate" )
 object.x = 200
 ```
 
-NOTE: "object" is a proxy and not a display object/group, which means it cannot be directly inserted into any display groups or be used as an argument to Solar2D display API calls. In order to insert "object" into a display group, you need to use: group:insert( object._raw ).
+**NOTE 1**: `object` is a proxy and not a display object/group, which means it cannot be directly inserted into any display groups or be used as an argument to Solar2D display API calls. In order to insert `object` into a display group, you need to use: `group:insert(object._raw)`. You can, however, otherwise treat them like regular display objects/groups and use the standard Solar2D methods and functions with them.
+
+**NOTE 2**: If you are looking to use `object` with transition, or other similarly functioning functions, then you can directly transition `object._raw`, which is a reference to the original display object/group. By doing so, you bypass the metamethods.
 
 ---
 
-You can find more of my personal projects over at my code portfolio site: [www.xedur.com](https://www.xedur.com). I work on all sorts of interesting projects, as well as plugins for Solar2D, in my free time. If you like what I'm doing and wish to support me, then [consider buying me a cup of coffee over at Ko-fi](https://ko-fi.com/xedur).
-
-![alt text](https://www.solar2dplayground.com/img/support-me.png "Support me")
-
----
+**You can find more of my personal projects over at: [www.xedur.com](https://www.xedur.com).**
