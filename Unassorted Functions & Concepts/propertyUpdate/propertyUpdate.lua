@@ -56,7 +56,7 @@ function propertyUpdate.getProxy( parent )
         -- Accessing existing properties.
         __index = function( _t, k )
             -- Pass method/function calls to the display object/group.
-            if type( parent[k] ) == 'function' then
+            if type( parent[k] ) == "function" then
                 return function( ... )
                     arg[1] = parent
                     parent[k]( unpack(arg) )
