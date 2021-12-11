@@ -24,7 +24,7 @@ object.x = 200
 
 **NOTE 1**: `object` is a proxy and not a display object/group, which means it cannot be directly inserted into any display groups or be used as an argument to Solar2D display API calls. In order to insert `object` into a display group, you need to use: `group:insert(object._raw)`. You can, however, otherwise treat them like regular display objects/groups and use the standard Solar2D methods and functions with them.
 
-**NOTE 2**: If you are looking to use `object` with transition, or other similarly functioning functions, then you can directly transition `object._raw`, which is a reference to the original display object/group. By doing so, you bypass the metamethods.
+**NOTE 2**: If you are looking to use `object` with transition, or other similar functions, then you can directly transition `object._raw`, which is a reference to the original display object/group. By doing so, you bypass the metamethods.
 
 ---
 
