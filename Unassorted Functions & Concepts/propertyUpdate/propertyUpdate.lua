@@ -13,7 +13,7 @@
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
 -- Trigger the "propertyUpdate" event listener when updating existing  --
--- properties or adding new propeties to a display object/group.       --
+-- properties or adding new properties to a display object/group.       --
 -------------------------------------------------------------------------
 --[[
     -- How to use:
