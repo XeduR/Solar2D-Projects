@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021 Eetu Rantanen                                               --
+--  © 2021-2022 Eetu Rantanen                                          --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -23,6 +23,10 @@
 	CHANGE LOG:
 	-----------
     
+	[1.4.5] - 8 March 2022
+			-	Add the following new functions:
+				utils.getScaleFactor()
+                
 	[1.4.4] - 21 November 2021
 			-	Add the following new functions:
 				utils.addRepeatingFill( target, filename, textureSize, textureScale, textureWrapX, textureWrapY )
@@ -173,6 +177,16 @@ function utils.benchmark( f, iterations )
 	local result = getTimer() - startTime
 	print( "TIME: " .. result )
 	return result
+end
+
+-- Scale factor is the value that Solar2D has used to scale all display objects.
+function utils.getScaleFactor()
+    -- The scale factor depends on device orientation.
+    if find( system.orientation, "portrait" ) then
+        return display.pixelWidth / display.actualContentWidth
+    else
+        return display.pixelWidth / display.actualContentHeight
+    end
 end
 
 --------------------------------------------------------------------------------------------------
