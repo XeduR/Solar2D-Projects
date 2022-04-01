@@ -23,6 +23,11 @@
 	CHANGE LOG:
 	-----------
     
+	[1.4.6] - 1 April 2022
+			-	Add the following new functions:
+                utils.rgb2hex( r, g, b, notNormalised )
+                utils.hex2rgb( hex, dontNormalise )
+                
 	[1.4.5] - 8 March 2022
 			-	Add the following new functions:
 				utils.getScaleFactor()
@@ -83,13 +88,16 @@ local utils = {}
 local getTimer = system.getTimer
 local dRemove = display.remove
 local random = math.random
+local floor = math.floor
 local reverse = string.reverse
 local gmatch = string.gmatch
+local format = string.format
 local find = string.find
 local gsub = string.gsub
 local sub = string.sub
 local len = string.len
 local rep = string.rep
+local tonumber = tonumber
 local tostring = tostring
 local pairs = pairs
 local type = type
@@ -97,6 +105,26 @@ local type = type
 --------------------------------------------------------------------------------------------------
 -- utils
 --------------------------------------------------------------------------------------------------
+
+-- Convert RGB to HEX, and handle normalised (0 to 1) or standard RGB (0 to 255) inputs.
+function utils.rgb2hex( r, g, b, notNormalised )
+    -- By default, we're expecting the input to be normalised (as Solar2D uses normalised values).
+    local m = notNormalised and 1 or 255
+    local rgb = floor(r * m) * 0x10000 + floor(g * m) * 0x100 + floor(b * m)
+    return format( "%x", rgb )
+end
+
+-- Convert HEX to RGB, and return normalised (0 to 1) or standard RGB (0 to 255) values.
+function utils.hex2rgb( hex, dontNormalise )
+    -- By default, we're returning normalised values (as Solar2D uses normalised values).
+    local m = dontNormalise and 1 or 255
+    local hex = gsub( hex, "#", "" )
+    if len(hex) == 3 then
+        return tonumber("0x"..hex:sub(1,1))/m, tonumber("0x"..hex:sub(2,2))/m, tonumber("0x"..hex:sub(3,3))/m
+    else
+        return tonumber("0x"..hex:sub(1,2))/m, tonumber("0x"..hex:sub(3,4))/m, tonumber("0x"..hex:sub(5,6))/m
+    end
+end
 
 -- Add a power-of-two sized repeating texture fill to a target display object.
 function utils.addRepeatingFill( target, filename, textureSize, textureScale, textureWrapX, textureWrapY )
