@@ -9,10 +9,16 @@ local sfx = require("classes.sfx")
 local utils = require("libs.utils")
 local loadsave, savedata
 
+local controls = require("classes.controls")
+local physics = physics or require("physics")
+physics.setDrawMode( "hybrid" )
+physics.start()
+physics.setGravity( 0, 0 )
+
 ---------------------------------------------------------------------------
 
 -- Forward declarations & variables.
-
+local player
 
 ---------------------------------------------------------------------------
 
@@ -47,6 +53,25 @@ function scene:create( event )
         -- groundLine[i] = disp
     end
     
+    player = display.newRect( screen.centerX, screen.centerY, 40, 80 )
+    physics.addBody( player, "dynamic", {
+        -- Add the physics body to roughly the player's feet, bottom 25% of the player model.
+        box = { halfWidth=player.width*0.5, halfHeight=player.height*0.125, x=0, y=player.height*0.375 }
+    } )
+    player.isFixedRotation = true
+    player.canDash = true
+    
+    local function resetDash()
+        player.canDash = true
+    end
+    
+    function player.dash( time )
+        -- Animate the dash somehow and show a countdown until dash is ready again.
+        -- Maybe the dash could take longer to recover from per damage taken?
+        player.canDash = false
+        timer.performWithDelay( time, resetDash )
+    end
+    
 end
 
 ---------------------------------------------------------------------------
@@ -61,7 +86,8 @@ function scene:show( event )
         end
         
     elseif event.phase == "did" then
-        
+        controls.init( player )
+        controls.start()
         
     end
 end

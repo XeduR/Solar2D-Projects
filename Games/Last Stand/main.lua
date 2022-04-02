@@ -40,7 +40,7 @@ local launchParams = {
     logoAnchorX = 0.5,
     logoAnchorY = 0.5,
     
-    text = "© 2021 Eetu Rantanen\nwww.xedur.com",
+    text = "© 2022 Eetu Rantanen\nwww.xedur.com",
     font = native.systemFontBold,
     fontSize = 24,
     textAlign = "center",
