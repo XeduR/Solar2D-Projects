@@ -12,7 +12,7 @@ local loadsave, savedata
 local controls = require("classes.controls")
 local zombie = require("classes.zombie")
 local physics = physics or require("physics")
-physics.setDrawMode( "hybrid" )
+-- physics.setDrawMode( "hybrid" )
 physics.start()
 physics.setGravity( 0, 0 )
 
@@ -46,8 +46,8 @@ local startTime
 -- How many pixels away from the ground's outer radius do the zombies spawn.
 local spawnDistance = 100
 local spawnVariance = 250
-local spawnRateStart = 1500
-local spawnRateMax = 750
+local spawnRateStart = 1200
+local spawnRateMax = 600
 local spawnRateCurrent
 
 local groundWidthHalf = 320
@@ -72,8 +72,8 @@ local weaponStats = {
         spread = 1,
         shotsFired = 1,
         clipSize = 18,
-        startAmmo = 5,
         cooldown = 150,
+        shake = 5,
         inventoryKey = "1",
     },
     ["shotgun"] = {
@@ -82,8 +82,8 @@ local weaponStats = {
         spread = 15,
         shotsFired = 8,
         clipSize = 6,
-        startAmmo = 5,
         cooldown = 350,
+        shake = 10,
         inventoryKey = "2",
     },
     ["rifle"] = {
@@ -92,8 +92,8 @@ local weaponStats = {
         spread = 2,
         shotsFired = 1,
         clipSize = 9,
-        startAmmo = 5,
         cooldown = 600,
+        shake = 15,
         inventoryKey = "3",
     },
 }
@@ -112,8 +112,8 @@ local walkAnimSpeed = 500
 local deathAnimSpeed = 250
 local playerAnimation = {
     { name="downIdle", frames={ 1 }, loopCount=1 },
-    { name="downRun", frames={ 2,3,4 }, time=walkAnimSpeed },
-    { name="upIdle", frames={ 5 }, loopCount=1 },
+    { name="downRun", frames={ 2,3,4,5 }, time=walkAnimSpeed },
+    -- { name="upIdle", frames={ 5 }, loopCount=1 },
     { name="upRun", frames={ 6,7,8 }, time=walkAnimSpeed },
     { name="death", frames={ 9,10,11,12 }, loopCount=1, time=deathAnimSpeed },
 }
@@ -127,9 +127,16 @@ local playerSheet = graphics.newImageSheet( "assets/images/player.png", {
 local groupBackground = display.newGroup()
 local groupCharacters = display.newGroup()
 local groupUI = display.newGroup()
+local groupPrompt = display.newGroup()
+local groupGuide = display.newGroup()
+local sceneGroup
 
 local weapon = "shotgun"
 local gameState = "menu"
+local instructions, instructionsShadow
+local startPrompt, startPromptShadow
+local weaponText, weaponTextShadow
+local leaderboard = {}
 local groundLine = {}
 local zombieList = {}
 local bulletList = {}
@@ -146,11 +153,10 @@ local spawnZombie
 local zombieTarget
 local startGame
 
-
 local magazine, inventoryKey, lastFired = {}, {}, {}
 for i, v in pairs( weaponStats ) do
     lastFired[i] = 0
-    magazine[i] = v.startAmmo or 0
+    magazine[i] = 0
     inventoryKey[v.inventoryKey] = i
 end
 
@@ -181,47 +187,79 @@ local function resetDash()
 end
 
 
+local function updateWeapons( weaponType )
+    local text
+    if weaponStats[weaponType] then
+        text = weaponType .. " ["..weaponStats[weaponType].inventoryKey.."] - " .. magazine[weaponType] .. "/" .. weaponStats[weaponType].clipSize
+        weapon = weaponType
+        if magazine[weaponType] == 0 then
+            weaponText:setFillColor( 139/255, 109/255, 156/255 )
+        else
+            weaponText:setFillColor( 251/255, 245/255, 239/255 )
+        end
+    else
+        text = weaponType
+        weaponText:setFillColor( 251/255, 245/255, 239/255 )
+    end
+    weaponTextShadow.text = text
+    weaponText.text = text
+end
+
+
 local function shoot( event )
-    if gameState == "game" and event.phase == "began" then
-        local data = weaponStats[weapon]
-        local time = getTimer()
-        
-        -- Check for bullets and weapon cooldown.
-        if magazine[weapon] > 0 and time > lastFired[weapon] + data.cooldown then
-            lastFired[weapon] = time
+    if event.phase == "began" then
+        if gameState == "game" then
+            local data = weaponStats[weapon]
+            local time = getTimer()
             
-            for i = 1, data.shotsFired do
-                bulletCount = bulletCount+1
+            -- Check for bullets and weapon cooldown.
+            if magazine[weapon] > 0 and time > lastFired[weapon] + data.cooldown then
+                lastFired[weapon] = time
                 
-                local bullet = display.newCircle( groupCharacters, player.x, player.y - player.height*0.5, 4 )
-                bullet:setFillColor( 251/255, 245/255, 239/255 )
-                physics.addBody( bullet, {
-                    radius = bullet.width*0.5,
-                    filter = filterBullet,
-                    isSensor = true,
-                })
-                bullet.id = bulletCount
-                bullet.isBullet = true
-                bullet.damage = data.damage
-                bullet.penetration = data.penetration
-                bullet.damage = data.damage
+                -- Shake the game.
+                sceneGroup.x, sceneGroup.y = random(-data.shake,data.shake), random(-data.shake,data.shake)
+                transition.to( sceneGroup, { time=150, x=0, y=0, transition=easing.inOutBack })
+                groupCharacters.x, groupCharacters.y = random(-data.shake,data.shake)*0.5, random(-data.shake,data.shake)*0.5
+                transition.to( groupCharacters, { time=150, x=0, y=0, transition=easing.inOutBack })
+                groupBackground.x, groupBackground.y = random(-data.shake,data.shake)*0.5, random(-data.shake,data.shake)*0.5
+                transition.to( groupBackground, { time=150, x=0, y=0, transition=easing.inOutBack })
                 
-                local a = atan2( event.y-bullet.y, event.x-bullet.x )
-                if data.spread > 0 then
-                    a = a + rad(random( -data.spread, data.spread ))
-                end
-                bullet:setLinearVelocity( cos(a)*bulletSpeed, sin(a)*bulletSpeed )
-                
-                bulletList[bulletCount] = bullet
-                
-                timer.performWithDelay( 1000, function()
-                    if bullet then
-                        display.remove(bullet)
-                        bulletList[bullet.id] = nil
+                for i = 1, data.shotsFired do
+                    bulletCount = bulletCount+1
+                    
+                    local bullet = display.newCircle( groupCharacters, player.x, player.y - player.height*0.5, 4 )
+                    bullet:setFillColor( 251/255, 245/255, 239/255 )
+                    physics.addBody( bullet, {
+                        radius = bullet.width*0.5,
+                        filter = filterBullet,
+                        isSensor = true,
+                    })
+                    bullet.id = bulletCount
+                    bullet.isBullet = true
+                    bullet.damage = data.damage
+                    bullet.penetration = data.penetration
+                    bullet.damage = data.damage
+                    
+                    local a = atan2( event.y-bullet.y, event.x-bullet.x )
+                    if data.spread > 0 then
+                        a = a + rad(random( -data.spread, data.spread ))
                     end
-                end )
+                    bullet:setLinearVelocity( cos(a)*bulletSpeed, sin(a)*bulletSpeed )
+                    
+                    bulletList[bulletCount] = bullet
+                    
+                    timer.performWithDelay( 1000, function()
+                        if bullet then
+                            display.remove(bullet)
+                            bulletList[bullet.id] = nil
+                        end
+                    end )
+                end
+                magazine[weapon] = magazine[weapon]-1
+                updateWeapons( weapon )
             end
-            magazine[weapon] = magazine[weapon]-1
+        elseif gameState == "menu" then
+            startGame()
         end
     end
 end
@@ -238,7 +276,10 @@ end
 
 local cover = display.newRect( groupUI, screen.centerX, screen.centerY, screen.width, screen.height )
 cover:setFillColor(0)
-cover.alpha = 0
+
+local hurt = display.newRect( groupUI, screen.centerX, screen.centerY, screen.width, screen.height )
+hurt:setFillColor( 0.9, 0, 0 )
+hurt.alpha = 0
 
 -- Just doing dirty clean up. No object pooling or anything.
 local function cleanup()
@@ -247,6 +288,7 @@ local function cleanup()
             timer.cancel( timerChomp[i] )
             timerChomp[i] = nil
         end
+        display.remove( zombieList[i].weapon )
         display.remove( zombieList[i] )
         zombieList[i] = nil
     end
@@ -256,6 +298,7 @@ local function cleanup()
     end
     
     gameState = "menu"
+    groupPrompt.isVisible = true
 end
 
 
@@ -277,7 +320,6 @@ local function stopGame()
         
         controls.stop()
         controls.releaseKeys()
-        Runtime:removeEventListener( "mouse", shoot )
         
         -- Wait until next frame to give the zombies new directions.
         timer.performWithDelay( 1, function()
@@ -285,6 +327,35 @@ local function stopGame()
         end )
         
         transition.to( cover, { time=cleanupTime, alpha=1, onComplete=cleanup })
+        transition.to( instructionsShadow, { time=cleanupTime*0.5, alpha=1 })
+        transition.to( instructions, { time=cleanupTime*0., alpha=1 })
+        transition.to( weaponTextShadow, { time=cleanupTime*0.5, alpha=0 })
+        transition.to( weaponText, { time=cleanupTime*0., alpha=0 })
+        hurt.alpha = 0
+        
+    end
+end
+
+
+
+local function newWeapon( item )
+    physics.addBody( item, "static", { filter=filterGround, isSensor=true } )
+end
+
+local function dropWeapon( item )
+    item.weapon:toBack()
+    transition.to( item.weapon, { time=250, y=item.y, rotation=random(-5,5), transition=easing.inOutBack, onComplete=newWeapon } )
+end
+
+local function spriteListener( event )
+    if event.phase == "ended" and event.target.isKilled then
+        physics.removeBody( event.target )
+        if event.target.isZombie then
+            event.target:toBack()
+            if event.target.weapon then
+                dropWeapon( event.target )
+            end
+        end
     end
 end
 
@@ -307,45 +378,48 @@ function startGame()
     weapon = "pistol"
     for i, v in pairs( weaponStats ) do
         lastFired[i] = 0
-        magazine[i] = v.startAmmo or 0
+        magazine[i] = 0
     end
+    updateWeapons("Pick up a weapon or dash to attack!")
     
     bulletCount = 0
-    zombieCount = 0
+    zombieCount = 1
     
     startTime = getTimer()
     spawnRateCurrent = spawnRateStart
     currentHealth = maxHealth
     zombieTarget = player
-    
+    gameState = "game"
     controls.start()
-    Runtime:addEventListener( "mouse", shoot )
+    
     timerZombie = timer.performWithDelay( (cover.alpha == 1 and cleanupTime or 0) + spawnRateCurrent, spawnZombie )
     Runtime:addEventListener( "enterFrame", update )
     Runtime:addEventListener( "collision", onCollision )
     
-    transition.to( cover, { time=cleanupTime, alpha=0 })
+    -- Quick and dirty trip to give the player a weapon at spawn.
+    zombieList[zombieCount] = zombie.new( groupCharacters, ground, spawnDistance, filterZombie, spriteListener, true )
+    zombieList[zombieCount].id = zombieCount
+    zombieList[zombieCount].isKilled = true
+    zombieList[zombieCount]:setSequence("death")
+    zombieList[zombieCount]:play()
+    zombieList[zombieCount].isVisible = false
     
-    gameState = "game"
+    transition.to( cover, { time=cleanupTime, alpha=0 })
+    transition.to( instructionsShadow, { time=cleanupTime*0.5, alpha=0 })
+    transition.to( instructions, { time=cleanupTime*0., alpha=0 })
+    transition.to( weaponTextShadow, { time=cleanupTime*0.5, alpha=1 })
+    transition.to( weaponText, { time=cleanupTime*0., alpha=1 })
+    hurt.alpha = 0
+    
+    groupPrompt.isVisible = false
 end
 
-
-local function spriteListener( event )
-    if event.phase == "ended" and event.target.isKilled then
-           
-        if event.target.isZombie then
-            physics.removeBody( event.target )
-            event.target:toBack()
-        elseif event.target.isPlayer then
-            physics.removeBody( player )
-        end
-    end
-end
 
 local function playerDamage( damage )
     local damage = type( damage ) == "table" and damage.source.damage or damage
     if not player.isKilled then
         currentHealth = currentHealth-damage
+        transition.from( hurt, { time=250, alpha=1 })
         if currentHealth <= 0 then
             player:setSequence("death")
             player:play()
@@ -360,7 +434,8 @@ function onCollision( event )
         local player = event.object1.isPlayer and event.object1 or event.object2.isPlayer and event.object2 or nil
         local bullet = event.object1.isBullet and event.object1 or event.object2.isBullet and event.object2 or nil
         local zombie = event.object1.isZombie and event.object1 or event.object2.isZombie and event.object2 or nil
-        
+        local gun = event.object1.isWeapon and event.object1 or event.object2.isWeapon and event.object2 or nil
+    
         -- Zombies can be shot anywhere, but player can only collide with zombies legs.
         local correctCollision = player and event.element1 == event.element2 or false
         
@@ -395,6 +470,15 @@ function onCollision( event )
                     display.remove( bullet )
                     bulletList[bullet.id] = nil
                 end
+            
+            -- player picks up a weapon.
+            elseif player and gun then
+                magazine[gun.name] = weaponStats[gun.name].clipSize
+                updateWeapons( gun.name )
+                
+                timer.performWithDelay( 1, function()
+                    display.remove( gun )
+                end )
                 
             end
             
@@ -415,7 +499,7 @@ function spawnZombie()
     zombieList[zombieCount] = zombie.new( groupCharacters, ground, spawnDistance, filterZombie, spriteListener )
     zombieList[zombieCount].id = zombieCount
     
-    spawnRateCurrent = max( spawnRateMax, spawnRateCurrent - (getTimer()-startTime)*0.001 )
+    spawnRateCurrent = max( spawnRateMax, spawnRateCurrent - (getTimer()-startTime)*0.0025 )
     timerZombie = timer.performWithDelay( spawnRateCurrent+random(-spawnVariance,spawnVariance), spawnZombie )
 end
 
@@ -429,19 +513,14 @@ local function onKeyEvent( event )
                 playerDamage( maxHealth )
             end
             
-        elseif key[keyName] == "dash" then
-            if gameState == "menu" then
-                startGame()
-            end
+        elseif gameState == "menu" then
+            startGame()
             
-        else
-            if gameState == "game" then
-                local _weapon = inventoryKey[keyName]
-                local ammo = magazine[_weapon]
-                if ammo and ammo > 0 then
-                    weapon = _weapon
-                end
-            end        
+        elseif gameState == "game" then
+            local _weapon = inventoryKey[keyName]
+            if _weapon then
+                updateWeapons( _weapon )
+            end  
         end
     end
 end
@@ -450,7 +529,7 @@ end
 ---------------------------------------------------------------------------
 
 function scene:create( event )
-    local sceneGroup = self.view
+    sceneGroup = self.view
     -- If the project uses savedata, then load existing data or set it up.
     if event.params and event.params.usesSavedata then
         loadsave = require("classes.loadsave")
@@ -460,7 +539,7 @@ function scene:create( event )
             -- Assign initial values for save data.
             savedata = {
                 audio = true,
-                highscore = {},
+                highscore = 0,
             }
             loadsave.save( savedata, "data.json" )
         end
@@ -478,6 +557,64 @@ function scene:create( event )
     local watermark = display.newImageRect( groupUI, "assets/images/launchScreen/XeduR.png", 256, 128 )
     watermark.x, watermark.y = screen.maxX + 20, screen.minY
     watermark.anchorX, watermark.anchorY = 1, 0
+    
+    -- leaderboard
+    
+    -- local 
+    -- 
+    
+    local instructionsText = "controls:\n\n[mouse] - aim & shoot\n[1,2,3] = select weapon\n[w/a/s/d] - move\n[space] - dash"
+    local instructionsFontSize = 22
+    local instructionsX = screen.minX + 10
+    local instructionsY = screen.minY + 110
+    
+    instructionsShadow = display.newText({
+        parent = groupUI,
+        text =  instructionsText,
+        x = instructionsX,
+        y = instructionsY + 2,
+        align = "left",
+        fontSize = instructionsFontSize,
+        font = "assets/fonts/slkscr.ttf"
+    })
+    instructionsShadow:setFillColor( 73/255, 77/255, 126/255 )
+    instructionsShadow.anchorX, instructionsShadow.anchorY = 0, 0
+    
+    instructions = display.newText({
+        parent = groupUI,
+        text =  instructionsText,
+        x = instructionsX,
+        y = instructionsY,
+        align = "left",
+        fontSize = instructionsFontSize,
+        font = "assets/fonts/slkscr.ttf"
+    })
+    instructions:setFillColor( 251/255, 245/255, 239/255 )
+    instructions.anchorX, instructions.anchorY = 0, 0
+    
+    
+    local promptText = "Press anything to start."
+    local promptFontSize = 40
+    
+    groupPrompt.x, groupPrompt.y = screen.centerX, screen.centerY + 60
+    
+    startPromptShadow = display.newText( groupPrompt, promptText, 4, 2, "assets/fonts/slkscr.ttf", promptFontSize )
+    startPromptShadow:setFillColor( 73/255, 77/255, 126/255 )
+    startPrompt = display.newText( groupPrompt, promptText, 0, 0, "assets/fonts/slkscr.ttf", promptFontSize )
+    startPrompt:setFillColor( 251/255, 245/255, 239/255 )
+    
+    -- Let the transition play constantly, just hide it later.
+    transition.blink( groupPrompt, { time=2500} )
+
+    local weaponX = screen.centerX
+    local weaponY = screen.maxY - 46
+    
+    weaponTextShadow = display.newText( groupUI, "", weaponX+4, weaponY+2, "assets/fonts/slkscr.ttf", 26 )
+    weaponTextShadow:setFillColor( 73/255, 77/255, 126/255 )
+    weaponTextShadow.alpha = 0
+    weaponText = display.newText( groupUI, "", weaponX, weaponY, "assets/fonts/slkscr.ttf", 26 )
+    weaponText:setFillColor( 251/255, 245/255, 239/255 )
+    weaponText.alpha = 0
     
     local buttonAudio = display.newRect( groupUI, screen.minX + 10, screen.minY + 10, 64, 64 )
     buttonAudio.anchorX, buttonAudio.anchorY = 0, 0
@@ -559,12 +696,13 @@ function scene:create( event )
     sceneGroup:insert(groupBackground)
     sceneGroup:insert(groupCharacters)
     sceneGroup:insert(groupUI)
+    sceneGroup:insert(groupPrompt)
 end
 
 ---------------------------------------------------------------------------
 
 function scene:show( event )
-    local sceneGroup = self.view
+    -- local sceneGroup = self.view
     
     if event.phase == "will" then
         -- If coming from launchScreen scene, then start by removing it.

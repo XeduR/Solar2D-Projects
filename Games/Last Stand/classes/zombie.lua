@@ -5,7 +5,7 @@ local zombieType = {
         animWalkSpeed = 500,
         animDeathSpeed = 250,
         revealTime = 1000,
-        dropRate = 0.25,
+        dropRate = 0.2,
         speed = 30,
         damage = 2,
         hp = 2,
@@ -17,7 +17,7 @@ local zombieType = {
         animWalkSpeed = 250,
         animDeathSpeed = 250,
         revealTime = 500,
-        dropRate = 0.5,
+        dropRate = 0.3,
         speed = 60,
         damage = 1,
         hp = 1,
@@ -29,7 +29,7 @@ local zombieType = {
         animWalkSpeed = 1000,
         animDeathSpeed = 500,
         revealTime = 3000,
-        dropRate = 0.25,
+        dropRate = 0.5,
         speed = 10,
         damage = 5,
         hp = 5,
@@ -81,8 +81,10 @@ local cos = math.cos
 local sin = math.sin
 local pi2 = math.pi*2
 
-function zombie.new( parent, ground, spawnDistance, filter, spriteListener )
+function zombie.new( parent, ground, spawnDistance, filter, spriteListener, isFirstZombie )
     local angle = random()*pi2
+    local spawnDistance = isFirstZombie and -120 or spawnDistance
+    
     local x, y, r = (ground._width+spawnDistance)*cos(angle), (ground._height+spawnDistance*0.5)*sin(angle), random()
     
     local t
@@ -101,6 +103,23 @@ function zombie.new( parent, ground, spawnDistance, filter, spriteListener )
     newZombie.anchorY = 1
     newZombie:setFillColor(1,0,0)
     newZombie:addEventListener( "sprite", spriteListener )
+    
+    -- Just tossing drop rates for guns in here.
+    if isFirstZombie or random() <= data.dropRate then
+        r = random()
+        local drop
+        if r < 0.4 then
+            drop = "pistol"
+        elseif r < 0.7 then
+            drop = "shotgun"
+        else
+            drop = "rifle"
+        end
+        newZombie.weapon = display.newImage( parent, "assets/images/"..drop..".png" )
+        newZombie.weapon.x, newZombie.weapon.y = newZombie.x, newZombie.y - newZombie.height*0.5
+        newZombie.weapon.name = drop
+        newZombie.weapon.isWeapon = true
+    end
     
     -- How many percent of zombie is feet.
     local feetRate = 0.25
@@ -127,7 +146,11 @@ function zombie.new( parent, ground, spawnDistance, filter, spriteListener )
     newZombie.hp = data.hp
     newZombie.damage = data.damage
     
-    transition.from( newZombie, { time=data.revealTime, alpha=0 } )
+    if isFirstZombie then
+        
+    else
+        transition.from( newZombie, { time=data.revealTime, alpha=0 } )
+    end
     
     local xDirPrev, yDirPrev = 0, 0
     
@@ -154,6 +177,10 @@ function zombie.new( parent, ground, spawnDistance, filter, spriteListener )
                 newZombie:play()
                 newZombie.xScale = xDir
                 xDirPrev, yDirPrev = xDir, yDir
+            end
+            
+            if newZombie.weapon then
+                newZombie.weapon.x, newZombie.weapon.y = newZombie.x, newZombie.y - newZombie.height*0.5
             end
             
             local angle = atan2( vy, vx )
