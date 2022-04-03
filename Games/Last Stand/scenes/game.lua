@@ -25,11 +25,13 @@ physics.setGravity( 0, 0 )
 ---------------------------------------------------------------------------
 
 -- Forward declarations & variables.
+local getTimer = system.getTimer
 local random = math.random
 local sqrt = math.sqrt
 local atan2 = math.atan2
 local cos = math.cos
 local sin = math.sin
+local rad = math.rad
 local pi = math.pi
 
 local maxHealth = 5
@@ -57,7 +59,41 @@ local groundBodyOffsetY = groundBodyOffsetX*0.5
 local chompTime = 500
 
 -- Black screen cover transition time.
-local cleanupTime = 2500
+local cleanupTime = 3000
+
+local weaponStats = {
+    -- spread is in degrees to both directions.
+    ["pistol"] = {
+        damage = 2,
+        penetration = 1,
+        spread = 0,
+        shotsFired = 1,
+        clipSize = 18,
+        startAmmo = 5,
+        cooldown = 150,
+        inventoryKey = "1",
+    },
+    ["shotgun"] = {
+        damage = 1,
+        penetration = 1,
+        spread = 5,
+        shotsFired = 5,
+        clipSize = 6,
+        startAmmo = 5,
+        cooldown = 350,
+        inventoryKey = "2",
+    },
+    ["rifle"] = {
+        damage = 5,
+        penetration = 3,
+        spread = 1,
+        shotsFired = 1,
+        clipSize = 9,
+        startAmmo = 5,
+        cooldown = 600,
+        inventoryKey = "3",
+    },
+}
 
 -- filterPlayer: collides with zombie & ground.
 local filterPlayer = { categoryBits=1, maskBits=6 }
@@ -89,6 +125,7 @@ local groupBackground = display.newGroup()
 local groupCharacters = display.newGroup()
 local groupUI = display.newGroup()
 
+local weapon = "shotgun"
 local gameState = "menu"
 local groundLine = {}
 local zombieList = {}
@@ -103,9 +140,16 @@ local timerDash
 local timerChomp = {}
 local timerZombie
 local spawnZombie
-local mouseClicked
 local zombieTarget
 local startGame
+
+
+local magazine, inventoryKey, lastFired = {}, {}, {}
+for i, v in pairs( weaponStats ) do
+    lastFired[i] = 0
+    magazine[i] = v.startAmmo or 0
+    inventoryKey[v.inventoryKey] = i
+end
 
 ---------------------------------------------------------------------------
 
@@ -135,35 +179,47 @@ end
 
 
 local function shoot( event )
-    if event.isPrimaryButtonDown and not mouseClicked then
-        mouseClicked = true
+    if gameState == "game" and event.phase == "began" then
+        local data = weaponStats[weapon]
+        local time = getTimer()
         
-        bulletCount = bulletCount+1
-        
-        local bullet = display.newCircle( groupCharacters, player.x, player.y - player.height*0.5, 4 )
-        bullet:setFillColor( 251/255, 245/255, 239/255 )
-        physics.addBody( bullet, {
-            radius = bullet.width*0.5,
-            filter = filterBullet
-        })
-        bullet.isBullet = true
-        bullet.id = bulletCount
-        
-        bulletList[bulletCount] = bullet
-        
-        local a = atan2( event.y-bullet.y, event.x-bullet.x )
-        bullet:setLinearVelocity( cos(a)*bulletSpeed, sin(a)*bulletSpeed )
-        
-        timer.performWithDelay( 500, function()
-            if bullet then
-                display.remove(bullet)
-                bulletList[bullet.id] = nil
+        -- Check for bullets and weapon cooldown.
+        if magazine[weapon] > 0 and time > lastFired[weapon] + data.cooldown then
+            lastFired[weapon] = time
+            
+            for i = 1, data.shotsFired do
+                bulletCount = bulletCount+1
+                
+                local bullet = display.newCircle( groupCharacters, player.x, player.y - player.height*0.5, 4 )
+                bullet:setFillColor( 251/255, 245/255, 239/255 )
+                physics.addBody( bullet, {
+                    radius = bullet.width*0.5,
+                    filter = filterBullet,
+                    isSensor = true,
+                })
+                bullet.id = bulletCount
+                bullet.isBullet = true
+                bullet.damage = data.damage
+                bullet.penetration = data.penetration
+                bullet.damage = data.damage
+                
+                local a = atan2( event.y-bullet.y, event.x-bullet.x )
+                if data.spread > 0 then
+                    a = a + rad(random( -data.spread, data.spread ))
+                end
+                bullet:setLinearVelocity( cos(a)*bulletSpeed, sin(a)*bulletSpeed )
+                
+                bulletList[bulletCount] = bullet
+                
+                timer.performWithDelay( 1000, function()
+                    if bullet then
+                        display.remove(bullet)
+                        bulletList[bullet.id] = nil
+                    end
+                end )
             end
-        end )
-        
-    elseif not event.isPrimaryButtonDown and mouseClicked then
-        mouseClicked = false
-        
+            magazine[weapon] = magazine[weapon]-1
+        end
     end
 end
 
@@ -179,7 +235,7 @@ end
 
 local cover = display.newRect( groupUI, screen.centerX, screen.centerY, screen.width, screen.height )
 cover:setFillColor(0)
-cover.alpha = 1
+cover.alpha = 0
 
 -- Just doing dirty clean up. No object pooling or anything.
 local function cleanup()
@@ -200,13 +256,9 @@ local function cleanup()
 end
 
 
-local function showUI()
-    
-end
 
-
-local function stopGame( event )
-    if gameState == "game" and (not event or event.phase == "began") then
+local function stopGame()
+    if gameState == "game" then
         gameState = "gameover"
         
         Runtime:removeEventListener( "collision", onCollision )
@@ -222,7 +274,6 @@ local function stopGame( event )
         
         controls.stop()
         controls.releaseKeys()
-        player:setLinearVelocity(0,0)
         Runtime:removeEventListener( "mouse", shoot )
         
         -- Wait until next frame to give the zombies new directions.
@@ -237,20 +288,35 @@ end
 
 function startGame()
     player.x, player.y = ground.x, ground.y
+    physics.addBody( player, "dynamic", {
+        -- Add the physics body to roughly the player's feet, bottom 25% of the player model.
+        box = { halfWidth=player.width*0.5, halfHeight=player.height*0.125, x=0, y=-player.height*0.125 },
+        filter = filterPlayer
+    } )
+    player.isFixedRotation = true
     player.canDash = true
     player.hp = maxHealth
+    player.isKilled = false
+    
+    player:setSequence( "downIdle" )
+    player:play()
+    
+    weapon = "pistol"
+    for i, v in pairs( weaponStats ) do
+        lastFired[i] = 0
+        magazine[i] = v.startAmmo or 0
+    end
     
     bulletCount = 0
     zombieCount = 0
-    player.isKilled = false
+    
     spawnRateCurrent = spawnRateStart
-    mouseClicked = false
     currentHealth = maxHealth
     zombieTarget = player
     
     controls.start()
     Runtime:addEventListener( "mouse", shoot )
-    timerZombie = timer.performWithDelay( spawnRateCurrent, spawnZombie )
+    timerZombie = timer.performWithDelay( (cover.alpha == 1 and cleanupTime or 0) + spawnRateCurrent, spawnZombie )
     Runtime:addEventListener( "enterFrame", update )
     Runtime:addEventListener( "collision", onCollision )
     
@@ -261,18 +327,24 @@ end
 
 
 local function spriteListener( event )
-    if event.target.isKilled and event.phase == "ended" then
-        physics.removeBody( event.target )
-        event.target:toBack()
-        -- display.remove( event.target )
-        -- zombieList[event.target.id] = nil
+    if event.phase == "ended" and event.target.isKilled then
+           
+        if event.target.isZombie then
+            physics.removeBody( event.target )
+            event.target:toBack()
+        elseif event.target.isPlayer then
+            physics.removeBody( player )
+        end
     end
 end
 
-local function playerDamage()
+local function playerDamage( damage )
+    local damage = type( damage ) == "table" and damage.source.damage or damage
     if not player.isKilled then
-        currentHealth = currentHealth-1
+        currentHealth = currentHealth-damage
         if currentHealth <= 0 then
+            player:setSequence("death")
+            player:play()
             stopGame()
         end
     end
@@ -288,7 +360,7 @@ function onCollision( event )
         if event.phase == "began" then
             -- player hits zombie.
             if player and zombie and not zombie.isKilled then
-                playerDamage()
+                playerDamage( zombie.damage )
                 -- If player is mid dash, then kill the zombie.
                 if player.isDashing then
                     zombie.isKilled = true
@@ -299,17 +371,22 @@ function onCollision( event )
                         timer.cancel( timerChomp[zombie.id] )
                     end
                     timerChomp[zombie.id] = timer.performWithDelay( chompTime, playerDamage, 0 )
+                    timerChomp[zombie.id].damage = zombie.damage
                 end
                 
             -- bullet hits zombie.
             elseif bullet and zombie then
-                display.remove( bullet )
-                bulletList[bullet.id] = nil
-                
-                if not zombie.isKilled then
+                zombie.hp = zombie.hp - bullet.damage
+                if zombie.hp <= 0 and not zombie.isKilled then
                     zombie.isKilled = true
                     zombie:setSequence("death")
                     zombie:play()
+                end
+                
+                bullet.penetration = bullet.penetration-1
+                if bullet.penetration <= 0 then
+                    display.remove( bullet )
+                    bulletList[bullet.id] = nil
                 end
                 
             end
@@ -335,17 +412,28 @@ function spawnZombie()
 end
 
 
+-- Handle menu controls.
 local function onKeyEvent( event )
     if event.phase == "down" then
-        if event.keyName == "escape" or event.keyName == "esc" then
+        local keyName = event.keyName
+        if keyName == "escape" or keyName == "esc" then
             if gameState == "game" then
-                stopGame()
+                playerDamage( maxHealth )
             end
             
-        elseif key[event.keyName] == "dash" then
+        elseif key[keyName] == "dash" then
             if gameState == "menu" then
                 startGame()
             end
+            
+        else
+            if gameState == "game" then
+                local _weapon = inventoryKey[keyName]
+                local ammo = magazine[_weapon]
+                if ammo and ammo > 0 then
+                    weapon = _weapon
+                end
+            end        
         end
     end
 end
@@ -369,6 +457,11 @@ function scene:create( event )
             loadsave.save( savedata, "data.json" )
         end
     end
+    
+    local bgSensor = display.newRect( groupBackground, screen.centerX, screen.centerY, screen.width, screen.height )
+    bgSensor.isHitTestable = true
+    bgSensor.isVisible = false
+    bgSensor:addEventListener( "touch", shoot )
     
     local title = display.newImageRect( groupUI, "assets/images/title.png", 512, 128 )
     title.x, title.y = screen.centerX, screen.minY
@@ -413,7 +506,12 @@ function scene:create( event )
     local buttonReset = display.newImageRect( groupUI, "assets/images/restart.png", 64, 64 )
     buttonReset.x, buttonReset.y = buttonAudio.x + buttonAudio.width + 10, buttonAudio.y
     buttonReset.anchorX, buttonReset.anchorY = 0, 0
-    buttonReset:addEventListener( "touch", stopGame )    
+    buttonReset:addEventListener( "touch", function(event)
+        if gameState == "game" and event.phase == "began" then
+            playerDamage( maxHealth )
+        end
+        return true
+    end )    
     
     -- Create the ground using jagged lines to give it a rougher look.
     ground = display.newGroup()
@@ -440,15 +538,8 @@ function scene:create( event )
     player = display.newSprite( groupCharacters, playerSheet, playerAnimation )
     player.x, player.y = ground.x, ground.y
     player.anchorY = 1
-    physics.addBody( player, "dynamic", {
-        -- Add the physics body to roughly the player's feet, bottom 25% of the player model.
-        box = { halfWidth=player.width*0.5, halfHeight=player.height*0.125, x=0, y=-player.height*0.125 },
-        filter = filterPlayer
-    } )
-    player.isFixedRotation = true
-    player.canDash = true
-    player.hp = maxHealth
     player.isPlayer = true
+    player:addEventListener( "sprite", spriteListener )
     
     function player.dash( time )
         local time = (1 + dashHealthModifier*(maxHealth - player.hp))*time

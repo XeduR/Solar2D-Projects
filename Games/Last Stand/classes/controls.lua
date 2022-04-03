@@ -92,7 +92,7 @@ local function onKeyEvent( event )
     if keyName then
         local isDown = event.phase == "down"
         if keyName == "dash" then
-            if (vxPrev ~= 0 or vyPrev ~= 0) and isDown and player.canDash then
+            if (vxPrev ~= 0 or vyPrev ~= 0) and isDown and player.canDash and player.bodyType then
                 controls.stop()
                 player.isDashing = true
                 local angle = atan2( vyPrev, vxPrev )

@@ -4,22 +4,28 @@ local zombieType = {
     ["normal"] = {
         animWalkSpeed = 500,
         animDeathSpeed = 250,
+        revealTime = 1000,
         dropRate = 0.25,
-        speed = 10,
+        speed = 30,
+        damage = 2,
         hp = 2,
     },
     ["fast"] = {
         animWalkSpeed = 250,
         animDeathSpeed = 250,
+        revealTime = 500,
         dropRate = 0.5,
-        speed = 35,
+        speed = 60,
+        damage = 1,
         hp = 1,
     },
     ["tank"] = {
         animWalkSpeed = 1000,
         animDeathSpeed = 500,
+        revealTime = 3000,
         dropRate = 0.25,
-        speed = 5,
+        speed = 10,
+        damage = 5,
         hp = 5,
     }
 }
@@ -94,8 +100,9 @@ function zombie.new( parent, ground, spawnDistance, filter, spriteListener )
     newZombie.isFixedRotation = true
     newZombie.isZombie = true
     newZombie.hp = data.hp
+    newZombie.damage = data.damage
     
-    transition.from( newZombie, { time=500, alpha=0 } )
+    transition.from( newZombie, { time=data.revealTime, alpha=0 } )
     
     local xDirPrev, yDirPrev = 0, 0
     
