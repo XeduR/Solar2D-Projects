@@ -28,15 +28,17 @@ end
 
 
 
+local dirX, dirY
+
 local function update()
     -- Normalised x and y movement vectors.
     local vx, vy = 0, 0
     
     if holdingDown.left then
-        vx = 1
+        vx = -1
     end
     if holdingDown.right then
-        vx = vx - 1
+        vx = vx + 1
     end
     if holdingDown.down then
         vy = 1
@@ -48,29 +50,34 @@ local function update()
     if vx == 0 and vy == 0 then
         if hasMoved then
             hasMoved = false
-            vxPrev, vyPrev = vx, vy
             player:setLinearVelocity( 0, 0 )
-            -- player:stop()
+            if vyPrev < 0 then
+                player:setSequence( "upIdle" )
+            else
+                player:setSequence( "downIdle" )
+            end
+            player:play()
+            player:pause()
+            vxPrev, vyPrev = vx, vy
         end
         return
     end
     hasMoved = true
     
-    local angle = atan2( vx, vy )
-    player:setLinearVelocity( -sin(angle)*moveSpeed, cos(angle)*moveSpeed )
+    local angle = atan2( vy, vx )
+    player:setLinearVelocity( cos(angle)*moveSpeed, sin(angle)*moveSpeed )
 
     -- Player is moving horizontally and has changed direction?
-    if vx ~= 0 and vx ~= vxPrev then
-        -- Animation wasn't running before.
-        if vxPrev == 0 and vyPrev == 0 then
-            -- player:setSequence( "run" )
-            -- player:play()
+    if (vx ~= 0 and vx ~= vxPrev) or (vy ~= 0 and vy ~= vyPrev) then
+        if vy < 0 then
+            player:setSequence( "upRun" )
+        else
+            player:setSequence( "downRun" )
         end
-        player.xScale = vx
-    end
-    -- Player is moving vertically, but animation isn't active?
-    if vy ~= 0 and vy ~= vyPrev and vx == 0 then
-        -- player:play()
+        player:play()
+        if vx ~= vxPrev then
+            player.xScale = vx
+        end
     end
     
     vxPrev, vyPrev = vx, vy
@@ -86,8 +93,9 @@ local function onKeyEvent( event )
         if keyName == "dash" then
             if (vxPrev ~= 0 or vyPrev ~= 0) and isDown and player.canDash then
                 controls.stop()
-                local angle = atan2( vxPrev, vyPrev )
-                player:applyLinearImpulse( -sin(angle)*dashImpulse, cos(angle)*dashImpulse, player.x, player.y )
+                player.isDashing = true
+                local angle = atan2( vyPrev, vxPrev )
+                player:applyLinearImpulse( cos(angle)*dashImpulse, sin(angle)*dashImpulse, player.x, player.y )
                 timer.performWithDelay( dashDuration, controls.start )
                 player.dash( dashDuration+dashCooldown )
             end
@@ -105,6 +113,8 @@ end
 
 function controls.start()
     hasMoved = false
+    player.isDashing = false
+    player:setLinearVelocity( 0, 0 )
     Runtime:addEventListener( "enterFrame", update )
     Runtime:addEventListener( "key", onKeyEvent )
 end
@@ -115,5 +125,11 @@ function controls.stop()
     Runtime:removeEventListener( "key", onKeyEvent )
 end
 
+
+function controls.releaseKeys()
+    for k, v in pairs( holdingDown ) do
+        holdingDown[k] = false
+    end
+end
 
 return controls

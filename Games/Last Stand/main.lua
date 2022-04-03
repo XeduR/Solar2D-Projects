@@ -20,6 +20,8 @@
 -------------------------------------------------------------------------
 
 display.setDefault( "background", 39/255, 39/255, 68/255 )
+display.setDefault( "magTextureFilter", "nearest" )
+display.setDefault( "minTextureFilter", "nearest" )
 
 local launchParams = {
     -------------------------------------
