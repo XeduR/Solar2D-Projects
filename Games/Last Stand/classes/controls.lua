@@ -4,7 +4,7 @@ local keyBindings = require("data.controls")
 
 local moveSpeed = 180
 local dashImpulse = 0.5
-local dashDuration = 25
+local dashDuration = 150
 local dashCooldown = 500
 
 local vxPrev, vyPrev = 0, 0
@@ -68,14 +68,15 @@ local function update()
     player:setLinearVelocity( cos(angle)*moveSpeed, sin(angle)*moveSpeed )
 
     -- Player is moving horizontally and has changed direction?
-    if (vx ~= 0 and vx ~= vxPrev) or (vy ~= 0 and vy ~= vyPrev) then
+    local xChange = (vx ~= 0 and vx ~= vxPrev)
+    if xChange or (vy ~= 0 and vy ~= vyPrev) then
         if vy < 0 then
             player:setSequence( "upRun" )
         else
             player:setSequence( "downRun" )
         end
         player:play()
-        if vx ~= vxPrev then
+        if xChange then
             player.xScale = vx
         end
     end
@@ -108,21 +109,25 @@ end
 
 function controls.init( playerRef )
     player = playerRef
+    Runtime:addEventListener( "key", onKeyEvent )
+    return key -- Borrow the keys for game.
 end
 
 
 function controls.start()
-    hasMoved = false
-    player.isDashing = false
-    player:setLinearVelocity( 0, 0 )
-    Runtime:addEventListener( "enterFrame", update )
-    Runtime:addEventListener( "key", onKeyEvent )
+    if not player.isKilled then
+        hasMoved = false
+        player.isDashing = false
+        player:setLinearVelocity( 0, 0 )
+        Runtime:addEventListener( "enterFrame", update )
+        -- Runtime:addEventListener( "key", onKeyEvent )
+    end
 end
 
 
 function controls.stop()
     Runtime:removeEventListener( "enterFrame", update )
-    Runtime:removeEventListener( "key", onKeyEvent )
+    -- Runtime:removeEventListener( "key", onKeyEvent )
 end
 
 

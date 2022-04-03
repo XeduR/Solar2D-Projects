@@ -3,6 +3,6 @@ return {
     right = { "right", "d" },
     up = { "up", "w" },
     down = { "down", "s" },
-    dash = { "space", "e", "q", "leftControl", "rightControl", "leftShift", "rightShift" },
+    dash = { "space", "enter", "e", "q", "leftControl", "rightControl", "leftShift", "rightShift" },
 }
 

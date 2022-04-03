@@ -29,7 +29,7 @@ local launchParams = {
     -- to game, toggles on loadsave's error reporting and loads performance meter.
     debugMode = true,
     -- Whether or not the project utilises persistent data via Spyric Loadsave.
-    usesSavedata = false,
+    usesSavedata = true,
     -- Whether or not the project encodes and protects the save data or not.
     protectSavedata = true,
     
