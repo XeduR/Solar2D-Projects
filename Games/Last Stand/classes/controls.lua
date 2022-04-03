@@ -3,7 +3,8 @@ local controls = {}
 local keyBindings = require("data.controls")
 
 local moveSpeed = 180
-local dashImpulse = 1
+local dashImpulse = 0.5
+local dashDuration = 25
 local dashCooldown = 500
 
 local vxPrev, vyPrev = 0, 0
@@ -84,9 +85,11 @@ local function onKeyEvent( event )
         local isDown = event.phase == "down"
         if keyName == "dash" then
             if (vxPrev ~= 0 or vyPrev ~= 0) and isDown and player.canDash then
+                controls.stop()
                 local angle = atan2( vxPrev, vyPrev )
                 player:applyLinearImpulse( -sin(angle)*dashImpulse, cos(angle)*dashImpulse, player.x, player.y )
-                player.dash( dashCooldown )
+                timer.performWithDelay( dashDuration, controls.start )
+                player.dash( dashDuration+dashCooldown )
             end
         else
             holdingDown[keyName] = isDown
