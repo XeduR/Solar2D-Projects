@@ -9,6 +9,9 @@ local zombieType = {
         speed = 30,
         damage = 2,
         hp = 2,
+        -- physics shape properties:
+        widthMultiplier = 0.9,
+        heightMultiplier = 0.9
     },
     ["fast"] = {
         animWalkSpeed = 250,
@@ -18,6 +21,9 @@ local zombieType = {
         speed = 60,
         damage = 1,
         hp = 1,
+        -- physics shape properties:
+        widthMultiplier = 0.9,
+        heightMultiplier = 0.9
     },
     ["tank"] = {
         animWalkSpeed = 1000,
@@ -27,6 +33,9 @@ local zombieType = {
         speed = 10,
         damage = 5,
         hp = 5,
+        -- physics shape properties:
+        widthMultiplier = 0.9,
+        heightMultiplier = 0.9
     }
 }
 
@@ -93,10 +102,26 @@ function zombie.new( parent, ground, spawnDistance, filter, spriteListener )
     newZombie:setFillColor(1,0,0)
     newZombie:addEventListener( "sprite", spriteListener )
     
-    physics.addBody( newZombie, "dynamic", {
-        box = { halfWidth=newZombie.width*0.5, halfHeight=newZombie.height*0.125, x=0, y=-newZombie.height*0.125 },
-        filter = filter
-    } )
+    -- How many percent of zombie is feet.
+    local feetRate = 0.25
+    
+    -- Manually adjust the shapes to account for transparent areas.
+    local widthMultiplier = data.widthMultiplier
+    local heightMultiplier = data.heightMultiplier
+    
+    local halfWidth = newZombie.width*0.5*widthMultiplier
+    local torsoMinY = -newZombie.height*0.5*heightMultiplier
+    local torsoMaxY = (newZombie.height*0.5 - newZombie.height*feetRate)*heightMultiplier
+    local feetMinY = torsoMaxY
+    local feetMaxY = newZombie.height*0.5*heightMultiplier
+    
+    local shapeTorso = { -halfWidth, torsoMinY, halfWidth, torsoMinY, halfWidth, torsoMaxY, -halfWidth, torsoMaxY }
+    local shapeFeet = { -halfWidth, feetMinY, halfWidth, feetMinY, halfWidth, feetMaxY, -halfWidth, feetMaxY }
+    
+    physics.addBody( newZombie, "dynamic",
+        { shape=shapeFeet, filter = filter },
+        { shape=shapeTorso, isSensor = true, filter = filter }
+    )
     newZombie.isFixedRotation = true
     newZombie.isZombie = true
     newZombie.hp = data.hp

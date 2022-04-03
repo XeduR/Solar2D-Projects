@@ -31,6 +31,7 @@ local sqrt = math.sqrt
 local atan2 = math.atan2
 local cos = math.cos
 local sin = math.sin
+local max = math.max
 local rad = math.rad
 local pi = math.pi
 
@@ -40,11 +41,13 @@ local dashHealthModifier = 0.25
 local bulletSpeed = 1000
 
 local currentHealth
+local startTime
 
 -- How many pixels away from the ground's outer radius do the zombies spawn.
 local spawnDistance = 100
 local spawnVariance = 250
-local spawnRateStart = 1000
+local spawnRateStart = 1500
+local spawnRateMax = 750
 local spawnRateCurrent
 
 local groundWidthHalf = 320
@@ -66,7 +69,7 @@ local weaponStats = {
     ["pistol"] = {
         damage = 2,
         penetration = 1,
-        spread = 0,
+        spread = 1,
         shotsFired = 1,
         clipSize = 18,
         startAmmo = 5,
@@ -76,17 +79,17 @@ local weaponStats = {
     ["shotgun"] = {
         damage = 1,
         penetration = 1,
-        spread = 5,
-        shotsFired = 5,
+        spread = 15,
+        shotsFired = 8,
         clipSize = 6,
         startAmmo = 5,
         cooldown = 350,
         inventoryKey = "2",
     },
     ["rifle"] = {
-        damage = 5,
+        damage = 3,
         penetration = 3,
-        spread = 1,
+        spread = 2,
         shotsFired = 1,
         clipSize = 9,
         startAmmo = 5,
@@ -310,6 +313,7 @@ function startGame()
     bulletCount = 0
     zombieCount = 0
     
+    startTime = getTimer()
     spawnRateCurrent = spawnRateStart
     currentHealth = maxHealth
     zombieTarget = player
@@ -357,9 +361,12 @@ function onCollision( event )
         local bullet = event.object1.isBullet and event.object1 or event.object2.isBullet and event.object2 or nil
         local zombie = event.object1.isZombie and event.object1 or event.object2.isZombie and event.object2 or nil
         
+        -- Zombies can be shot anywhere, but player can only collide with zombies legs.
+        local correctCollision = player and event.element1 == event.element2 or false
+        
         if event.phase == "began" then
             -- player hits zombie.
-            if player and zombie and not zombie.isKilled then
+            if correctCollision and player and zombie and not zombie.isKilled then
                 playerDamage( zombie.damage )
                 -- If player is mid dash, then kill the zombie.
                 if player.isDashing then
@@ -393,7 +400,7 @@ function onCollision( event )
             
         elseif event.phase == "ended" then
             -- Stop the chomp timer if player got away.
-            if player and zombie then
+            if correctCollision and player and zombie then
                 if timerChomp[zombie.id] then
                     timer.cancel( timerChomp[zombie.id] )
                 end
@@ -408,6 +415,7 @@ function spawnZombie()
     zombieList[zombieCount] = zombie.new( groupCharacters, ground, spawnDistance, filterZombie, spriteListener )
     zombieList[zombieCount].id = zombieCount
     
+    spawnRateCurrent = max( spawnRateMax, spawnRateCurrent - (getTimer()-startTime)*0.001 )
     timerZombie = timer.performWithDelay( spawnRateCurrent+random(-spawnVariance,spawnVariance), spawnZombie )
 end
 
