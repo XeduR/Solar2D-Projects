@@ -64,6 +64,7 @@ local chompTime = 500
 -- Black screen cover transition time.
 local cleanupTime = 3000
 
+local unarmedText = "Pick up a weapon or dash to attack!"
 local weaponStats = require( "data.weaponStats" )
 
 -- filterPlayer: collides with zombie & ground.
@@ -122,7 +123,7 @@ local gameState = "menu"
 local instructions, instructionsShadow
 local startPrompt, startPromptShadow
 local weaponText, weaponTextShadow
-local leaderboard = {}
+local leaderboard, leaderboardShadow
 local groundLine = {}
 local zombieList = {}
 local bulletList = {}
@@ -150,6 +151,8 @@ end
 ---------------------------------------------------------------------------
 
 -- Functions.
+
+-- For making an ellipse out of individual "scan lines".
 local function calculateGroundLines( y, width, height )
     return sqrt( width*width*(1-(y*y)/(height*height)) )
 end
@@ -232,63 +235,81 @@ local function shoot( event )
             local time = getTimer()
             
             -- Check for bullets and weapon cooldown.
-            if magazine[weapon] <= 0 then
-                -- play audio, empty clip.
-                
-            elseif time > lastFired[weapon] + data.cooldown then
-                lastFired[weapon] = time
-                
-                -- Shake the game.
-                sceneGroup.x, sceneGroup.y = random(-data.shake,data.shake), random(-data.shake,data.shake)
-                transition.to( sceneGroup, { time=150, x=0, y=0, transition=easing.inOutBack })
-                groupCharacters.x, groupCharacters.y = random(-data.shake,data.shake)*0.5, random(-data.shake,data.shake)*0.5
-                transition.to( groupCharacters, { time=150, x=0, y=0, transition=easing.inOutBack })
-                groupBackground.x, groupBackground.y = random(-data.shake,data.shake)*0.5, random(-data.shake,data.shake)*0.5
-                transition.to( groupBackground, { time=150, x=0, y=0, transition=easing.inOutBack })
-                
-                for i = 1, data.shotsFired do
-                    bulletCount = bulletCount+1
+            if data then
+                if magazine[weapon] <= 0 then
+                    -- play audio, empty clip.
                     
-                    -- Shooting the bullets from the barrel of the gun instead of the player's center.
-                    local x = activeWeapon[1].x + activeWeapon[1].width*0.5 + activeWeapon.x
-                    local y = player.y+activeWeapon.y+activeWeapon.yOffset
+                elseif time > lastFired[weapon] + data.cooldown then
+                    lastFired[weapon] = time
                     
-                    local bullet = display.newCircle( groupCharacters, x, y, 4 )
-                    bullet:setFillColor( 251/255, 245/255, 239/255 )
-                    physics.addBody( bullet, {
-                        radius = bullet.width*0.5,
-                        filter = filterBullet,
-                        isSensor = true,
-                    })
-                    bullet.id = bulletCount
-                    bullet.isBullet = true
-                    bullet.damage = data.damage
-                    bullet.penetration = data.penetration
-                    bullet.damage = data.damage
+                    -- Shake the game.
+                    sceneGroup.x, sceneGroup.y = random(-data.shake,data.shake), random(-data.shake,data.shake)
+                    transition.to( sceneGroup, { time=150, x=0, y=0, transition=easing.inOutBack })
+                    groupCharacters.x, groupCharacters.y = random(-data.shake,data.shake)*0.5, random(-data.shake,data.shake)*0.5
+                    transition.to( groupCharacters, { time=150, x=0, y=0, transition=easing.inOutBack })
+                    groupBackground.x, groupBackground.y = random(-data.shake,data.shake)*0.5, random(-data.shake,data.shake)*0.5
+                    transition.to( groupBackground, { time=150, x=0, y=0, transition=easing.inOutBack })
                     
-                    local a = atan2( event.y-bullet.y, event.x-bullet.x )
-                    if data.spread > 0 then
-                        a = a + rad(random( -data.spread, data.spread ))
-                    end
-                    bullet:setLinearVelocity( cos(a)*bulletSpeed, sin(a)*bulletSpeed )
-                    
-                    bulletList[bulletCount] = bullet
-                    
-                    timer.performWithDelay( 1000, function()
-                        if bullet then
-                            display.remove(bullet)
-                            bulletList[bullet.id] = nil
+                    for i = 1, data.shotsFired do
+                        bulletCount = bulletCount+1
+                        
+                        -- Shooting the bullets from the barrel of the gun instead of the player's center.
+                        local x = activeWeapon[1].x + activeWeapon[1].width*0.5 + activeWeapon.x
+                        local y = player.y+activeWeapon.y+activeWeapon.yOffset
+                        
+                        local bullet = display.newCircle( groupCharacters, x, y, 4 )
+                        bullet:setFillColor( 251/255, 245/255, 239/255 )
+                        physics.addBody( bullet, {
+                            radius = bullet.width*0.5,
+                            filter = filterBullet,
+                            isSensor = true,
+                        })
+                        bullet.id = bulletCount
+                        bullet.isBullet = true
+                        bullet.damage = data.damage
+                        bullet.penetration = data.penetration
+                        bullet.damage = data.damage
+                        
+                        local a = atan2( event.y-bullet.y, event.x-bullet.x )
+                        if data.spread > 0 then
+                            a = a + rad(random( -data.spread, data.spread ))
                         end
-                    end )
+                        bullet:setLinearVelocity( cos(a)*bulletSpeed, sin(a)*bulletSpeed )
+                        
+                        bulletList[bulletCount] = bullet
+                        
+                        timer.performWithDelay( 1000, function()
+                            if bullet then
+                                display.remove(bullet)
+                                bulletList[bullet.id] = nil
+                            end
+                        end )
+                    end
+                    
+                    for i = 1, 2 do
+                        activeWeapon[i]:setSequence( weapon.."Fire" )
+                        activeWeapon[i]:play()
+                    end
+                    
+                    -- Doing a lazy way of automatically selecting
+                    -- another weapon when running out of bullets.
+                    local updateDelay = gunshotTime
+                    magazine[weapon] = magazine[weapon]-1
+                    if magazine[weapon] == 0 then
+                        local alternativeWeapon = { "pistol", "shotgun", "rifle" }
+                        updateDelay = 0
+                        
+                        for i = 1, 3 do
+                            if magazine[alternativeWeapon[i]] > 0 then
+                                weapon = alternativeWeapon[i]
+                                break
+                            end
+                            weapon = unarmedText
+                        end
+                    end
+                    
+                    updateWeapons( weapon, updateDelay )
                 end
-                
-                magazine[weapon] = magazine[weapon]-1
-                for i = 1, 2 do
-                    activeWeapon[i]:setSequence( weapon.."Fire" )
-                    activeWeapon[i]:play()
-                end
-                
-                updateWeapons( weapon, gunshotTime )
             end
         elseif gameState == "menu" then
             startGame()
@@ -422,7 +443,7 @@ function startGame()
         lastFired[i] = 0
         magazine[i] = 0
     end
-    updateWeapons("Pick up a weapon or dash to attack!")
+    updateWeapons( unarmedText )
     
     bulletCount = 0
     zombieCount = 1
@@ -603,15 +624,23 @@ function scene:create( event )
     local title = display.newImageRect( groupUI, "assets/images/title.png", 512, 128 )
     title.x, title.y = screen.centerX, screen.minY
     title.anchorY = 0
+    title.xScale, title.yScale = 0.8, 0.8
+    
+    local leaderboardText = "Highscore: " .. savedata.highscore .. " - Previous score: 0"
+    local leaderboardFontSize = 20
+    local leaderboardX = title.x
+    local leaderboardY = title.y + title.height - 16
+    
+    leaderboardShadow = display.newText( groupUI, leaderboardText, leaderboardX+4, leaderboardY+2, "assets/fonts/slkscr.ttf", leaderboardFontSize )
+    leaderboardShadow:setFillColor( 73/255, 77/255, 126/255 )
+    leaderboard = display.newText( groupUI, leaderboardText, leaderboardX, leaderboardY, "assets/fonts/slkscr.ttf", leaderboardFontSize )
+    leaderboard:setFillColor( 251/255, 245/255, 239/255 )
+    
     
     local watermark = display.newImageRect( groupUI, "assets/images/launchScreen/XeduR.png", 256, 128 )
     watermark.x, watermark.y = screen.maxX + 20, screen.minY
     watermark.anchorX, watermark.anchorY = 1, 0
-    
-    -- leaderboard
-    
-    -- local 
-    -- 
+
     
     local instructionsText = "controls:\n\n[mouse] - aim & shoot\n[1,2,3] = select weapon\n[w/a/s/d] - move\n[space] - dash"
     local instructionsFontSize = 22
@@ -764,6 +793,7 @@ function scene:create( event )
     sceneGroup:insert(groupCharacters)
     sceneGroup:insert(groupUI)
     sceneGroup:insert(groupPrompt)
+    sceneGroup:insert(groupGuide)
 end
 
 ---------------------------------------------------------------------------
