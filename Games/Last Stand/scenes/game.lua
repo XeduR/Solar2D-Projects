@@ -98,18 +98,19 @@ local playerSheet = graphics.newImageSheet( "assets/images/player.png", {
 local gunshotTime = 100
 local gunAnimation = {
     { name="pistol", frames={ 1 }, time=gunshotTime, loopCount=1 },
-    { name="pistolFire", frames={ 4 }, time=gunshotTime, loopCount=1 },
-    { name="shotgun", frames={ 2 }, time=gunshotTime, loopCount=1 },
-    { name="shotgunFire", frames={ 4 }, time=gunshotTime, loopCount=1 },
-    { name="rifle", frames={ 3 }, time=gunshotTime, loopCount=1 },
-    { name="rifleFire", frames={ 4 }, time=gunshotTime, loopCount=1 },
-    { name="empty", frames={ 4 }, loopCount=1 },
+    { name="pistolFire", frames={ 1,2,2,3,1 }, time=gunshotTime, loopCount=1 },
+    { name="shotgun", frames={ 4 }, time=gunshotTime, loopCount=1 },
+    { name="shotgunFire", frames={ 4,5,5,6,4 }, time=gunshotTime, loopCount=1 },
+    { name="rifle", frames={ 7 }, time=gunshotTime, loopCount=1 },
+    { name="rifleFire", frames={ 7,8,8,9,7 }, time=gunshotTime, loopCount=1 },
+    { name="empty", frames={ 10 }, loopCount=1 },
 }
 
+local gunWidth = 64
 local gunSheet = graphics.newImageSheet( "assets/images/weapons.png", {
-    width = 64,
-    height = 32,
-    numFrames = 4
+    width = gunWidth,
+    height = 24,
+    numFrames = 10
 } )
 
 
@@ -176,21 +177,24 @@ end
 
 
 local function trackWeapon( event )
-    local a = atan2( event.y - player.y, event.x - player.x )
-    local x, y = cos(a)*activeWeapon.length - activeWeapon.xStart, sin(a)*activeWeapon.length - activeWeapon.yStart
-    activeWeapon.x, activeWeapon.y = x, y
-    for i = 1, 2 do
-        activeWeapon[i].path.x3, activeWeapon[i].path.x4, activeWeapon[i].path.y3, activeWeapon[i].path.y4 = x, x, y, y
-    end
-    -- Toggle the weapon visibility based on cursor position.
-    if event.y < player.y and not activeWeapon.belowPlayer then
-        activeWeapon.belowPlayer = true
-        activeWeapon[1].isVisible = true
-        activeWeapon[2].isVisible = false
-    elseif event.y >= player.y and activeWeapon.belowPlayer then
-        activeWeapon.belowPlayer = false
-        activeWeapon[1].isVisible = false
-        activeWeapon[2].isVisible = true
+    local currentWeapon = activeWeapon.position[weapon]
+    if currentWeapon then
+        local a = atan2( event.y - player.y, event.x - player.x )
+        local x, y = cos(a)*currentWeapon.length - currentWeapon.xStart, sin(a)*currentWeapon.length - currentWeapon.yStart
+        activeWeapon.x, activeWeapon.y = x, y
+        for i = 1, 2 do
+            activeWeapon[i].path.x3, activeWeapon[i].path.x4, activeWeapon[i].path.y3, activeWeapon[i].path.y4 = x, x, y, y
+        end
+        -- Toggle the weapon visibility based on cursor position.
+        if event.y < player.y and not activeWeapon.belowPlayer then
+            activeWeapon.belowPlayer = true
+            activeWeapon[1].isVisible = true
+            activeWeapon[2].isVisible = false
+        elseif event.y >= player.y and activeWeapon.belowPlayer then
+            activeWeapon.belowPlayer = false
+            activeWeapon[1].isVisible = false
+            activeWeapon[2].isVisible = true
+        end
     end
 end
 
@@ -225,6 +229,9 @@ local function updateWeapons( weaponType, delay )
     else
         text = weaponType
         weaponText:setFillColor( 251/255, 245/255, 239/255 )
+        
+        activeWeapon[1].isVisible = false
+        activeWeapon[2].isVisible = false
     end
     weaponTextShadow.text = text
     weaponText.text = text
@@ -261,7 +268,13 @@ local function shoot( event )
                         local y = player.y+activeWeapon.y+activeWeapon.yOffset
                         
                         local bullet = display.newCircle( groupCharacters, x, y, 4 )
-                        bullet:setFillColor( 251/255, 245/255, 239/255 )
+                        if weapon == "pistol" then
+                            bullet:setFillColor( 251/255, 245/255, 239/255 )
+                        elseif weapon == "shotgun" then
+                            bullet:setFillColor( 198/255, 159/255, 165/255 )
+                        else
+                            bullet:setFillColor( 242/255, 211/255, 171/255 )
+                        end
                         physics.addBody( bullet, {
                             radius = bullet.width*0.5,
                             filter = filterBullet,
@@ -876,9 +889,13 @@ function scene:create( event )
     
     -- Properties for quadrilateral distortion.
     activeWeapon.yOffset = -player.height*0.5
-    activeWeapon.length = activeWeapon[1].width
-    activeWeapon.xStart = activeWeapon[1].width
-    activeWeapon.yStart = 0
+    activeWeapon.position = {}
+    for i, v in pairs( weaponStats ) do
+        activeWeapon.position[i] = {}
+        activeWeapon.position[i].length = gunWidth
+        activeWeapon.position[i].xStart = gunWidth
+        activeWeapon.position[i].yStart = 0
+    end
     
     sceneGroup:insert(groupBackground)
     sceneGroup:insert(groupCharacters)

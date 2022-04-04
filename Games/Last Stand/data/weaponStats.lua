@@ -9,6 +9,7 @@ return {
         cooldown = 150,
         rarity = 0.55,
         shake = 5,
+        barrelOffsetX = 36,
         inventoryKey = "1",
     },
     ["shotgun"] = {
@@ -20,6 +21,7 @@ return {
         cooldown = 350,
         rarity = 0.30,
         shake = 10,
+        barrelOffsetX = 58,
         inventoryKey = "2",
     },
     ["rifle"] = {
@@ -31,6 +33,7 @@ return {
         cooldown = 600,
         rarity = 0.15,
         shake = 15,
+        barrelOffsetX = 60,
         inventoryKey = "3",
     },
 }
