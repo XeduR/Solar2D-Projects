@@ -27,6 +27,8 @@ physics.setGravity( 0, 0 )
 -- Forward declarations & variables.
 local getTimer = system.getTimer
 local random = math.random
+local floor = math.floor
+local fmod = math.fmod
 local sqrt = math.sqrt
 local atan2 = math.atan2
 local cos = math.cos
@@ -140,6 +142,7 @@ local timerZombie
 local spawnZombie
 local zombieTarget
 local startGame
+local highscoreFormatted
 
 local magazine, inventoryKey, lastFired = {}, {}, {}
 for i, v in pairs( weaponStats ) do
@@ -318,7 +321,45 @@ local function shoot( event )
 end
 
 
+local function updateScore( isGameover )
+    if gameState ~= "gameover" then
+        local gameTime = getTimer() - startTime
+        local gameTimeFormatted = floor(gameTime*0.001) .. ":" .. floor(fmod(gameTime,100))
+        
+        local leaderboardText
+
+        if isGameover then
+            local highscore = savedata.highscore >= gameTime and savedata.highscore or gameTime
+            if gameTime == highscore then
+                savedata.highscore = gameTime
+                loadsave.save( savedata, "data.json" )
+                
+                highscoreFormatted = gameTimeFormatted
+                
+                leaderboardText = "New highscore: " .. highscoreFormatted .. " - Previous time: " .. gameTimeFormatted
+                
+                local rotation = random(-5,5)
+                transition.from( leaderboardShadow, { time=250, xScale=1.5, yScale=1.5, rotation=rotation } )
+                transition.from( leaderboard, { time=250, xScale=1.5, yScale=1.5, rotation=rotation } )
+            else
+                leaderboardText = "Highscore: " .. highscoreFormatted .. " - Previous time: " .. gameTimeFormatted
+            end
+            
+        else
+            leaderboardText = "Highscore: " .. highscoreFormatted .. " - Current time: " .. gameTimeFormatted
+            
+        end
+
+        leaderboardShadow.text = leaderboardText
+        leaderboard.text = leaderboardText
+    end
+end
+
+
+
 local function update()
+    updateScore()
+    
     for i = 1, 2 do
         activeWeapon[i].x, activeWeapon[i].y = player.x, player.y + activeWeapon.yOffset
     end
@@ -362,6 +403,7 @@ end
 
 local function stopGame()
     if gameState == "game" then
+        updateScore( true )
         gameState = "gameover"
         
         Runtime:removeEventListener( "collision", onCollision )
@@ -390,8 +432,6 @@ local function stopGame()
         end )
         
         transition.to( cover, { time=cleanupTime, alpha=1, onComplete=cleanup })
-        transition.to( instructionsShadow, { time=cleanupTime*0.5, alpha=1 })
-        transition.to( instructions, { time=cleanupTime*0., alpha=1 })
         transition.to( weaponTextShadow, { time=cleanupTime*0.5, alpha=0 })
         transition.to( weaponText, { time=cleanupTime*0., alpha=0 })
         hurt.alpha = 0
@@ -475,8 +515,6 @@ function startGame()
     zombieList[zombieCount].isVisible = false
     
     transition.to( cover, { time=cleanupTime, alpha=0 })
-    transition.to( instructionsShadow, { time=cleanupTime*0.5, alpha=0 })
-    transition.to( instructions, { time=cleanupTime*0., alpha=0 })
     transition.to( weaponTextShadow, { time=cleanupTime*0.5, alpha=1 })
     transition.to( weaponText, { time=cleanupTime*0., alpha=1 })
     hurt.alpha = 0
@@ -614,19 +652,27 @@ function scene:create( event )
             }
             loadsave.save( savedata, "data.json" )
         end
+        
+        highscoreFormatted = floor(savedata.highscore*0.001) .. ":" .. floor(fmod(savedata.highscore,100))
     end
+    
+    -------------------
     
     local bgSensor = display.newRect( groupBackground, screen.centerX, screen.centerY, screen.width, screen.height )
     bgSensor.isHitTestable = true
     bgSensor.isVisible = false
     bgSensor:addEventListener( "touch", shoot )
     
+    -------------------
+    
     local title = display.newImageRect( groupUI, "assets/images/title.png", 512, 128 )
     title.x, title.y = screen.centerX, screen.minY
     title.anchorY = 0
     title.xScale, title.yScale = 0.8, 0.8
     
-    local leaderboardText = "Highscore: " .. savedata.highscore .. " - Previous score: 0"
+    -------------------
+    
+    local leaderboardText = "Highscore: " .. highscoreFormatted
     local leaderboardFontSize = 20
     local leaderboardX = title.x
     local leaderboardY = title.y + title.height - 16
@@ -636,22 +682,26 @@ function scene:create( event )
     leaderboard = display.newText( groupUI, leaderboardText, leaderboardX, leaderboardY, "assets/fonts/slkscr.ttf", leaderboardFontSize )
     leaderboard:setFillColor( 251/255, 245/255, 239/255 )
     
+    -------------------
     
     local watermark = display.newImageRect( groupUI, "assets/images/launchScreen/XeduR.png", 256, 128 )
     watermark.x, watermark.y = screen.maxX + 20, screen.minY
     watermark.anchorX, watermark.anchorY = 1, 0
-
     
-    local instructionsText = "controls:\n\n[mouse] - aim & shoot\n[1,2,3] = select weapon\n[w/a/s/d] - move\n[space] - dash"
+    -------------------
+    
+    local instructionsText = "controls:\n\n[mouse] - aim & shoot\n[1,2,3] = select weapon\n[w/a/s/d] - move\n[space] - dash\n\n\nGoal:\n\npick up weapons to kill enemies. Delay the inevitable for as long as you can."
     local instructionsFontSize = 22
-    local instructionsX = screen.minX + 10
+    local instructionsX = 10
     local instructionsY = screen.minY + 110
+    local instructionsWidth = 320
     
     instructionsShadow = display.newText({
-        parent = groupUI,
+        parent = groupGuide,
         text =  instructionsText,
         x = instructionsX,
         y = instructionsY + 2,
+        width = instructionsWidth,
         align = "left",
         fontSize = instructionsFontSize,
         font = "assets/fonts/slkscr.ttf"
@@ -660,10 +710,11 @@ function scene:create( event )
     instructionsShadow.anchorX, instructionsShadow.anchorY = 0, 0
     
     instructions = display.newText({
-        parent = groupUI,
+        parent = groupGuide,
         text =  instructionsText,
         x = instructionsX,
         y = instructionsY,
+        width = instructionsWidth,
         align = "left",
         fontSize = instructionsFontSize,
         font = "assets/fonts/slkscr.ttf"
@@ -671,11 +722,15 @@ function scene:create( event )
     instructions:setFillColor( 251/255, 245/255, 239/255 )
     instructions.anchorX, instructions.anchorY = 0, 0
     
+    groupGuide.xHidden = screen.minX - groupGuide.width*1.5
+    groupGuide.x = groupGuide.xHidden
+    
+    -------------------
     
     local promptText = "Press anything to start."
     local promptFontSize = 40
     
-    groupPrompt.x, groupPrompt.y = screen.centerX, screen.centerY + 60
+    groupPrompt.x, groupPrompt.y = screen.centerX, screen.centerY + 100
     
     startPromptShadow = display.newText( groupPrompt, promptText, 4, 2, "assets/fonts/slkscr.ttf", promptFontSize )
     startPromptShadow:setFillColor( 73/255, 77/255, 126/255 )
@@ -684,7 +739,9 @@ function scene:create( event )
     
     -- Let the transition play constantly, just hide it later.
     transition.blink( groupPrompt, { time=2500} )
-
+    
+    -------------------
+    
     local weaponX = screen.centerX
     local weaponY = screen.maxY - 46
     
@@ -694,6 +751,8 @@ function scene:create( event )
     weaponText = display.newText( groupUI, "", weaponX, weaponY, "assets/fonts/slkscr.ttf", 26 )
     weaponText:setFillColor( 251/255, 245/255, 239/255 )
     weaponText.alpha = 0
+    
+    -------------------
     
     local buttonAudio = display.newRect( groupUI, screen.minX + 10, screen.minY + 10, 64, 64 )
     buttonAudio.anchorX, buttonAudio.anchorY = 0, 0
@@ -726,6 +785,7 @@ function scene:create( event )
         return true
     end )
     
+    -------------------
     
     local buttonReset = display.newImageRect( groupUI, "assets/images/restart.png", 64, 64 )
     buttonReset.x, buttonReset.y = buttonAudio.x + buttonAudio.width + 10, buttonAudio.y
@@ -735,7 +795,30 @@ function scene:create( event )
             playerDamage( maxHealth )
         end
         return true
-    end )    
+    end )
+    
+    -------------------
+    
+    local buttonInfo
+    local function showGuide()
+        groupGuide.isActive = not groupGuide.isActive
+        buttonInfo.blockTouch = false
+    end
+    
+    buttonInfo = display.newImageRect( groupUI, "assets/images/info.png", 64, 64 )
+    buttonInfo.x, buttonInfo.y = buttonReset.x + buttonReset.width + 10, buttonReset.y
+    buttonInfo.anchorX, buttonInfo.anchorY = 0, 0
+    buttonInfo.blockTouch = false
+    buttonInfo:addEventListener( "touch", function(event)
+        if event.phase == "began" and not buttonInfo.blockTouch then
+            buttonInfo.blockTouch = true
+            local x = groupGuide.isActive and groupGuide.xHidden or screen.minX
+            transition.to( groupGuide, { time=500, x=x, transition=easing.inOutBack, onComplete=showGuide } )
+        end
+        return true
+    end )
+    
+    -------------------
     
     -- Create the ground using jagged lines to give it a rougher look.
     ground = display.newGroup()
