@@ -59,20 +59,28 @@ local zombieAnimation = {
 
 local zombieSheet = {
     ["normal"] = graphics.newImageSheet( "assets/images/zombieNormal.png", {
-        width = 64,
+        width = 84,
         height = 128,
         numFrames = 12
     }),
     ["fast"] = graphics.newImageSheet( "assets/images/zombieFast.png", {
-        width = 64,
+        width = 84,
         height = 128,
         numFrames = 12
     }),
     ["tank"] = graphics.newImageSheet( "assets/images/zombieTank.png", {
-        width = 64,
+        width = 84,
         height = 128,
         numFrames = 12
     }),
+}
+
+-- An absolutely terrible drop rate/table implementation.
+local weaponStats = require( "data.weaponStats" )
+local dropTable = {
+    { name="pistol", rate=weaponStats.pistol.rarity },
+    { name="shotgun", rate=weaponStats.pistol.rarity + weaponStats.shotgun.rarity },
+    { name="rifle", rate=weaponStats.pistol.rarity + weaponStats.shotgun.rarity + weaponStats.rifle.rarity }
 }
 
 local random = math.random
@@ -80,6 +88,7 @@ local atan2 = math.atan2
 local cos = math.cos
 local sin = math.sin
 local pi2 = math.pi*2
+
 
 function zombie.new( parent, ground, spawnDistance, filter, spriteListener, isFirstZombie )
     local angle = random()*pi2
@@ -101,20 +110,21 @@ function zombie.new( parent, ground, spawnDistance, filter, spriteListener, isFi
     local newZombie = display.newSprite( parent, zombieSheet[t], zombieAnimation[t] )
     newZombie.x, newZombie.y = ground.x+x, ground.y+y
     newZombie.anchorY = 1
-    newZombie:setFillColor(1,0,0)
     newZombie:addEventListener( "sprite", spriteListener )
     
     -- Just tossing drop rates for guns in here.
     if isFirstZombie or random() <= data.dropRate then
         r = random()
-        local drop
-        if r < 0.4 then
-            drop = "pistol"
-        elseif r < 0.7 then
-            drop = "shotgun"
-        else
-            drop = "rifle"
+        
+        local n = 1
+        for i = 1, 3 do
+            if r <= dropTable[i].rate then
+                n = i
+                break
+            end
         end
+        local drop = dropTable[n].name
+        
         newZombie.weapon = display.newImage( parent, "assets/images/"..drop..".png" )
         newZombie.weapon.x, newZombie.weapon.y = newZombie.x, newZombie.y - newZombie.height*0.5
         newZombie.weapon.name = drop

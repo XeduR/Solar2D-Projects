@@ -64,39 +64,7 @@ local chompTime = 500
 -- Black screen cover transition time.
 local cleanupTime = 3000
 
-local weaponStats = {
-    -- spread is in degrees to both directions.
-    ["pistol"] = {
-        damage = 2,
-        penetration = 1,
-        spread = 1,
-        shotsFired = 1,
-        clipSize = 18,
-        cooldown = 150,
-        shake = 5,
-        inventoryKey = "1",
-    },
-    ["shotgun"] = {
-        damage = 1,
-        penetration = 1,
-        spread = 15,
-        shotsFired = 8,
-        clipSize = 6,
-        cooldown = 350,
-        shake = 10,
-        inventoryKey = "2",
-    },
-    ["rifle"] = {
-        damage = 3,
-        penetration = 3,
-        spread = 2,
-        shotsFired = 1,
-        clipSize = 9,
-        cooldown = 600,
-        shake = 15,
-        inventoryKey = "3",
-    },
-}
+local weaponStats = require( "data.weaponStats" )
 
 -- filterPlayer: collides with zombie & ground.
 local filterPlayer = { categoryBits=1, maskBits=6 }
@@ -108,18 +76,18 @@ local filterGround = { categoryBits=4, maskBits=1 }
 local filterBullet = { categoryBits=8, maskBits=2 }
 
 
-local walkAnimSpeed = 500
-local deathAnimSpeed = 250
+local walkAnimSpeed = 300
+local deathAnimSpeed = 200
 local playerAnimation = {
     { name="downIdle", frames={ 1 }, loopCount=1 },
-    { name="downRun", frames={ 2,3,4,5 }, time=walkAnimSpeed },
-    -- { name="upIdle", frames={ 5 }, loopCount=1 },
-    { name="upRun", frames={ 6,7,8 }, time=walkAnimSpeed },
+    { name="downRun", frames={ 1,2,3,4 }, time=walkAnimSpeed },
+    { name="upIdle", frames={ 5 }, loopCount=1 },
+    { name="upRun", frames={ 5,6,7,8 }, time=walkAnimSpeed },
     { name="death", frames={ 9,10,11,12 }, loopCount=1, time=deathAnimSpeed },
 }
 
 local playerSheet = graphics.newImageSheet( "assets/images/player.png", {
-    width = 64,
+    width = 84,
     height = 128,
     numFrames = 12
 } )

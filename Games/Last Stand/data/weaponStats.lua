@@ -1,0 +1,36 @@
+return {
+    -- spread is in degrees to both directions.
+    ["pistol"] = {
+        damage = 2,
+        penetration = 1,
+        spread = 1,
+        shotsFired = 1,
+        clipSize = 18,
+        cooldown = 150,
+        rarity = 0.55,
+        shake = 5,
+        inventoryKey = "1",
+    },
+    ["shotgun"] = {
+        damage = 1,
+        penetration = 1,
+        spread = 15,
+        shotsFired = 8,
+        clipSize = 6,
+        cooldown = 350,
+        rarity = 0.30,
+        shake = 10,
+        inventoryKey = "2",
+    },
+    ["rifle"] = {
+        damage = 3,
+        penetration = 3,
+        spread = 2,
+        shotsFired = 1,
+        clipSize = 9,
+        cooldown = 600,
+        rarity = 0.15,
+        shake = 15,
+        inventoryKey = "3",
+    },
+}
