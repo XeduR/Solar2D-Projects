@@ -92,6 +92,24 @@ local playerSheet = graphics.newImageSheet( "assets/images/player.png", {
     numFrames = 12
 } )
 
+local gunshotTime = 100
+local gunAnimation = {
+    { name="pistol", frames={ 1 }, time=gunshotTime, loopCount=1 },
+    { name="pistolFire", frames={ 4 }, time=gunshotTime, loopCount=1 },
+    { name="shotgun", frames={ 2 }, time=gunshotTime, loopCount=1 },
+    { name="shotgunFire", frames={ 4 }, time=gunshotTime, loopCount=1 },
+    { name="rifle", frames={ 3 }, time=gunshotTime, loopCount=1 },
+    { name="rifleFire", frames={ 4 }, time=gunshotTime, loopCount=1 },
+    { name="empty", frames={ 4 }, loopCount=1 },
+}
+
+local gunSheet = graphics.newImageSheet( "assets/images/weapons.png", {
+    width = 64,
+    height = 32,
+    numFrames = 4
+} )
+
+
 local groupBackground = display.newGroup()
 local groupCharacters = display.newGroup()
 local groupUI = display.newGroup()
@@ -111,6 +129,7 @@ local bulletList = {}
 local bulletCount
 local zombieCount
 
+local activeWeapon = {}
 local player
 local ground
 local key
@@ -150,12 +169,41 @@ local function getVerticesEllipse( n, width, height )
 end
 
 
+local function trackWeapon( event )
+    local a = atan2( event.y - player.y, event.x - player.x )
+    local x, y = cos(a)*activeWeapon.length - activeWeapon.xStart, sin(a)*activeWeapon.length - activeWeapon.yStart
+    activeWeapon.x, activeWeapon.y = x, y
+    for i = 1, 2 do
+        activeWeapon[i].path.x3, activeWeapon[i].path.x4, activeWeapon[i].path.y3, activeWeapon[i].path.y4 = x, x, y, y
+    end
+    -- Toggle the weapon visibility based on cursor position.
+    if event.y < player.y and not activeWeapon.belowPlayer then
+        activeWeapon.belowPlayer = true
+        activeWeapon[1].isVisible = true
+        activeWeapon[2].isVisible = false
+    elseif event.y >= player.y and activeWeapon.belowPlayer then
+        activeWeapon.belowPlayer = false
+        activeWeapon[1].isVisible = false
+        activeWeapon[2].isVisible = true
+    end
+end
+
+
 local function resetDash()
     player.canDash = true
 end
 
 
-local function updateWeapons( weaponType )
+local function animateGun()
+    local sequence = magazine[weapon] > 0 and weapon or "empty"
+    for i = 1, 2 do
+        activeWeapon[i]:setSequence( sequence )
+        activeWeapon[i]:play()
+    end
+end
+
+
+local function updateWeapons( weaponType, delay )
     local text
     if weaponStats[weaponType] then
         text = weaponType .. " ["..weaponStats[weaponType].inventoryKey.."] - " .. magazine[weaponType] .. "/" .. weaponStats[weaponType].clipSize
@@ -165,6 +213,9 @@ local function updateWeapons( weaponType )
         else
             weaponText:setFillColor( 251/255, 245/255, 239/255 )
         end
+        
+        timer.performWithDelay( delay or 0, animateGun )
+        
     else
         text = weaponType
         weaponText:setFillColor( 251/255, 245/255, 239/255 )
@@ -181,7 +232,10 @@ local function shoot( event )
             local time = getTimer()
             
             -- Check for bullets and weapon cooldown.
-            if magazine[weapon] > 0 and time > lastFired[weapon] + data.cooldown then
+            if magazine[weapon] <= 0 then
+                -- play audio, empty clip.
+                
+            elseif time > lastFired[weapon] + data.cooldown then
                 lastFired[weapon] = time
                 
                 -- Shake the game.
@@ -195,7 +249,11 @@ local function shoot( event )
                 for i = 1, data.shotsFired do
                     bulletCount = bulletCount+1
                     
-                    local bullet = display.newCircle( groupCharacters, player.x, player.y - player.height*0.5, 4 )
+                    -- Shooting the bullets from the barrel of the gun instead of the player's center.
+                    local x = activeWeapon[1].x + activeWeapon[1].width*0.5 + activeWeapon.x
+                    local y = player.y+activeWeapon.y+activeWeapon.yOffset
+                    
+                    local bullet = display.newCircle( groupCharacters, x, y, 4 )
                     bullet:setFillColor( 251/255, 245/255, 239/255 )
                     physics.addBody( bullet, {
                         radius = bullet.width*0.5,
@@ -223,8 +281,14 @@ local function shoot( event )
                         end
                     end )
                 end
+                
                 magazine[weapon] = magazine[weapon]-1
-                updateWeapons( weapon )
+                for i = 1, 2 do
+                    activeWeapon[i]:setSequence( weapon.."Fire" )
+                    activeWeapon[i]:play()
+                end
+                
+                updateWeapons( weapon, gunshotTime )
             end
         elseif gameState == "menu" then
             startGame()
@@ -234,6 +298,10 @@ end
 
 
 local function update()
+    for i = 1, 2 do
+        activeWeapon[i].x, activeWeapon[i].y = player.x, player.y + activeWeapon.yOffset
+    end
+    
     for i = 1,zombieCount do
         if not zombieList[i].isKilled then
             zombieList[i].move( zombieTarget )
@@ -276,6 +344,12 @@ local function stopGame()
         gameState = "gameover"
         
         Runtime:removeEventListener( "collision", onCollision )
+        
+        Runtime:removeEventListener( "mouse", trackWeapon )
+        for i = 1, 2 do
+            activeWeapon[i].isVisible = false
+        end
+        
         player.isKilled = true
         zombieTarget = nil
         
@@ -364,6 +438,13 @@ function startGame()
     Runtime:addEventListener( "enterFrame", update )
     Runtime:addEventListener( "collision", onCollision )
     
+    Runtime:addEventListener( "mouse", trackWeapon )
+    for i = 1, 2 do
+        activeWeapon[i]:setSequence( "empty" )
+        activeWeapon[i]:play()
+        activeWeapon[i].isVisible = true
+    end
+    
     -- Quick and dirty trip to give the player a weapon at spawn.
     zombieList[zombieCount] = zombie.new( groupCharacters, ground, spawnDistance, filterZombie, spriteListener, true )
     zombieList[zombieCount].id = zombieCount
@@ -387,6 +468,7 @@ local function playerDamage( damage )
     local damage = type( damage ) == "table" and damage.source.damage or damage
     if not player.isKilled then
         currentHealth = currentHealth-damage
+        hurt.alpha = 0
         transition.from( hurt, { time=250, alpha=1 })
         if currentHealth <= 0 then
             player:setSequence("death")
@@ -659,7 +741,24 @@ function scene:create( event )
         -- Animate the dash somehow and show a countdown until dash is ready again.
         player.canDash = false
         timerDash = timer.performWithDelay( time, resetDash )
+    end    
+    
+    -- Create two weapons and place one of them behind the player, then switch their
+    -- visibility as the weapon passes behind the player. Lazy and dirty, but works.
+    for i = 1, 2 do
+        activeWeapon[i] = display.newSprite( groupCharacters, gunSheet, gunAnimation )
+        activeWeapon[i].x, activeWeapon[i].y = player.x, player.y - player.height*0.5
+        activeWeapon[i]:setSequence( "empty" )
+        activeWeapon[i]:play()
+        activeWeapon[i].anchorX = 0
     end
+    activeWeapon[1]:toBack()
+    
+    -- Properties for quadrilateral distortion.
+    activeWeapon.yOffset = -player.height*0.5
+    activeWeapon.length = activeWeapon[1].width
+    activeWeapon.xStart = activeWeapon[1].width
+    activeWeapon.yStart = 0
     
     sceneGroup:insert(groupBackground)
     sceneGroup:insert(groupCharacters)
