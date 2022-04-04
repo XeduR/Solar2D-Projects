@@ -41,37 +41,34 @@ local zombieType = {
 
 local zombieAnimation = {
     ["normal"] = {
-        { name="downRun", frames={ 2,3,4 }, time=zombieType["normal"].animWalkSpeed },
-        { name="upRun", frames={ 6,7,8 }, time=zombieType["normal"].animWalkSpeed },
-        { name="death", frames={ 9,10,11,12 }, loopCount=1, time=zombieType["normal"].animDeathSpeed },
+        { name="walk", frames={ 1,2,3,4 }, time=zombieType["normal"].animWalkSpeed },
+        { name="death", frames={ 5,6,7,8,9,10 }, loopCount=1, time=zombieType["normal"].animDeathSpeed },
     },
     ["fast"] = {
-        { name="downRun", frames={ 2,3,4 }, time=zombieType["fast"].animWalkSpeed },
-        { name="upRun", frames={ 6,7,8 }, time=zombieType["fast"].animWalkSpeed },
-        { name="death", frames={ 9,10,11,12 }, loopCount=1, time=zombieType["fast"].animDeathSpeed },
+        { name="walk", frames={ 1,2,3,4 }, time=zombieType["normal"].animWalkSpeed },
+        { name="death", frames={ 5,6,7,8,9,10 }, loopCount=1, time=zombieType["normal"].animDeathSpeed },
     },
     ["tank"] = {
-        { name="downRun", frames={ 2,3,4 }, time=zombieType["tank"].animWalkSpeed },
-        { name="upRun", frames={ 6,7,8 }, time=zombieType["tank"].animWalkSpeed },
-        { name="death", frames={ 9,10,11,12 }, loopCount=1, time=zombieType["tank"].animDeathSpeed },
+        { name="walk", frames={ 1,2,3,4 }, time=zombieType["normal"].animWalkSpeed },
+        { name="death", frames={ 5,6,7,8,9,10 }, loopCount=1, time=zombieType["normal"].animDeathSpeed },
     },
 }
 
 local zombieSheet = {
     ["normal"] = graphics.newImageSheet( "assets/images/zombieNormal.png", {
-        width = 84,
-        height = 128,
-        numFrames = 12
+        width = 50,
+        height = 50,
+        numFrames = 10
     }),
     ["fast"] = graphics.newImageSheet( "assets/images/zombieFast.png", {
-        width = 84,
-        height = 128,
-        numFrames = 12
+        width = 50,
+        height = 50,
+        numFrames = 10
     }),
     ["tank"] = graphics.newImageSheet( "assets/images/zombieTank.png", {
-        width = 84,
-        height = 128,
-        numFrames = 12
+        width = 50,
+        height = 50,
+        numFrames = 10
     }),
 }
 
@@ -111,6 +108,8 @@ function zombie.new( parent, ground, spawnDistance, filter, spriteListener, isFi
     newZombie.x, newZombie.y = ground.x+x, ground.y+y
     newZombie.anchorY = 1
     newZombie:addEventListener( "sprite", spriteListener )
+    newZombie:setSequence( "walk" )
+    newZombie:play()
     
     -- Just tossing drop rates for guns in here.
     if isFirstZombie or random() <= data.dropRate then
@@ -128,12 +127,13 @@ function zombie.new( parent, ground, spawnDistance, filter, spriteListener, isFi
         newZombie.weapon = display.newImage( parent, "assets/images/"..drop..".png" )
         newZombie.weapon.x, newZombie.weapon.y = newZombie.x, newZombie.y
         if drop == "pistol" then
-            newZombie.weapon.yOffset = -newZombie.height*0.2
+            newZombie.weapon.yOffset = -newZombie.height*0.4
         else
             newZombie.weapon.yOffset = -newZombie.height*0.35
         end        
         newZombie.weapon.name = drop
         newZombie.weapon.isWeapon = true
+        newZombie:toFront()
         
         newZombie.weapon.rotation = random( 60, 90 )
     end
@@ -163,13 +163,12 @@ function zombie.new( parent, ground, spawnDistance, filter, spriteListener, isFi
     newZombie.hp = data.hp
     newZombie.damage = data.damage
     
-    if isFirstZombie then
-        
-    else
+    if not isFirstZombie then
         transition.from( newZombie, { time=data.revealTime, alpha=0 } )
+        transition.from( newZombie.weapon, { time=data.revealTime, alpha=0 } )
     end
     
-    local xDirPrev, yDirPrev = 0, 0
+    local xDirPrev = 0
     
     function newZombie.move( target )
         if newZombie.isKilled then
@@ -183,17 +182,11 @@ function zombie.new( parent, ground, spawnDistance, filter, spriteListener, isFi
                 vx, vy = random(-10,10), random(-10,10)
             end
             
-            -- Keep track of current and previous directions.
-            local xDir, yDir = vx < 0 and -1 or 1, vy < 0 and -1 or 1
-            if xDir ~= xDirPrev or yDir ~= yDirPrev then
-                if yDir < 0 then
-                    newZombie:setSequence( "upRun" )
-                else
-                    newZombie:setSequence( "downRun" )
-                end
-                newZombie:play()
+            -- Keep track of current and previous direction.
+            local xDir = vx < 0 and -1 or 1
+            if xDir ~= xDirPrev then
                 newZombie.xScale = xDir
-                xDirPrev, yDirPrev = xDir, yDir
+                xDirPrev = xDir
             end
             
             if newZombie.weapon then

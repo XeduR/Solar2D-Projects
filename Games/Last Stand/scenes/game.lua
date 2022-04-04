@@ -82,17 +82,15 @@ local filterBullet = { categoryBits=8, maskBits=2 }
 local walkAnimSpeed = 300
 local deathAnimSpeed = 200
 local playerAnimation = {
-    { name="downIdle", frames={ 1 }, loopCount=1 },
-    { name="downRun", frames={ 1,2,3,4 }, time=walkAnimSpeed },
-    { name="upIdle", frames={ 5 }, loopCount=1 },
-    { name="upRun", frames={ 5,6,7,8 }, time=walkAnimSpeed },
-    { name="death", frames={ 9,10,11,12 }, loopCount=1, time=deathAnimSpeed },
+    { name="idle", frames={ 1 }, loopCount=1 },
+    { name="walk", frames={ 1,2,3,4 }, time=walkAnimSpeed },
+    { name="death", frames={ 5,6,7,8,9,10 }, loopCount=1, time=deathAnimSpeed },
 }
 
 local playerSheet = graphics.newImageSheet( "assets/images/player.png", {
-    width = 84,
-    height = 128,
-    numFrames = 12
+    width = 50,
+    height = 50,
+    numFrames = 10
 } )
 
 local gunshotTime = 100
@@ -412,6 +410,10 @@ local function cleanup()
     
     gameState = "menu"
     groupPrompt.isVisible = true
+    
+    player:setSequence( "idle" )
+    player:play()
+    player:pause()
 end
 
 

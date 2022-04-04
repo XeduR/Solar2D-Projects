@@ -51,16 +51,16 @@ local function update()
         if hasMoved then
             hasMoved = false
             player:setLinearVelocity( 0, 0 )
-            if vyPrev < 0 then
-                player:setSequence( "upIdle" )
-            else
-                player:setSequence( "downIdle" )
-            end
+            player:setSequence( "idle" )
             player:play()
             player:pause()
             vxPrev, vyPrev = vx, vy
         end
         return
+    end
+    if not hasMoved then
+        player:setSequence( "walk" )
+        player:play()
     end
     hasMoved = true
     
@@ -68,17 +68,8 @@ local function update()
     player:setLinearVelocity( cos(angle)*moveSpeed, sin(angle)*moveSpeed )
 
     -- Player is moving horizontally and has changed direction?
-    local xChange = (vx ~= 0 and vx ~= vxPrev)
-    if xChange or (vy ~= 0 and vy ~= vyPrev) then
-        if vy < 0 then
-            player:setSequence( "upRun" )
-        else
-            player:setSequence( "downRun" )
-        end
-        player:play()
-        if xChange then
-            player.xScale = vx
-        end
+    if (vx ~= 0 and vx ~= vxPrev) then
+        player.xScale = vx
     end
     
     vxPrev, vyPrev = vx, vy
