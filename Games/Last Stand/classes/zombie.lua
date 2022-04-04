@@ -10,7 +10,7 @@ local zombieType = {
         damage = 2,
         hp = 2,
         -- physics shape properties:
-        widthMultiplier = 0.9,
+        widthMultiplier = 0.6,
         heightMultiplier = 0.9
     },
     ["fast"] = {
@@ -22,7 +22,7 @@ local zombieType = {
         damage = 1,
         hp = 1,
         -- physics shape properties:
-        widthMultiplier = 0.9,
+        widthMultiplier = 0.5,
         heightMultiplier = 0.9
     },
     ["tank"] = {

@@ -3,7 +3,7 @@ local controls = {}
 local keyBindings = require("data.controls")
 
 local moveSpeed = 180
-local dashImpulse = 0.5
+local dashImpulse = 0.125
 local dashDuration = 150
 local dashCooldown = 500
 

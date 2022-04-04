@@ -484,7 +484,7 @@ function startGame()
     player.x, player.y = ground.x, ground.y
     physics.addBody( player, "dynamic", {
         -- Add the physics body to roughly the player's feet, bottom 25% of the player model.
-        box = { halfWidth=player.width*0.5, halfHeight=player.height*0.125, x=0, y=-player.height*0.125 },
+        box = { halfWidth=player.width*0.3, halfHeight=player.height*0.125, x=0, y=-player.height*0.125 },
         filter = filterPlayer
     } )
     player.isFixedRotation = true
