@@ -126,9 +126,16 @@ function zombie.new( parent, ground, spawnDistance, filter, spriteListener, isFi
         local drop = dropTable[n].name
         
         newZombie.weapon = display.newImage( parent, "assets/images/"..drop..".png" )
-        newZombie.weapon.x, newZombie.weapon.y = newZombie.x, newZombie.y - newZombie.height*0.5
+        newZombie.weapon.x, newZombie.weapon.y = newZombie.x, newZombie.y
+        if drop == "pistol" then
+            newZombie.weapon.yOffset = -newZombie.height*0.2
+        else
+            newZombie.weapon.yOffset = -newZombie.height*0.35
+        end        
         newZombie.weapon.name = drop
         newZombie.weapon.isWeapon = true
+        
+        newZombie.weapon.rotation = random( 60, 90 )
     end
     
     -- How many percent of zombie is feet.
@@ -190,7 +197,7 @@ function zombie.new( parent, ground, spawnDistance, filter, spriteListener, isFi
             end
             
             if newZombie.weapon then
-                newZombie.weapon.x, newZombie.weapon.y = newZombie.x, newZombie.y - newZombie.height*0.5
+                newZombie.weapon.x, newZombie.weapon.y = newZombie.x, newZombie.y + newZombie.weapon.yOffset
             end
             
             local angle = atan2( vy, vx )

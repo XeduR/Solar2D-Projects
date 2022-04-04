@@ -345,6 +345,8 @@ local function updateScore( isGameover )
                 leaderboardText = "Highscore: " .. highscoreFormatted .. " - Previous time: " .. gameTimeFormatted
             end
             
+            leaderboardShadow.x = screen.centerX - leaderboardShadow.width*0.5 + 4
+            leaderboard.x = screen.centerX - leaderboard.width*0.5
         else
             leaderboardText = "Highscore: " .. highscoreFormatted .. " - Current time: " .. gameTimeFormatted
             
@@ -671,16 +673,22 @@ function scene:create( event )
     title.xScale, title.yScale = 0.8, 0.8
     
     -------------------
-    
-    local leaderboardText = "Highscore: " .. highscoreFormatted
+        
+    local leaderboardText = "Highscore: 99:99 - previous time: 99:99"
     local leaderboardFontSize = 20
-    local leaderboardX = title.x
     local leaderboardY = title.y + title.height - 16
     
-    leaderboardShadow = display.newText( groupUI, leaderboardText, leaderboardX+4, leaderboardY+2, "assets/fonts/slkscr.ttf", leaderboardFontSize )
+    leaderboardShadow = display.newText( groupUI, leaderboardText, screen.centerX, leaderboardY+2, "assets/fonts/slkscr.ttf", leaderboardFontSize )
     leaderboardShadow:setFillColor( 73/255, 77/255, 126/255 )
-    leaderboard = display.newText( groupUI, leaderboardText, leaderboardX, leaderboardY, "assets/fonts/slkscr.ttf", leaderboardFontSize )
+    leaderboard = display.newText( groupUI, leaderboardText, screen.centerX, leaderboardY, "assets/fonts/slkscr.ttf", leaderboardFontSize )
     leaderboard:setFillColor( 251/255, 245/255, 239/255 )
+    
+    -- Anchor the texts to the left and update their positions (and add proper text content) to keep them from jittering around.
+    leaderboardText = "Highscore: " .. highscoreFormatted
+    leaderboardShadow.anchorX = 0
+    leaderboard.anchorX = 0
+    leaderboardShadow.x = screen.centerX - leaderboardShadow.width*0.5 + 4
+    leaderboard.x = screen.centerX - leaderboard.width*0.5
     
     -------------------
     
