@@ -37,7 +37,7 @@ local max = math.max
 local rad = math.rad
 local pi = math.pi
 
-local maxHealth = 5
+local maxHealth = 6
  -- How much relatively slower will dash recover after taking 1 point of damage.
 local dashHealthModifier = 0.25
 local bulletSpeed = 1000
@@ -174,10 +174,12 @@ local function getVerticesEllipse( n, width, height )
 end
 
 
+local prevMouseX, prevMouseY = 0, 0
 local function trackWeapon( event )
     local currentWeapon = activeWeapon.position[weapon]
+    prevMouseX, prevMouseY = event.x, event.y
     if currentWeapon then
-        local a = atan2( event.y - player.y, event.x - player.x )
+        local a = atan2( prevMouseY - player.y, prevMouseX - player.x )
         local x, y = cos(a)*currentWeapon.length - currentWeapon.xStart, sin(a)*currentWeapon.length - currentWeapon.yStart
         activeWeapon.x, activeWeapon.y = x, y
         for i = 1, 2 do
@@ -220,6 +222,17 @@ local function updateWeapons( weaponType, delay )
             weaponText:setFillColor( 139/255, 109/255, 156/255 )
         else
             weaponText:setFillColor( 251/255, 245/255, 239/255 )
+            
+            -- Retoggle gun visibility when swapping.
+            if prevMouseY < player.y then
+                activeWeapon.belowPlayer = true
+                activeWeapon[1].isVisible = true
+                activeWeapon[2].isVisible = false
+            elseif prevMouseY >= player.y then
+                activeWeapon.belowPlayer = false
+                activeWeapon[1].isVisible = false
+                activeWeapon[2].isVisible = true
+            end
         end
         
         timer.performWithDelay( delay or 0, animateGun )
@@ -260,6 +273,7 @@ local function shoot( event )
                     
                     for i = 1, data.shotsFired do
                         bulletCount = bulletCount+1
+                        sfx.play( "assets/audio/"..weapon..".wav" )
                         
                         -- Shooting the bullets from the barrel of the gun instead of the player's center.
                         local x = activeWeapon[1].x + activeWeapon[1].width*0.5 + activeWeapon.x
@@ -547,9 +561,12 @@ local function playerDamage( damage )
         hurt.alpha = 0
         transition.from( hurt, { time=250, alpha=1 })
         if currentHealth <= 0 then
+            sfx.play( "assets/audio/death.wav" )
             player:setSequence("death")
             player:play()
             stopGame()
+        else
+            sfx.play( "assets/audio/hurt.wav" )
         end
     end
 end
@@ -571,6 +588,7 @@ function onCollision( event )
                 playerDamage( zombie.damage )
                 -- If player is mid dash, then kill the zombie.
                 if player.isDashing then
+                    sfx.play( "assets/audio/enemyHurt.wav" )
                     zombie.isKilled = true
                     zombie:setSequence("death")
                     zombie:play()
@@ -586,6 +604,7 @@ function onCollision( event )
             elseif bullet and zombie then
                 zombie.hp = zombie.hp - bullet.damage
                 if zombie.hp <= 0 and not zombie.isKilled then
+                    sfx.play( "assets/audio/enemyHurt.wav" )
                     zombie.isKilled = true
                     zombie:setSequence("death")
                     zombie:play()
@@ -626,7 +645,6 @@ function spawnZombie()
     zombieList[zombieCount].id = zombieCount
     
     spawnRateCurrent = max( spawnRateMax, spawnRateCurrent - (getTimer()-startTime)*0.004 )
-    print( spawnRateCurrent )
     timerZombie = timer.performWithDelay( spawnRateCurrent+random(-spawnVariance,spawnVariance), spawnZombie )
 end
 
@@ -714,11 +732,12 @@ function scene:create( event )
     
     -------------------
     
-    local instructionsText = "controls:\n\n[mouse] - aim & shoot\n[1,2,3] = select weapon\n[w/a/s/d] - move\n[space] - dash\n\n\nGoal:\n\npick up weapons to kill enemies. Delay the inevitable for as long as you can."
+    local instructionsText = "controls:\n\n[mouse] - aim & shoot\n[1,2,3] = select weapon\n[w/a/s/d] - move\n[space] - dash\n\n\nGoal:\n\npick up weapons to kill enemies. Delay the inevitable for as long as you can.\n\nMusic:\n\"8bit Dungeon Boss\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+    
     local instructionsFontSize = 22
     local instructionsX = 10
     local instructionsY = screen.minY + 110
-    local instructionsWidth = 320
+    local instructionsWidth = 340
     
     instructionsShadow = display.newText({
         parent = groupGuide,
@@ -792,18 +811,34 @@ function scene:create( event )
     
     if savedata.audio then
         buttonAudio.fill = fillOn
+        audio.setVolume( 1 )
+        audio.setVolume( 0.15, { channel=1 } )
     else
         buttonAudio.fill = fillOff
+        audio.setVolume( 0 )
     end
+    
+    
+    sfx.play( "assets/audio/8bit Dungeon Boss.mp3", {
+        {
+            channel = 1,
+            loops = 100, -- indefinite looping not working properly? Looping 100 times then.
+        }
+    } )
+    audio.reserveChannels( 2 )
     
     buttonAudio:addEventListener( "touch", function(event)
         if event.phase == "began" then
             savedata.audio = not savedata.audio
             if savedata.audio then
                 buttonAudio.fill = fillOn
+                audio.setVolume( 1 )
+                audio.setVolume( 0.15, { channel=1 } )
             else
                 buttonAudio.fill = fillOff
+                audio.setVolume( 0 )
             end
+            
             loadsave.save( savedata, "data.json" )
         end
         return true

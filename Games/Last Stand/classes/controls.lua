@@ -4,7 +4,7 @@ local keyBindings = require("data.controls")
 
 local moveSpeed = 180
 local dashImpulse = 0.125
-local dashDuration = 150
+local dashDuration = 100
 local dashCooldown = 500
 
 local vxPrev, vyPrev = 0, 0
