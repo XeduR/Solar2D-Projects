@@ -738,10 +738,10 @@ function scene:create( event )
     
     local instructionsText = "controls:\n\n[mouse] - aim & shoot\n[1,2,3] = select weapon\n[w/a/s/d] - move\n[space] - dash\n\n\nGoal:\n\npick up weapons to kill enemies. Delay the inevitable for as long as you can.\n\nMusic:\n\"8bit Dungeon Boss\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
     
-    local instructionsFontSize = 22
+    local instructionsFontSize = 20
     local instructionsX = 10
     local instructionsY = screen.minY + 110
-    local instructionsWidth = 340
+    local instructionsWidth = 320
     
     instructionsShadow = display.newText({
         parent = groupGuide,

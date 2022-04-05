@@ -1,2 +1,11 @@
--- Just an empty file added to avoid possible file write permissions with the OS. This file will
--- be overwritten by classes/sfx.lua when the project is first run on the Solar2D Simulator.
+local sfx = {
+    "assets/audio/8bit Dungeon Boss.mp3",
+    "assets/audio/death.wav",
+    "assets/audio/enemyHurt.wav",
+    "assets/audio/hurt.wav",
+    "assets/audio/pickup.wav",
+    "assets/audio/pistol.wav",
+    "assets/audio/rifle.wav",
+    "assets/audio/shotgun.wav",
+}
+return sfx

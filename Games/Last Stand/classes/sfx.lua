@@ -120,7 +120,9 @@ function sfx.loadSound( filePath, directory )
         
                 filePath = filePath .. "/sfxList.lua"
                 local file, errorString = io.open( filePath, "w" )
-        
+                
+                print( fileContents )
+                
                 if not file then
                     print( "ERROR: File error - " .. errorString )
                     print( "Try again, or try manually creating the file \"" .. filePath .. "\". The file contents can be empty. Depending on the project location, the OS may be preventing Solar2D from creating new files in the project directory." )
