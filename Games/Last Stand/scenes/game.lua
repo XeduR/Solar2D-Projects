@@ -620,6 +620,7 @@ function onCollision( event )
             elseif player and gun then
                 magazine[gun.name] = weaponStats[gun.name].clipSize
                 updateWeapons( gun.name )
+                sfx.play( "assets/audio/pickup.wav" )
                 
                 timer.performWithDelay( 1, function()
                     display.remove( gun )
@@ -665,6 +666,9 @@ local function onKeyEvent( event )
             local _weapon = inventoryKey[keyName]
             if _weapon then
                 updateWeapons( _weapon )
+                if magazine[_weapon] > 0 then
+                    sfx.play( "assets/audio/pickup.wav" )
+                end
             end  
         end
     end
