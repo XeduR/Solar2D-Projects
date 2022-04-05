@@ -47,9 +47,9 @@ local startTime
 
 -- How many pixels away from the ground's outer radius do the zombies spawn.
 local spawnDistance = 100
-local spawnVariance = 250
+local spawnVariance = 350
 local spawnRateStart = 1200
-local spawnRateMax = 600
+local spawnRateMax = 400
 local spawnRateCurrent
 
 local groundWidthHalf = 320
@@ -625,7 +625,8 @@ function spawnZombie()
     zombieList[zombieCount] = zombie.new( groupCharacters, ground, spawnDistance, filterZombie, spriteListener )
     zombieList[zombieCount].id = zombieCount
     
-    spawnRateCurrent = max( spawnRateMax, spawnRateCurrent - (getTimer()-startTime)*0.0025 )
+    spawnRateCurrent = max( spawnRateMax, spawnRateCurrent - (getTimer()-startTime)*0.004 )
+    print( spawnRateCurrent )
     timerZombie = timer.performWithDelay( spawnRateCurrent+random(-spawnVariance,spawnVariance), spawnZombie )
 end
 

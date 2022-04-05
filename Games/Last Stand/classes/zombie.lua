@@ -6,7 +6,7 @@ local zombieType = {
         animDeathSpeed = 250,
         revealTime = 1000,
         dropRate = 0.2,
-        speed = 30,
+        speed = 40,
         damage = 2,
         hp = 2,
         -- physics shape properties:
@@ -18,7 +18,7 @@ local zombieType = {
         animDeathSpeed = 250,
         revealTime = 500,
         dropRate = 0.3,
-        speed = 60,
+        speed = 100,
         damage = 1,
         hp = 1,
         -- physics shape properties:
@@ -30,7 +30,7 @@ local zombieType = {
         animDeathSpeed = 500,
         revealTime = 3000,
         dropRate = 0.5,
-        speed = 10,
+        speed = 20,
         damage = 5,
         hp = 5,
         -- physics shape properties:
