@@ -822,13 +822,8 @@ function scene:create( event )
         audio.setVolume( 0 )
     end
     
-    
-    sfx.play( "assets/audio/8bit Dungeon Boss.mp3", {
-        {
-            channel = 1,
-            loops = 100, -- indefinite looping not working properly? Looping 100 times then.
-        }
-    } )
+    local bgm = audio.loadStream( "assets/audio/8bit Dungeon Boss.mp3" )
+    local bgmChannel = audio.play( bgm, { channel=1, loops=-1, fadein=3000 } )
     audio.reserveChannels( 2 )
     
     buttonAudio:addEventListener( "touch", function(event)
