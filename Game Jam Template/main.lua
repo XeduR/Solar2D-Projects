@@ -40,7 +40,7 @@ local launchParams = {
     logoAnchorX = 0.5,
     logoAnchorY = 0.5,
     
-    text = "© 2021 Eetu Rantanen\nwww.xedur.com",
+    text = "© 2022 Eetu Rantanen\nwww.xedur.com",
     font = native.systemFontBold,
     fontSize = 24,
     textAlign = "center",
@@ -70,6 +70,7 @@ if launchParams.debugMode and platform == "html5" then
     local _concat = table.concat
     local _gsub = string.gsub
     
+    -- Using lfs workaround to load JS modules outside of project root.
     local lfs = require("lfs")
     lfs.chdir( "widgets" )
 	local printToBrowser = require("printToBrowser")
@@ -88,8 +89,8 @@ if launchParams.debugMode and platform == "html5" then
         end
     end
     
-    -- Release widgets folder from LFS' control and clean it up.
-    lfs.chdir( system.pathForFile() )
+    -- Release widgets folder from LFS' control and clean up the library.
+    lfs.chdir( system.pathForFile( "" ) )
     lfs = nil
     _G.package.loaded["lfs"] = nil
 end
