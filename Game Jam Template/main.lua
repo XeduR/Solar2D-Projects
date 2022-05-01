@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021 Eetu Rantanen                   Last Updated: 7 August 2021 --
+--  © 2021-2022 Eetu Rantanen              Last Updated: 30 April 2022 --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -28,6 +28,8 @@ local launchParams = {
     usesSavedata = false,
     -- Whether or not the project encodes and protects the save data or not.
     protectSavedata = true,
+    -- Don't load/process the sfx files and thus keep the app muted.
+    muteGame = true,
     
     -- launchScreen.lua visual options --
     logoFilename = "assets/images/launchScreen/XeduR.png",
@@ -99,7 +101,12 @@ local screen = require("classes.screen")
 local composer = require("composer")
 local utils = require("libs.utils")
 local sfx = require("classes.sfx")
-sfx.loadSound("assets/audio")
+if not launchParams.muteGame then
+    -- There's a promiment crash on Windows Simulator for MSI/ASUS motherboards where they fail to 
+    -- release the audio, see: https://github.com/coronalabs/corona/issues/186. So, to prevent these
+    -- crashes and to keep the app silent during development, have an option not to load audio files.
+    sfx.loadSound("assets/audio")
+end
 
 ---------------------------------------------------------------------------
 
