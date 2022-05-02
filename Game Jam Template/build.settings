@@ -76,7 +76,7 @@ settings =
 
     excludeFiles =
     {
-        all =		{ "LICENSE", "development files/*", "*.md", },
+        all =		{ "LICENSE", ".DS_Store", "Thumbs.db", "development files/*", "*.md", },
         ios =		{ "*AndroidResources*", "Icon*.ico", "Icon*.icns", "*.js", },
         android =	{ "*.xcassets*", "*.storyboardc*", "Icon*.ico", "Icon*.icns", "*.js", },
         web =		{ "*.xcassets*", "*.storyboardc*", "*AndroidResources*", "Icon*.ico", "Icon*.icns", "*.txt", },
