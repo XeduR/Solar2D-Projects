@@ -30,7 +30,7 @@ local launchParams = {
     protectSavedata = true,
     -- Don't load/process the sfx files and thus keep the app muted.
     muteGame = true,
-    
+
     -- launchScreen.lua visual options --
     logoFilename = "assets/images/launchScreen/XeduR.png",
     logoWidth = 512,
@@ -39,7 +39,7 @@ local launchParams = {
     logoOffsetY = 0,
     logoAnchorX = 0.5,
     logoAnchorY = 0.5,
-    
+
     text = "© 2022 Eetu Rantanen\nwww.xedur.com",
     font = native.systemFontBold,
     fontSize = 24,
@@ -49,7 +49,7 @@ local launchParams = {
     textOffsetY = -10,
     textAnchorX = 0.5,
     textAnchorY = 1,
-    
+
     -- logo & text transition options  --
     showDelay = 250,
     showTime = 500,
@@ -57,7 +57,7 @@ local launchParams = {
     hideDelay = 1250,
     hideTime = 250,
     hideEasing = easing.inOut,
-    -------------------------------------    
+    -------------------------------------
 }
 
 -------------------------------------------------------------------------
@@ -69,13 +69,13 @@ if launchParams.debugMode and platform == "html5" then
     local _tostring = tostring
     local _concat = table.concat
     local _gsub = string.gsub
-    
+
     -- Using lfs workaround to load JS modules outside of project root.
     local lfs = require("lfs")
     lfs.chdir( "widgets" )
 	local printToBrowser = require("printToBrowser")
     local _print = printToBrowser.print
-    
+
     -- Hijack the standard print function.
     local printList = {}
     function print( ... )
@@ -88,7 +88,7 @@ if launchParams.debugMode and platform == "html5" then
             printList[i] = nil
         end
     end
-    
+
     -- Release widgets folder from LFS' control and clean up the library.
     lfs.chdir( system.pathForFile( "" ) )
     lfs = nil
@@ -98,15 +98,18 @@ end
 ---------------------------------------------------------------------------
 
 -- Initialize all core plugins, classes and libraries.
-local screen = require("classes.screen")
 local composer = require("composer")
-local utils = require("libs.utils")
-local sfx = require("classes.sfx")
+require("classes.screen")
+require("libs.utils")
+---------------------------------------------------------------------------
+-- The sfx module overwrites parts of the standard audio library. If you wish
+-- to use Solar2D's standard audio API, then comment out the two lines below.
+require("classes.sfx")
+audio.loadSFX("assets/audio")
+---------------------------------------------------------------------------
+
 if not launchParams.muteGame then
-    -- There's a promiment crash on Windows Simulator for MSI/ASUS motherboards where they fail to 
-    -- release the audio, see: https://github.com/coronalabs/corona/issues/186. So, to prevent these
-    -- crashes and to keep the app silent during development, have an option not to load audio files.
-    sfx.loadSound("assets/audio")
+    audio.setVolume( 0 )
 end
 
 ---------------------------------------------------------------------------
@@ -155,7 +158,7 @@ else
     Runtime:addEventListener( "unhandledError", function()
         return true
     end )
-    
+
     composer.gotoScene( "scenes.launchScreen", {params = launchParams} )
 end
 

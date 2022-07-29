@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021 Eetu Rantanen                 Last Updated: 22 October 2021 --
+--  © 2021-2022 Eetu Rantanen               Last Updated: 29 July 2022 --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -16,8 +16,16 @@
 -- A simple sfx module for Solar2D for quickly and easily loading and
 -- handling all audio files via just using the filename (and path).
 
--- NB! To ensure that Solar2D correctly loads your audio files, the
--- filenames should NOT contain any special UTF-8 (or such) characters.
+-- NB! This module overwrites many standard audio API and it handles the
+-- API calls via filenames (strings) instead of using standard handles.
+
+-- NB! If you are loading files from multiple directories, ensure that the
+-- filepaths are different, even across directories. For example, loading
+-- "audio/mySFX.mp3" from the ResourceDirectory reserves that handle, which
+-- prevents loading a file with a similar filepath from other directories.
+
+-- NB! If you are having trouble creating the sfxList.lua file, make sure
+-- that your project is located in a folder with write access from the OS.
 
 -------------------------------------------------------------------------
 
@@ -29,13 +37,20 @@ local gsub = string.gsub
 local sub = string.sub
 local type = type
 
+-- Localise audio functions.
+local _dispose = audio.dispose
+local _getDuration = audio.getDuration
+local _loadSound = audio.loadSound
+local _loadStream = audio.loadStream
+local _play = audio.play
+local _rewind = audio.rewind
+local _seek = audio.seek
+
 local isSimulator = (system.getInfo( "environment" ) == "simulator")
 
 -------------------------------------------------------------------------
 
-local audioFiles = {}
-
-local handle = {}
+local audioHandle = {}
 local audioCount = 0
 local fileContents = ""
 
@@ -51,24 +66,33 @@ local audioFormats = {
 
 -------------------------------------------------------------------------
 
--- Search a folder and all of its subfolders for audio files (on Simulator)
--- and generate a list of them 
+local function loadFile( filePath, directory )
+    -- Dynamically load files ending with "isStream" as streams.
+    if not audioHandle[filePath] then
+        if lower( sub( filePath, -12, -5 ) ) == "isstream" then
+            audioHandle[filePath] = _loadStream( filePath, directory )
+        else
+            audioHandle[filePath] = _loadSound( filePath, directory )
+        end
+        audioCount = audioCount+1
+    end
+end
+
 local function traverseFolder( folder, directory, audioFilesFound )
-    local folder = folder or ""
+    folder = folder or ""
     local path = system.pathForFile( folder, directory )
 
     if not path then
         print( "WARNING: folder \"" .. folder .. "\" does not exist in the specified directory." )
     else
-        local audioFilesFound = audioFilesFound or false
+        audioFilesFound = audioFilesFound or false
 
         for file in lfs.dir( path ) do
             if file ~= "." and file ~= ".." then
                 local filePath = folder .."/".. file
                 if audioFormats[lower(sub(file,-4))] then
                     fileContents = fileContents .. "\t\"" .. filePath .. "\",\n"
-                    handle[filePath] = audio.loadSound( filePath, directory )
-                    audioCount = audioCount+1
+                    loadFile( filePath, directory )
                     audioFilesFound = true
                 else
                     -- Check if it's a subfolder and recursively check it for audio files.
@@ -78,16 +102,16 @@ local function traverseFolder( folder, directory, audioFilesFound )
                 end
             end
         end
-        
+
         return audioFilesFound
     end
 end
 
 -- Lists all audio handles created by the sfx module.
-function sfx.listAudioHandles()
+function audio.listAudioHandles()
     local noHandles = true
     print("\nList of audio handles:\n")
-    for i, _ in pairs( handle ) do
+    for i, _ in pairs( audioHandle ) do
         print( "\t[\""..i.."\"]" )
         noHandles = false
     end
@@ -96,52 +120,45 @@ end
 
 -- Load a single audio file or all files in a folder and assign them a filePath based handle.
 -- If filePath is a folder, then all of its subfolders are also be checked for audio files.
-function sfx.loadSound( filePath, directory )
-    -- NB! Use DocumentsDirectory with caution. On certain platforms, you may encounter
-    -- issues when requiring Lua files from DocumentsDirectory. This module is primarily
-    -- intended to be used with prepackaged audio files and to make handling them easier.
-    local directory = directory or system.ResourceDirectory
+function audio.loadSFX( filePath, directory )
+    directory = directory or system.ResourceDirectory
+    local isDocumentsDir = directory == system.DocumentsDirectory
 
     -- Specific file is being loaded.
     if audioFormats[lower(sub(filePath,-4))] then
-        handle[filePath] = audio.loadSound( filePath, directory )
-        audioCount = audioCount+1
-        
+        loadFile( filePath, directory )
+
     else -- A folder is being loaded.
-        if isSimulator then
+        if isSimulator or isDocumentsDir then
             -- On some platforms, like on Android, you can't traverse ResourceDirectory directly. For these
             -- platforms, while on simulator, create separate Lua files with lists of audio files to load.
             fileContents = "local sfx = {\n"
             local audioFilesFound = traverseFolder( filePath, directory )
-        
-            -- If the folder contains audio files, then create an sfxList.lua file with a list of them in the folder.
-            if audioFilesFound then
+
+            -- The contents of DocumentsDirectory may change between builds, so lists of its contents aren't reliable.
+            if audioFilesFound and not isDocumentsDir then
                 fileContents = fileContents .. "}\nreturn sfx"
-        
-                filePath = filePath .. "/sfxList.lua"
-                local file, errorString = io.open( filePath, "w" )
-        
+
+                local path = system.pathForFile( filePath, directory )
+                local file, errorString = io.open( path .. "/sfxList.lua", "w" )
+
                 if not file then
                     print( "ERROR: File error - " .. errorString )
-                    print( "Try again, or try manually creating the file \"" .. filePath .. "\". The file contents can be empty. Depending on the project location, the OS may be preventing Solar2D from creating new files in the project directory." )
                 else
                     file:write( fileContents )
                     io.close( file )
                 end
-                fileContents = ""
             end
+            fileContents = ""
         else
-            -- Attempt to load the sfxList.lua file from the specified folder and assign the audio handles and load the sounds.
             local fileList
 			local success, msg = pcall( function() fileList = require( gsub(gsub(filePath .. ".sfxList", "%/", "."), "%\\", ".")) end )
-            
+
             if not success and msg then
 				error( "ERROR:", msg )
             elseif type( fileList ) == "table" then
                 for i = 1, #fileList do
-                    local file = fileList[i]
-                    handle[file] = audio.loadSound( file, directory )
-                    audioCount = audioCount+1
+                    loadFile( fileList[i], directory )
                 end
 			end
         end
@@ -150,48 +167,73 @@ end
 
 -------------------------------------------------------------------------
 
--- Handle audio function calls that may require a handle by using 
+-- Handle audio function calls that may require a handle by using
 -- the filename and path as the handle/key instead of a Lua table.
 
-function sfx.play( filename, options )
-    return audio.play( handle[filename], options )
+function audio.play( filename, options )
+    if not audioHandle[filename] then
+        local directory = system.ResourceDirectory
+        local path = system.pathForFile( filename, directory )
+        if not path then
+            directory = system.DocumentsDirectory
+            path = system.pathForFile( filename, directory )
+        end
+        if path then
+            loadFile( filename, directory )
+        end
+    end
+    return _play( audioHandle[filename], options )
 end
 
-function sfx.rewind( arg )
-    -- Argument can be string (audio handle) or table (channel).
-    local arg = type(arg) == "string" and handle[arg] or arg
-    return audio.rewind( arg )
+function audio.loadSound( filename, directory )
+    if not audioHandle[filename] then
+        audioHandle[filename] = _loadSound( filename, directory )
+        audioCount = audioCount+1
+    end
 end
 
-function sfx.seek( time, arg )
-    -- Argument can be string (audio handle) or table (channel).
-    local arg = type(arg) == "string" and handle[arg] or arg
-    return audio.seek( time, arg )
+function audio.loadStream( filename, directory )
+    if not audioHandle[filename] then
+        audioHandle[filename] = _loadStream( filename, directory )
+        audioCount = audioCount+1
+    end
 end
 
-function sfx.getDuration( filename )
-    return audio.getDuration( handle[filename] )
+function audio.rewind( arg )
+    arg = type(arg) == "string" and audioHandle[arg] or arg
+    return _rewind( arg )
 end
 
-function sfx.dispose( filename )
-    if handle[filename] then
-        audio.dispose( handle[filename] )
-        handle[filename] = nil
-        -- If audio count hits zero, then reset the handle table as well,
-        -- since the user is likely trying to free up all possible memory.
+function audio.seek( time, arg )
+    arg = type(arg) == "string" and audioHandle[arg] or arg
+    return _seek( time, arg )
+end
+
+function audio.getDuration( filename )
+    if audioHandle[filename] then
+        return _getDuration( audioHandle[filename] )
+    end
+end
+
+function audio.dispose( filename )
+    if audioHandle[filename] then
+        _dispose( audioHandle[filename] )
+        audioHandle[filename] = nil
+        -- If audio count hits zero, then reset the handle table as well
+        -- as the user is likely trying to free up all possible memory.
         audioCount = audioCount-1
         if audioCount == 0 then
-            handle = {}
+            audioHandle = {}
         end
     end
 end
 
-function sfx.disposeAll()
-    for key, audioHandle in pairs( handle ) do
-        audio.dispose( audioHandle )
+function audio.disposeAll()
+    for _, handle in pairs( audioHandle ) do
+        _dispose( handle )
     end
     audioCount = 0
-    handle = {}
+    audioHandle = {}
 end
 
 -------------------------------------------------------------------------
