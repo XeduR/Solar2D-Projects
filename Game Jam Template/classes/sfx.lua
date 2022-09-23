@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021-2022 Eetu Rantanen               Last Updated: 29 July 2022 --
+--  © 2021-2022 Eetu Rantanen          Last Updated: 23 September 2022 --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -135,7 +135,8 @@ function audio.loadSFX( filePath, directory )
             fileContents = "local sfx = {\n"
             local audioFilesFound = traverseFolder( filePath, directory )
 
-            -- The contents of DocumentsDirectory may change between builds, so lists of its contents aren't reliable.
+            -- The contents of DocumentsDirectory may change at any time, for any number of reasons, so lists of its
+            -- contents aren't reliable. For ResourceDirectory, however, the contents can only change between builds.
             if audioFilesFound and not isDocumentsDir then
                 fileContents = fileContents .. "}\nreturn sfx"
 
@@ -155,7 +156,7 @@ function audio.loadSFX( filePath, directory )
 			local success, msg = pcall( function() fileList = require( gsub(gsub(filePath .. ".sfxList", "%/", "."), "%\\", ".")) end )
 
             if not success and msg then
-				error( "ERROR:", msg )
+				print( "WARNING: unable to load \"" .. gsub(gsub(filePath .. ".sfxList", "%/", "."), "%\\", ".") .. "\". This likely means you aren't using any audio files in your project." )
             elseif type( fileList ) == "table" then
                 for i = 1, #fileList do
                     loadFile( fileList[i], directory )
