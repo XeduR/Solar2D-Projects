@@ -1,4 +1,5 @@
 -- NB! This file is used for HTML5 exports as they currently behave differently from desktop/mobile builds.
+display.setStatusBar( display.HiddenStatusBar )
 
 display.setDefault( "background", 0.3 ) -- Change the background to grey.
 local physics = require("physics")
