@@ -14,7 +14,7 @@ The following libraries have been extended or added:
 
 ## Change log:
 
-	[1.5.0] - 1 April 2022
+	[1.5.0] - 22 October 2022
 			-   Moved all functions to their related global tables
 			-   Moved the change log to separate README file
 			-	Remove the following function:

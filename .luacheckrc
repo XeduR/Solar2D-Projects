@@ -59,11 +59,12 @@ std = {
     "xpcall",
     "application",
     "settings",
-    "ignore",
-    "std",
+    "utils",
   }
 }
 ignore = {
   "self",
   "event",
+  "ignore",
+  "std",
 }
