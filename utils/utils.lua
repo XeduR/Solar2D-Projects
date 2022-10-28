@@ -257,7 +257,7 @@ function table.getRandom( t )
 	local rMax = 0
 	for _, v in pairs( t ) do
 		local r = random()
-		if r > rMax then
+		if r >= rMax then
 			rMax = r
 			returnValue = v
 		end
