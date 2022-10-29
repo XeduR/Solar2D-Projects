@@ -1,4 +1,5 @@
 std = {
+  -- Solar2D API and other global libraries.
   globals = {
     "_G",
     "al",
@@ -62,9 +63,12 @@ std = {
     "utils",
   }
 }
+-- Commonly used Solar2D/Lua 5.1 function arguments,
+-- as well as Luacheck configuration's own globals.
 ignore = {
   "self",
   "event",
+  "arg",
   "ignore",
   "std",
 }
