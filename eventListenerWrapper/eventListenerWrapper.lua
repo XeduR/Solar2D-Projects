@@ -8,69 +8,53 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021 Eetu Rantanen                    Last Updated: 27 June 2021 --
+--  © 2021-2022 Eetu Rantanen            Last Updated: 6 November 2022 --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
 
--- Just simple sanity wrappers to stop Solar2D from warning about "key"
--- events not being supported on iOS on Simulator, as well as to block
--- calls to add or remove "key" event listeners on actual iOS devices.
-
--- Finally, also show a "loud" warning on Simulator if adding a "mouse"
--- listener on iOS, because "mouse" events just don't work and there
--- are no warning messages about it on the Simulator.
+-- Overwriting the built-in Solar2D Runtime methods to:
+-- 1) Remove unnecessary warnings about key events on iOS (sim).
+-- 2) Add a loud & useful warning for iOS (sim) about mouse events.
 
 -------------------------------------------------------------------------
+
+local needsHardwareSupport = { orientation=true, accelerometer=true, gyroscope=true, location=true, heading=true }
 
 local isSimulator = system.getInfo( "environment" ) == "simulator"
 local platform = system.getInfo( "platform" )
 
-local _addEventListener = Runtime.addEventListener
-local _removeEventListener = Runtime.removeEventListener
-
--- Silently prevent adding "key" events on iOS (non-Simulator).
-function Runtime.addEventListener( ... )
-    local t = { ... }
-    if not isSimulator and t[2] == "key" and platform == "ios" then
+function Runtime:addEventListener( eventName, listener )
+    if eventName == "key" and platform == "ios" then
         return
     end
-    _addEventListener( ... )
-end
 
--- Silently prevent removing "key" events on iOS (non-Simulator).
-function Runtime.removeEventListener( ... )
-    local t = { ... }
-    if not isSimulator and t[2] == "key" and platform == "ios" then
+    -- Ensure no developer time is wasted with figuring out why "mouse" events aren't firing.
+    if isSimulator and eventName == "mouse" and platform == "ios" then
+        print( "" )
+        print( "WARNING: ios will not generate \"mouse\" events." )
+        print( "WARNING: ios will not generate \"mouse\" events." )
+        print( "WARNING: ios will not generate \"mouse\" events." )
+        print( "" )
         return
     end
-    _removeEventListener( ... )
+
+    local super = self._super
+    local noListeners = not self:respondsToEvent( eventName )
+    local wasAdded = super.addEventListener( self, eventName, listener )
+
+    if ( noListeners ) then
+        if ( needsHardwareSupport[ eventName ] ) then
+            system.beginListener( eventName )
+        end
+    end
+    return wasAdded or nil
 end
 
--- Add extra wrappers only when running on the Solar2D Simulator.
-if isSimulator then
-    -- Scream bloody murder when trying to use "mouse" event listeners while simulating iOS.
-    -- (Just ensuring that no time is wasted with figuring why "mouse" events are not firing.)
-    local __addEventListener = Runtime.addEventListener
-    function Runtime.addEventListener( ... )
-        local t = { ... }
-        if t[2] == "mouse" and platform == "ios" then
-            print("")
-            print("WARNING: Simulating an iOS device, so \"mouse\" events will not work." )
-            print("WARNING: Simulating an iOS device, so \"mouse\" events will not work." )
-            print("WARNING: Simulating an iOS device, so \"mouse\" events will not work." )
-            print("")
-        end
-        __addEventListener( ... )
+function Runtime:removeEventListener( eventName, listener )
+    if eventName == "key" and platform == "ios" then
+        return
     end
-    -- Don't show warnings about how "key" events don't work on real device, since we aren't on real device.
-    -- (Since "key" events always work on Simulator and we already have a "key" wrapper, this warning isn't needed.)
-    local _print = print
-    function print(...)
-        local t = {...}
-        if t[1] == "WARNING: Runtime:addEventListener: real ios devices don't generate 'key' events" then
-            return
-        end
-        _print(...)
-    end
+    local super = self._super
+    return super.removeEventListener( self, eventName, listener )
 end
