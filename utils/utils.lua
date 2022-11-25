@@ -326,23 +326,61 @@ end
 -- utils
 --------------------------------------------------------------------------------------------------
 
--- Simple benchmarking: check how long it takes for a function, f, to be run over n iterations.
-function utils.benchmark( f, iterations )
-	if type(f) ~= "function" then
+-- Simple benchmarking: check how long it takes for a function, f1, to be run over n iterations.
+-- If two functions are given, then check which is faster and by how much.
+function utils.benchmark( f1, f2, iterations )
+	if type(f1) ~= "function" then
 		print( "WARNING: bad argument #1 to 'benchmark' (function expected, got " .. type(f) .. ")." )
 		return 0
 	end
 
-	local startTime = getTimer()
-	iterations = iterations or 1
+	-- Compare two functions.
+	if type(f2) == "function" then
+		iterations = tonumber(iterations) or 1
+		local startTime = getTimer()
 
-	for _ = 1, iterations do
-		f()
+		for _ = 1, iterations do
+			f1()
+		end
+
+		local time1 = getTimer() - startTime
+		startTime = getTimer()
+
+		for _ = 1, iterations do
+			f2()
+		end
+
+		local time2 = getTimer() - startTime
+
+		local absoluteDiff = math.abs( math.floor((time1-time2)/iterations*10000)*0.0001 )
+		-- If the difference is less than one-ten-thousandth of a millisecond, count them as equal.
+		if absoluteDiff < 0.0001 then
+			print( "TIME: " .. time1 .. " - the functions are equally fast." )
+		else
+			local suffix1, suffix2 = "", ""
+			if time1 < time2 then
+				local relative = math.floor((1-time1/time2)*1000)*0.1
+				suffix1 = " (~" ..  relative .. "% and " .. absoluteDiff .. "ms faster per iteration on average)"
+			else
+				local relative = math.floor((1-time2/time1)*1000)*0.1
+				suffix2 = " (~" ..  relative .. "% and " .. absoluteDiff .. "ms faster per iteration on average)"
+			end
+			print( "TIME - f1: " .. time1 .. " ms" .. suffix1 )
+			print( "TIME - f2: " .. time2 .. " ms" .. suffix2 )
+		end
+
+	-- Benchmark a single function.
+	else
+		iterations = tonumber(f2) or 1
+		local startTime = getTimer()
+
+		for _ = 1, iterations do
+			f1()
+		end
+
+		local result = getTimer() - startTime
+		print( "TIME: " .. result .. " ms" )
 	end
-
-	local result = getTimer() - startTime
-	print( "TIME: " .. result )
-	return result
 end
 
 -- Check if the input exists and isn't false, and return boolean.
