@@ -1,6 +1,6 @@
-// For debugging HTML5 builds, sends Lua print() to browser's console (F12).
+// For debugging HTML5 builds, send Lua print calls to the browser's console.
 printToBrowser = {
-    print: function(msg) {
-        console.log(msg);
-    }
+	print: function(msg) {
+		console.log(msg);
+	}
 }

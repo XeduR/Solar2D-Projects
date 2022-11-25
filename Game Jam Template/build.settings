@@ -13,74 +13,74 @@
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
 
-settings = 
+settings =
 {
-    splashScreen = 
-    {
-        enable = false
-    },
+	splashScreen =
+	{
+		enable = false
+	},
 
-    orientation = 
-    {
-        -- default = "portrait",
-        -- supported = { "portrait", "portraitUpsideDown" },
-        default = "landscapeRight",
-        supported = { "landscapeRight", "landscapeLeft" },
-    },
+	orientation =
+	{
+		-- default = "portrait",
+		-- supported = { "portrait", "portraitUpsideDown" },
+		default = "landscapeRight",
+		supported = { "landscapeRight", "landscapeLeft" },
+	},
 
-    plugins =
-    {
-        
-    },
-    
-    android =
-    {
-        usesPermissions =
-        {
-            "android.permission.INTERNET",
-        },
-    },
+	plugins =
+	{
 
-    iphone =
-    {
-        xcassets = "Images.xcassets",
-        plist =
-        {
-            UIStatusBarHidden = true,
-            UILaunchStoryboardName = "LaunchScreen",
-        },
-    },
-    
-    win32 =
-    {
-        singleInstance = true,
-    },
+	},
 
-    window =
-    {
-        titleText = {
-            default = "Game Jam Template",
-        },
-        defaultMode = "normal", -- "normal", "minimized", "maximized", "fullscreen"
-        defaultViewWidth = 960,
-        defaultViewHeight = 640,
-        resizable = false,
-        minViewWidth = 960,
-        minViewHeight = 640,
-        
-        enableCloseButton = true,
-        enableMaximizeButton = false,
-        enableMinimizeButton = true,
-        suspendWhenMinimized = true,
-    },
+	android =
+	{
+		usesPermissions =
+		{
+			"android.permission.INTERNET",
+		},
+	},
 
-    excludeFiles =
-    {
-        all =		{ "LICENSE", ".DS_Store", "Thumbs.db", "development files/*", "*.md", },
-        ios =		{ "*AndroidResources*", "Icon*.ico", "Icon*.icns", "*.js", },
-        android =	{ "*.xcassets*", "*.storyboardc*", "Icon*.ico", "Icon*.icns", "*.js", },
-        web =		{ "*.xcassets*", "*.storyboardc*", "*AndroidResources*", "Icon*.ico", "Icon*.icns", "*.txt", },
-        win32 =		{ "*.xcassets*", "*.storyboardc*", "*AndroidResources*", "Icon*.icns", "*.js", },
-        macos =		{ "*.xcassets*", "*.storyboardc*", "*AndroidResources*", "Icon*.ico", "*.js", },
-    },
+	iphone =
+	{
+		xcassets = "Images.xcassets",
+		plist =
+		{
+			UIStatusBarHidden = true,
+			UILaunchStoryboardName = "LaunchScreen",
+		},
+	},
+
+	win32 =
+	{
+		singleInstance = true,
+	},
+
+	window =
+	{
+		titleText = {
+			default = "Game Jam Template",
+		},
+		defaultMode = "normal", -- "normal", "minimized", "maximized", "fullscreen"
+		defaultViewWidth = 960,
+		defaultViewHeight = 640,
+		resizable = false,
+		minViewWidth = 960,
+		minViewHeight = 640,
+
+		enableCloseButton = true,
+		enableMaximizeButton = false,
+		enableMinimizeButton = true,
+		suspendWhenMinimized = true,
+	},
+
+	excludeFiles =
+	{
+		all =		{ "LICENSE", ".DS_Store", "Thumbs.db", "development files/*", "*.md", },
+		ios =		{ "*AndroidResources*", "Icon*.ico", "Icon*.icns", "*.js", },
+		android =	{ "*.xcassets*", "*.storyboardc*", "Icon*.ico", "Icon*.icns", "*.js", },
+		web =		{ "*.xcassets*", "*.storyboardc*", "*AndroidResources*", "Icon*.ico", "Icon*.icns", "*.txt", },
+		win32 =		{ "*.xcassets*", "*.storyboardc*", "*AndroidResources*", "Icon*.icns", "*.js", },
+		macos =		{ "*.xcassets*", "*.storyboardc*", "*AndroidResources*", "Icon*.ico", "*.js", },
+	},
 }

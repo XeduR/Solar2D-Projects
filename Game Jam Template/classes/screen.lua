@@ -51,7 +51,7 @@ local function update()
 	screen.centerX = display.contentCenterX
 	screen.centerY = display.contentCenterY
 	screen.diagonal = math.sqrt( display.actualContentWidth^2+ display.actualContentHeight^2)
-	
+
 	screen.safe.minX = display.safeScreenOriginX
 	screen.safe.maxX = display.safeScreenOriginX + display.safeActualContentWidth
 	screen.safe.minY = display.safeScreenOriginY
@@ -60,7 +60,7 @@ local function update()
 	screen.safe.height = display.safeActualContentHeight
 	screen.safe.centerX = (screen.safe.minX + screen.safe.maxX)*0.5
 	screen.safe.centerY = (screen.safe.minY + screen.safe.maxY)*0.5
-	
+
 	if screen.callback then
 		screen.callback()
 		screen.callbackCalled = true
