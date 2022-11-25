@@ -25,36 +25,36 @@ local isSimulator = system.getInfo( "environment" ) == "simulator"
 local platform = system.getInfo( "platform" )
 
 function Runtime:addEventListener( eventName, listener )
-    if eventName == "key" and platform == "ios" then
-        return
-    end
+	if eventName == "key" and platform == "ios" then
+		return
+	end
 
-    -- Ensure no developer time is wasted with figuring out why "mouse" events aren't firing.
-    if isSimulator and eventName == "mouse" and platform == "ios" then
-        print( "" )
-        print( "WARNING: ios will not generate \"mouse\" events." )
-        print( "WARNING: ios will not generate \"mouse\" events." )
-        print( "WARNING: ios will not generate \"mouse\" events." )
-        print( "" )
-        return
-    end
+	-- Ensure no developer time is wasted with figuring out why "mouse" events aren't firing.
+	if isSimulator and eventName == "mouse" and platform == "ios" then
+		print( "" )
+		print( "WARNING: ios will not generate \"mouse\" events." )
+		print( "WARNING: ios will not generate \"mouse\" events." )
+		print( "WARNING: ios will not generate \"mouse\" events." )
+		print( "" )
+		return
+	end
 
-    local super = self._super
-    local noListeners = not self:respondsToEvent( eventName )
-    local wasAdded = super.addEventListener( self, eventName, listener )
+	local super = self._super
+	local noListeners = not self:respondsToEvent( eventName )
+	local wasAdded = super.addEventListener( self, eventName, listener )
 
-    if ( noListeners ) then
-        if ( needsHardwareSupport[ eventName ] ) then
-            system.beginListener( eventName )
-        end
-    end
-    return wasAdded or nil
+	if ( noListeners ) then
+		if ( needsHardwareSupport[ eventName ] ) then
+			system.beginListener( eventName )
+		end
+	end
+	return wasAdded or nil
 end
 
 function Runtime:removeEventListener( eventName, listener )
-    if eventName == "key" and platform == "ios" then
-        return
-    end
-    local super = self._super
-    return super.removeEventListener( self, eventName, listener )
+	if eventName == "key" and platform == "ios" then
+		return
+	end
+	local super = self._super
+	return super.removeEventListener( self, eventName, listener )
 end

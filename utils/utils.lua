@@ -49,41 +49,41 @@ local type = type
 
 -- Add a power-of-two sized repeating texture fill to a target display object.
 function display.addRepeatingFill( target, filename, textureSize, textureScale, textureWrapX, textureWrapY )
-    display.setDefault( "textureWrapX", textureWrapX or "repeat" )
-    display.setDefault( "textureWrapY", textureWrapY or "repeat" )
+	display.setDefault( "textureWrapX", textureWrapX or "repeat" )
+	display.setDefault( "textureWrapY", textureWrapY or "repeat" )
 
-    target.fill = {
-        type = "image",
-        filename = filename,
-    }
-    target.fill.scaleX = (textureSize / target.width)*(textureScale or 1)
-    target.fill.scaleY = (textureSize / target.height)*(textureScale or 1)
+	target.fill = {
+		type = "image",
+		filename = filename,
+	}
+	target.fill.scaleX = (textureSize / target.width)*(textureScale or 1)
+	target.fill.scaleY = (textureSize / target.height)*(textureScale or 1)
 
-    display.setDefault( "textureWrapX", "clampToEdge" )
-    display.setDefault( "textureWrapY", "clampToEdge" )
+	display.setDefault( "textureWrapX", "clampToEdge" )
+	display.setDefault( "textureWrapY", "clampToEdge" )
 end
 
 
 -- Scale factor is the value that Solar2D has used to scale all display objects.
 function display.getScaleFactor()
-    -- The scale factor depends on device orientation.
-    if find( system.orientation, "portrait" ) then
-        return display.pixelWidth / display.actualContentWidth
-    else
-        return display.pixelWidth / display.actualContentHeight
-    end
+	-- The scale factor depends on device orientation.
+	if find( system.orientation, "portrait" ) then
+		return display.pixelWidth / display.actualContentWidth
+	else
+		return display.pixelWidth / display.actualContentHeight
+	end
 end
 
 -- Convert HEX to RGB, and return normalised (0 to 1) or standard RGB (0 to 255) values.
 function display.hex2rgb( hex, dontNormalise )
-    -- By default, we're returning normalised values (as Solar2D uses normalised values).
-    local m = dontNormalise and 1 or 255
-    hex = gsub( hex, "#", "" )
-    if len(hex) == 3 then
-        return tonumber("0x"..hex:sub(1,1))/m, tonumber("0x"..hex:sub(2,2))/m, tonumber("0x"..hex:sub(3,3))/m
-    else
-        return tonumber("0x"..hex:sub(1,2))/m, tonumber("0x"..hex:sub(3,4))/m, tonumber("0x"..hex:sub(5,6))/m
-    end
+	-- By default, we're returning normalised values (as Solar2D uses normalised values).
+	local m = dontNormalise and 1 or 255
+	hex = gsub( hex, "#", "" )
+	if len(hex) == 3 then
+		return tonumber("0x"..hex:sub(1,1))/m, tonumber("0x"..hex:sub(2,2))/m, tonumber("0x"..hex:sub(3,3))/m
+	else
+		return tonumber("0x"..hex:sub(1,2))/m, tonumber("0x"..hex:sub(3,4))/m, tonumber("0x"..hex:sub(5,6))/m
+	end
 end
 
 -- Check that the object is a display object, i.e. a table, and check that its width and height
@@ -101,17 +101,17 @@ end
 
 -- Convert RGB to HEX, and handle normalised (0 to 1) or standard RGB (0 to 255) inputs.
 function display.rgb2hex( r, g, b, notNormalised )
-    -- By default, we're expecting the input to be normalised (as Solar2D uses normalised values).
-    local m = notNormalised and 1 or 255
-    local rgb = floor(r * m) * 0x10000 + floor(g * m) * 0x100 + floor(b * m)
-    return format( "%x", rgb )
+	-- By default, we're expecting the input to be normalised (as Solar2D uses normalised values).
+	local m = notNormalised and 1 or 255
+	local rgb = floor(r * m) * 0x10000 + floor(g * m) * 0x100 + floor(b * m)
+	return format( "%x", rgb )
 end
 
 -- Scale a display object to the smallest possible size where it satisfies both
 -- required width and height requirements without distorting the aspect ratio.
 function display.scaleDisplayObject( target, requiredWidth, requiredHeight )
-    local scale = math.max( requiredWidth/target.width, requiredHeight/target.height )
-    target.xScale, target.yScale = scale, scale
+	local scale = math.max( requiredWidth/target.width, requiredHeight/target.height )
+	target.xScale, target.yScale = scale, scale
 end
 
 --------------------------------------------------------------------------------------------------
@@ -126,10 +126,10 @@ end
 -- Overwrite and fix the existing math.randomseed function.
 local _randomseed = math.randomseed
 function math.randomseed( seed )
-    if type(seed) ~= "number" then
-        print( "WARNING: bad argument #1 to 'randomseed' (number expected, got " .. type(seed) .. ")." )
+	if type(seed) ~= "number" then
+		print( "WARNING: bad argument #1 to 'randomseed' (number expected, got " .. type(seed) .. ")." )
 		return
-    end
+	end
 	-- Address the integer overflow issue with Lua 5.1 (affects Solar2D):
 	-- Source: http://lua-users.org/lists/lua-l/2013-05/msg00290.html
 	local bitsize = 32
@@ -145,23 +145,23 @@ end
 
 -- Pass a string (s) and find how many times a character (or pattern) occurs in it.
 function string.count( s, character )
-    return select( 2, gsub( s, character, "") )
+	return select( 2, gsub( s, character, "") )
 end
 
 -- Pass a string (s) and find the last occurance of a specific character.
 function string.findLast( s, character )
-    local n = find( s, character.."[^"..character.."]*$" )
+	local n = find( s, character.."[^"..character.."]*$" )
 	return n
 end
 
 -- Format a number so that it the thousands are split from another using a separator (space by default).
 -- i.e. input: 123456790 -> 1 234 567 890, or -1234.5678 -> -1 234.5678
 function string.formatThousands( number, separator )
-    if type(number) ~= "number" then
+	if type(number) ~= "number" then
 		print( "WARNING: bad argument #1 to 'formatThousands' (number expected, got " .. type(number) .. ")." )
 		return number
 	end
-    separator = separator or " "
+	separator = separator or " "
 	-- Separate the integer from the possible minus and fraction.
 	local minus, integer, fraction = select( 3, find( tostring(number), "([-]?)(%d+)([.]?%d*)" ) )
 	-- Reverse the integer, add a thousands separator every 3 digits and restore the integer.
@@ -191,10 +191,10 @@ end
 
 -- Check if a given file exists or not.
 function system.checkForFile( filename, directory )
-    if type(filename) ~= "string" then
-        print( "WARNING: bad argument #1 to 'checkForFile' (string expected, got " .. type(filename) .. ")." )
-        return false
-    end
+	if type(filename) ~= "string" then
+		print( "WARNING: bad argument #1 to 'checkForFile' (string expected, got " .. type(filename) .. ")." )
+		return false
+	end
 
 	local path = system.pathForFile( filename, directory or system.ResourceDirectory )
 	if path then
