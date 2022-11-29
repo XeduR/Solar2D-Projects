@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021-2022 Eetu Rantanen          Last Updated: 23 September 2022 --
+--  © 2021-2022 Eetu Rantanen           Last Updated: 29 November 2022 --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -50,6 +50,7 @@ local isSimulator = (system.getInfo( "environment" ) == "simulator")
 
 -------------------------------------------------------------------------
 
+local audioTypeChannel = {}
 local audioHandle = {}
 local audioCount = 0
 local fileContents = ""
@@ -168,6 +169,20 @@ end
 
 -------------------------------------------------------------------------
 
+-- A custom function for limiting on what audio channels certain audio
+-- types can be played on, e.g. "bgm", "ambient", "speech", "sfx", etc.
+function audio.limitChannelsForType( from, to, audioType )
+	-- Note: this does not reserve any channels and audio.play will only respect these
+	-- limitations if the "type" property is included in the audio.play options table.
+	audioTypeChannel[audioType] = { from, to }
+end
+
+function audio.removeLimitByType( audioType )
+	audioTypeChannel[audioType] = nil
+end
+
+-------------------------------------------------------------------------
+
 -- Handle audio function calls that may require a handle by using
 -- the filename and path as the handle/key instead of a Lua table.
 
@@ -183,6 +198,19 @@ function audio.play( filename, options )
 			loadFile( filename, directory )
 		end
 	end
+
+	local limitedChannel = type(options) == "table" and audioTypeChannel[options.type]
+	if limitedChannel then
+		-- Limit the audio to playing on the desired channels.
+		local availableChannel = audio.findFreeChannel( limitedChannel[1] )
+		if availableChannel <= limitedChannel[2] then
+			options.channel = availableChannel
+		else
+			-- The regular audio.play API returns 0 if audio couldn't be played.
+			return 0
+		end
+	end
+
 	return _play( audioHandle[filename], options )
 end
 
