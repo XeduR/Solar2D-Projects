@@ -266,7 +266,7 @@ function table.getRandom( t )
 end
 
 -- Print out all values within a table and its possible subtables (for debugging).
--- (source: Solar2D Docs - https://docs.coronalabs.com/tutorial/data/outputTable)
+-- Original code from Solar2D Docs: https://docs.coronalabs.com/tutorial/data/outputTable
 local function printSubtable( printCache, t, indent )
 	if ( printCache[tostring(t)] ) then
 		print( indent .. "*" .. tostring(t) )
@@ -330,7 +330,7 @@ end
 -- If two functions are given, then check which is faster and by how much.
 function utils.benchmark( f1, f2, iterations )
 	if type(f1) ~= "function" then
-		print( "WARNING: bad argument #1 to 'benchmark' (function expected, got " .. type(f) .. ")." )
+		print( "WARNING: bad argument #1 to 'benchmark' (function expected, got " .. type(f1) .. ")." )
 		return 0
 	end
 
