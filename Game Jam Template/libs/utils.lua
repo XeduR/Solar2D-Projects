@@ -274,9 +274,9 @@ local function printSubtable( printCache, t, indent )
 		printCache[tostring(t)] = true
 		if ( type( t ) == "table" ) then
 			for pos,val in pairs( t ) do
-				local key = type(pos) == "string" and "[\"" .. pos .. "\"] => " or "[" .. pos .. "] => "
+				local key = type(pos) == "string" and "[\"" .. pos .. "\"] = " or "[" .. pos .. "] = "
 				if ( type(val) == "table" ) then
-					print( indent .. key .. tostring( t ).. " {" )
+					print( indent .. key .. " {" )
 					printSubtable( printCache, val, indent .. rep( " ", len(pos)+8 ) )
 					print( indent .. rep( " ", len(pos)+6 ) .. "}" )
 				elseif ( type(val) == "string" ) then
@@ -291,15 +291,15 @@ local function printSubtable( printCache, t, indent )
 	end
 end
 
-function table.print( t )
-	local printCache = {}
+-- Print the entire contents of a table. Optionally, provide the input table's variable name,
+-- which will show up in the print. Otherwise the input table's pointer will be outputted.
+function table.print( t, variableName )
+	if type(t) == "table" then
+		local printCache = {}
 
-	if ( type(t) == "table" ) then
-		print( tostring(t) .. " {" )
+		print( (variableName or tostring(t)) .. " = {" )
 		printSubtable( printCache, t, "  " )
 		print( "}" )
-	else
-		printSubtable( printCache, t, "  " )
 	end
 end
 
