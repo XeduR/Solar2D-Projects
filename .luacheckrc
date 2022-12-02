@@ -1,3 +1,5 @@
+max_line_length = 160
+
 std = {
   -- Solar2D API and other global libraries.
   globals = {
@@ -71,4 +73,5 @@ ignore = {
   "arg",
   "ignore",
   "std",
+  "max_line_length",
 }
