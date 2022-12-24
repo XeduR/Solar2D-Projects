@@ -10,15 +10,22 @@ The following libraries have been extended or added:
 - `string`
 - `system`
 - `table`
-- `utils` 
+- `utils`
 
 ## Change log:
+
+	[1.5.1] - 24 December 2022
+			-	Add the following new functions:
+				system.cleanupFolder( folder, directory )
+				system.createFolder( folder, directory )
+			-	Refactor `system.checkForFile( filename, directory)` to also check for .lua files on devices
+			-	Other minor style updates
 
 	[1.5.0] - 22 October 2022
 			-   Moved all functions to their related global tables
 			-   Moved the change log to separate README file
 			-	Remove the following function:
-				utils.timer(): This was only ever used for benchmarking, but there's a better dedicated benchmarking function.
+				utils.timer(): This was only ever used for benchmarking, but there's a better dedicated benchmarking function
 
 	[1.4.6] - 1 April 2022
 			-	Add the following new functions:

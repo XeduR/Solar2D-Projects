@@ -25,9 +25,13 @@ local M = {}
 -- Other functions are added to their respective libraries, e.g. string.
 _G.utils = {}
 
+local lfs = require("lfs")
+
 -- Localised global functions.
+local pathForFile = system.pathForFile
 local getTimer = system.getTimer
 local dRemove = display.remove
+local remove = os.remove
 local random = math.random
 local floor = math.floor
 local reverse = string.reverse
@@ -42,6 +46,8 @@ local tonumber = tonumber
 local tostring = tostring
 local pairs = pairs
 local type = type
+
+local isWindows = (package.config:sub(1,1) == "\\")
 
 --------------------------------------------------------------------------------------------------
 -- display
@@ -88,12 +94,12 @@ end
 
 -- Check that the object is a display object, i.e. a table, and check that its width and height
 -- are not 0, i.e. that the display object rendered correctly. Optionally remove the it afterwards.
-function display.isValid( object, remove )
+function display.isValid( object, removeAfterCheck )
 	local isValid = false
 	if type(object) == "table" and object.width ~= 0 and object.height ~= 0 then
 		isValid = true
 	end
-	if remove then
+	if removeAfterCheck then
 		dRemove(object)
 	end
 	return isValid
@@ -196,15 +202,88 @@ function system.checkForFile( filename, directory )
 		return false
 	end
 
-	local path = system.pathForFile( filename, directory or system.ResourceDirectory )
-	if path then
-		local file = io.open( path, "r" )
-		if file then
-			file:close()
+	if sub( filename, -4 ) == ".lua" then
+		local filepath = gsub( gsub( sub( filename, 1, -5 ), "%\\", "/"), "%/", "." )
+		-- If the module is already loaded, then the file clearly exists.
+		-- Otherwise, clean up the module after checking if the file exists.
+		local cleanup = not _G.package.loaded[filepath]
+		if not cleanup then
 			return true
+		else
+			-- luacheck: ignore _module
+			local success = pcall( function() local _module = require( filepath ) end )
+			if success and cleanup then
+				_G.package.loaded[filepath] = nil
+			end
+			return success
+		end
+	else
+		local path = pathForFile( filename, directory or system.ResourceDirectory )
+		if path then
+			local file = io.open( path, "r" )
+			if file then
+				file:close()
+				return true
+			end
 		end
 	end
 	return false
+end
+
+-- Remove all files and subfolders inside a given folder.
+-- (NB! Be careful when using this function as it does exactly as advertised.)
+function system.cleanupFolder( folder, directory, subfolder )
+	local path = pathForFile( folder, directory )
+	for file in lfs.dir( path ) do
+		if file ~= "." and file ~= ".." then
+			local filepath = path .. "/" .. file
+
+			if lfs.attributes( filepath, "mode" ) == "directory" then
+				utils.cleanupFolder( (folder ~= "" and folder .. "/" or "") .. file, directory, true )
+			else
+				remove( filepath )
+			end
+		end
+	end
+
+	-- Don't remove the target folder itself.
+	if subfolder then
+		-- Change directory to ensure the OS isn't using (and locking) the one being removed.
+		lfs.chdir( pathForFile( "", system.DocumentsDirectory ) )
+		if isWindows then
+			-- os.remove doesn't work on folders on non-POSIX compliant OSes, i.e. Windows.
+			os.execute( 'rmdir "' .. path .. '"' )
+		else
+			remove( path )
+		end
+	end
+end
+
+-- Check if a folder exists in a given directory or create it.
+function system.createFolder( folder, directory )
+	folder = gsub( folder, "%\\", "/" )
+	directory = directory or system.DocumentsDirectory
+
+	local path = pathForFile( folder, directory )
+	if lfs.attributes( path, "mode" ) ~= "directory" then
+		local parent, subfolder
+
+		local index = string.findLast( folder, "/" )
+		if index then
+			parent, subfolder = sub( folder, 1, index-1 ), sub( folder, index+1 )
+		else
+			parent, subfolder = "", folder
+		end
+
+		path = pathForFile( parent, directory )
+		local success = lfs.chdir( path )
+		if success then
+			lfs.mkdir( subfolder )
+		else
+			return false
+		end
+	end
+	return true
 end
 
 --------------------------------------------------------------------------------------------------
@@ -226,7 +305,7 @@ end
 -- Count the number of entries in a given table (non-recursive).
 function table.count( t )
 	local count = 0
-	for i, v in pairs( t ) do
+	for _, _ in pairs( t ) do
 		count = count+1
 	end
 	return count
