@@ -55,6 +55,7 @@ local isWindows = (package.config:sub(1,1) == "\\")
 
 -- Add a power-of-two sized repeating texture fill to a target display object.
 function display.addRepeatingFill( target, filename, textureSize, textureScale, textureWrapX, textureWrapY )
+	local wrapX, wrapY = display.getDefault( "textureWrapX" ), display.getDefault( "textureWrapY" )
 	display.setDefault( "textureWrapX", textureWrapX or "repeat" )
 	display.setDefault( "textureWrapY", textureWrapY or "repeat" )
 
@@ -65,8 +66,8 @@ function display.addRepeatingFill( target, filename, textureSize, textureScale, 
 	target.fill.scaleX = (textureSize / target.width)*(textureScale or 1)
 	target.fill.scaleY = (textureSize / target.height)*(textureScale or 1)
 
-	display.setDefault( "textureWrapX", "clampToEdge" )
-	display.setDefault( "textureWrapY", "clampToEdge" )
+	display.setDefault( "textureWrapX", wrapX )
+	display.setDefault( "textureWrapY", wrapY )
 end
 
 
