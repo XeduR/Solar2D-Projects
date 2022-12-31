@@ -239,7 +239,7 @@ function system.cleanupFolder( folder, directory, subfolder )
 			local filepath = path .. "/" .. file
 
 			if lfs.attributes( filepath, "mode" ) == "directory" then
-				utils.cleanupFolder( (folder ~= "" and folder .. "/" or "") .. file, directory, true )
+				system.cleanupFolder( (folder ~= "" and folder .. "/" or "") .. file, directory, true )
 			else
 				remove( filepath )
 			end
