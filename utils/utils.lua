@@ -210,8 +210,7 @@ function system.checkForFile( filename, directory )
 		if not cleanup then
 			return true
 		else
-			-- luacheck: ignore _module
-			local success = pcall( function() local _module = require( filepath ) end )
+			local success = pcall( function() require( filepath ) end )
 			if success and cleanup then
 				_G.package.loaded[filepath] = nil
 			end
