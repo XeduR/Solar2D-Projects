@@ -1,0 +1,86 @@
+-------------------------------------------------------------------------
+--                                                                     --
+--    ooooooo  ooooo                 .o8              ooooooooo.       --
+--     `8888    d8'                 "888              `888   `Y88.     --
+--       Y888..8P     .ooooo.   .oooo888  oooo  oooo   888   .d88'     --
+--        `8888'     d88' `88b d88' `888  `888  `888   888ooo88P'      --
+--       .8PY888.    888ooo888 888   888   888   888   888`88b.        --
+--      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
+--    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
+--                                                                     --
+--  © 2021 Eetu Rantanen                   Last Updated: 8 August 2021 --
+-------------------------------------------------------------------------
+--  License: MIT                                                       --
+-------------------------------------------------------------------------
+
+settings =
+{
+	splashScreen =
+	{
+		enable = false
+	},
+
+	orientation =
+	{
+		-- default = "portrait",
+		-- supported = { "portrait", "portraitUpsideDown" },
+		default = "landscapeRight",
+		supported = { "landscapeRight", "landscapeLeft" },
+	},
+
+	plugins =
+	{
+
+	},
+
+	android =
+	{
+		usesPermissions =
+		{
+			"android.permission.INTERNET",
+		},
+	},
+
+	iphone =
+	{
+		xcassets = "Images.xcassets",
+		plist =
+		{
+			UIStatusBarHidden = true,
+			UILaunchStoryboardName = "LaunchScreen",
+		},
+	},
+
+	win32 =
+	{
+		singleInstance = true,
+	},
+
+	window =
+	{
+		titleText = {
+			default = "Game Jam Template",
+		},
+		defaultMode = "normal", -- "normal", "minimized", "maximized", "fullscreen"
+		defaultViewWidth = 960,
+		defaultViewHeight = 640,
+		resizable = false,
+		minViewWidth = 960,
+		minViewHeight = 640,
+
+		enableCloseButton = true,
+		enableMaximizeButton = false,
+		enableMinimizeButton = true,
+		suspendWhenMinimized = true,
+	},
+
+	excludeFiles =
+	{
+		all =		{ "LICENSE", ".DS_Store", "Thumbs.db", "development files/*", "*.md", },
+		ios =		{ "*AndroidResources*", "Icon*.ico", "Icon*.icns", "*.js", },
+		android =	{ "*.xcassets*", "*.storyboardc*", "Icon*.ico", "Icon*.icns", "*.js", },
+		web =		{ "*.xcassets*", "*.storyboardc*", "*AndroidResources*", "Icon*.ico", "Icon*.icns", "*.txt", },
+		win32 =		{ "*.xcassets*", "*.storyboardc*", "*AndroidResources*", "Icon*.icns", "*.js", },
+		macos =		{ "*.xcassets*", "*.storyboardc*", "*AndroidResources*", "Icon*.ico", "*.js", },
+	},
+}

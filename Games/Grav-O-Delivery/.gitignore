@@ -1,0 +1,14 @@
+# Solar2D & tools:
+.CoronaLiveBuild
+.vscode
+*.tiled-session
+# Hidden temporary files, e.g. MS Office.
+~$*
+# OS files:
+Thumbs.db
+._*
+*.ini
+.DS_Store
+.DS_Store?
+.Spotlight-V100
+.Trashes
