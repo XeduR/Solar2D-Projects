@@ -43,8 +43,6 @@ local HUD
 
 local minDistance = 20 -- Dragging below this will cancel the parcel shot.
 local maxDistance = 150 -- Dragging above this will be capped to this distance.
-local minStrokeWidth = 4
-local maxStrokeWidth = 12
 
 local parcelWidth = 20
 local parcelHeight = 12
@@ -53,6 +51,13 @@ local globalGravityModifier = 0.0015
 
 local spacestationMoveHorizontal = 80
 local spacestationMoveVertical = 30
+
+local satelliteData = {
+	{ planet=2, startPos=80, radius=8, speed=0.25 },
+	{ planet=3, startPos=30, radius=10, speed=0.35 },
+	{ planet=3, startPos=160, radius=12, speed=0.35 },
+	{ planet=4, startPos=220, radius=10, speed=0.25 },
+}
 
 local starCount = 1000
 rng.randomseed( 1000 )
@@ -106,13 +111,28 @@ local function parcelCollision( self, event )
 	local other = event.other
 
 	if event.phase == "began" then
-		if other.type ~= "gravitation" then
+		if other and other.type ~= "gravitation" then
 			timer.performWithDelay( 10, function()
 				if type( self ) == "table" and tonumber(self.width) and self.width ~= 0 then
 					display.remove( self )
 					parcel[self.id] = nil
 				end
 			end )
+
+			if other.type == "satellite" then
+				if other.hasBeenHit then
+					timer.performWithDelay( 10, function()
+						if type( other ) == "table" and tonumber(other.width) and other.width ~= 0 then
+							display.remove( other )
+							satellite[other.id] = nil
+						end
+					end )
+				else
+					other.hasBeenHit = true
+					other.speed = other.speed * 2.5
+					other:setFillColor( 0.85, 0, 0 )
+				end
+			end
 		end
 	end
 end
@@ -124,11 +144,8 @@ local function aim( event )
 
 	display.remove( target.lineEnd )
 	target.lineEnd = nil
-	display.remove( target.line )
-	target.line = nil
 
 	if phase == "began" or phase == "moved" then
-		-- print( event.xDelta, event.yDelta )
 
 		if not target.touchStarted then
 			display.getCurrentStage():setFocus( target )
@@ -144,19 +161,27 @@ local function aim( event )
 		target.xLaunch = target.xStart - cos( target.angle ) * (parcelWidth*1.5)
 		target.yLaunch = target.yStart - sin( target.angle ) * (parcelWidth*1.5)
 
-		local xEnd = target.xStart - cos( target.angle ) * distance
-		local yEnd = target.yStart - sin( target.angle ) * distance
+		local n = #target.aim-1
+		for i = 1, #target.aim do
+			target.aim[i].x = target.xStart - cos( target.angle ) * (distance*(i-1)/n)
+			target.aim[i].y = target.yStart - sin( target.angle ) * (distance*(i-1)/n)
+			target.aim[i].isVisible = true
+		end
 
-		target.line = display.newLine( groupUI, target.xStart, target.yStart, xEnd, yEnd )
-
+		local r, g, b = 0, 0, 0
 		if distance < minDistance then
-			target.line:setStrokeColor( 1, 0, 0 )
+			r = 0.85
 			target.launchStrength = nil
 		else
-			target.line:setStrokeColor( 1, 1, 1 )
+			g = 0.85
 			target.launchStrength = (distance-minDistance)/(maxDistance-minDistance)*firingStrength
 		end
-		target.line.strokeWidth = minStrokeWidth + (maxStrokeWidth-minStrokeWidth) * (distance/maxDistance)
+
+		for i = 1, #target.aim do
+			target.aim[i]:setStrokeColor( r, g, b )
+			target.aim[i].isVisible = true
+		end
+
 
 		target.lineEnd = display.newText({
 			parent = groupUI,
@@ -167,10 +192,16 @@ local function aim( event )
 			fontSize = 24,
 			align = "center"
 		})
+		target.lineEnd:setFillColor( r, g, b )
 
 	else
 		display.getCurrentStage():setFocus( nil )
 		target.touchStarted = false
+
+		-- Hide the aim assist line.
+		for i = 1, #target.aim do
+			target.aim[i].isVisible = false
+		end
 
 		if target.launchStrength then
 			local newParcel = display.newImageRect( groupUI, "assets/images/parcel.png", parcelWidth, parcelHeight )
@@ -197,14 +228,18 @@ local function update()
 		planet[i].fill.effect.offY = planet[i].fill.effect.offY + 0.0001*planet[i].rotationModifier
 	end
 
-	for i = 1, #satellite do
-		satellite[i].position = satellite[i].position + satellite[i].speed
+	for i = 1, #satelliteData do
+		if satellite[i] then
+			satellite[i].position = satellite[i].position + satellite[i].speed
 
-		local angle = rad( satellite[i].position )
-		satellite[i].x = satellite[i].planet.x + cos( angle - 45 ) * satellite[i].planet.width*0.5
-		satellite[i].y = satellite[i].planet.y + sin( angle - 45  ) * satellite[i].planet.width*0.5
+			local angle = rad( satellite[i].position )
+			satellite[i].x = satellite[i].planet.x + cos( angle - 45 ) * satellite[i].planet.width*0.5
+			satellite[i].y = satellite[i].planet.y + sin( angle - 45  ) * satellite[i].planet.width*0.5
+		end
 	end
 
+	spacestation.fill.effect.offX = spacestation.fill.effect.offX + 0.005
+	spacestation.fill.effect.offY = spacestation.fill.effect.offY + 0.003
 	spacestation.position = spacestation.position + 1
 	spacestation.x = spacestation.xBase + cos( rad( spacestation.position ) ) * spacestationMoveHorizontal
 	spacestation.y = spacestation.yBase + sin( rad( spacestation.position ) ) * spacestationMoveVertical
@@ -221,6 +256,27 @@ local function update()
 		end
 	end
 
+end
+
+local function createSatellites()
+	for i = 1, #satelliteData do
+		if satellite[i] then
+			display.remove( satellite[i] )
+			satellite[i] = nil
+		end
+
+		local parent = planet[satelliteData[i].planet].gravitation
+
+		satellite[i] = display.newCircle( groupPlanets, parent.x, parent.y, satelliteData[i].radius )
+		satellite[i]:setFillColor( 0.7 )
+		satellite[i].planet = parent
+		satellite[i].position = satelliteData[i].startPos
+		satellite[i].speed = satelliteData[i].speed
+		satellite[i].type = "satellite"
+		satellite[i].id = i
+
+		physics.addBody( satellite[i], "static", { radius=satellite[i].width*0.5 } )
+	end
 end
 
 ---------------------------------------------------------------------------
@@ -306,12 +362,20 @@ function scene:create( event )
 		physics.addBody( planet[i], "static", { radius=planet[i].width*0.5 } )
 		planet[i].type = "planet"
 
+		-- Create a table to store the planet's aim assist circles.
+		planet[i].aim = {}
+		for j = 1, 10 do
+			planet[i].aim[j] = display.newCircle( groupPlanets, planet[i].x, planet[i].y, 2 )
+			planet[i].aim[j].strokeWidth = 2
+			planet[i].aim[j]:setStrokeColor( 0, 0.85, 0 )
+			planet[i].aim[j].isVisible = false
+		end
+
 		-- Set up the planet's texture.
 		planet[i].fill = {
 			type = "image",
 			filename = planetData[i].image,
 		}
-		-- planet[i].fill.rotation = -45
 		planet[i].fill.effect = "filter.custom.fisheye"
 		planet[i].fill.effect.intensity = 25
 		planet[i].rotationModifier = planetData[i].rotationModifier
@@ -338,39 +402,34 @@ function scene:create( event )
 		planet[i].orbit:setStrokeColor( 1, 0.2 )
 	end
 
-	display.setDefault( "textureWrapX", "clampToEdge" )
-	display.setDefault( "textureWrapY", "clampToEdge" )
-
-	---------------------------------------------------------------
-
-	-- Create satellites.
-	local satelliteData = {
-		{ planet=planet[2].gravitation, startPos=80, speed=0.25 },
-		{ planet=planet[3].gravitation, startPos=30, speed=0.35 },
-		{ planet=planet[3].gravitation, startPos=160, speed=0.35 },
-		{ planet=planet[4].gravitation, startPos=220, speed=0.25 },
-	}
-
-	for i = 1, #satelliteData do
-		satellite[i] = display.newCircle( groupPlanets, satelliteData[i].planet.x, satelliteData[i].planet.y, 8 )
-		satellite[i].planet = satelliteData[i].planet
-		satellite[i].position = satelliteData[i].startPos
-		satellite[i].speed = satelliteData[i].speed
-		satellite[i].type = "satellite"
-
-		physics.addBody( satellite[i], "static", { radius=satellite[i].width*0.5 } )
-	end
-
 	---------------------------------------------------------------
 
 	-- Create a spacestation.
-	spacestation = display.newCircle( groupPlanets, 100, screen.minY+100, 18 )
-	spacestation:setFillColor( 0.2, 1 )
+	spacestation = display.newCircle( groupPlanets, 100, screen.minY+100, 16 )
+
+	-- Set up the spacestation's texture.
+	spacestation.fill = {
+		type = "image",
+		filename = "assets/images/spacestation.png",
+	}
+	spacestation.fill.effect = "filter.custom.fisheye"
+	spacestation.fill.effect.intensity = 8
+	spacestation.rotationModifier = 1
+
 	physics.addBody( spacestation, "static", { radius=spacestation.width*0.5 } )
 	spacestation.xBase, spacestation.yBase = spacestation.x, spacestation.y
 	spacestation.position = 0
 	spacestation.yOffset = 0
 	spacestation.type = "spacestation"
+
+	display.setDefault( "textureWrapX", "clampToEdge" )
+	display.setDefault( "textureWrapY", "clampToEdge" )
+
+	---------------------------------------------------------------
+
+	createSatellites()
+
+	---------------------------------------------------------------
 
 	Runtime:addEventListener( "enterFrame", update )
 end
