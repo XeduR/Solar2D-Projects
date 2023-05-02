@@ -7,4 +7,5 @@ Theme: Delivery
 Stuff to be added later.
 
 Engine: [Solar2D](https://solar2d.com/)
-Music: https://musiclab.chromeexperiments.com/Song-Maker/song/6327018999513088
+SFX: https://sfbgames.itch.io/chiptone
+Background music: "beam" by [sinneschlösen](https://pixabay.com/users/sinneschlösen-1888724/)

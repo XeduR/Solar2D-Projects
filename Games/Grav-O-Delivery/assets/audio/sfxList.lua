@@ -1,11 +1,9 @@
 local sfx = {
-	"assets/audio/100bmp.wav",
-	"assets/audio/120bmp.wav",
-	"assets/audio/140bmp.wav",
-	"assets/audio/160bmp.wav",
-	"assets/audio/180bmp.wav",
-	"assets/audio/200bmp.wav",
-	"assets/audio/220bmp.wav",
-	"assets/audio/240bmp.wav",
+	"assets/audio/failure.wav",
+	"assets/audio/fire.wav",
+	"assets/audio/gameover.wav",
+	"assets/audio/newgame.wav",
+	"assets/audio/sinnesloschen-beam-117362.mp3",
+	"assets/audio/success.wav",
 }
 return sfx
