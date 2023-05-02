@@ -931,7 +931,7 @@ function scene:create( event )
 		-----------------------------------------------------------
 
 		-- Create a HUD version of the satellite.
-		HUD.target[satellite[i].id] = display.newCircle( HUD, 0, 0, satelliteData[i].radius )
+		HUD.target[satellite[i].id] = display.newImageRect( HUD, "assets/images/satellite.png", satelliteData[i].radius*2, satelliteData[i].radius*2 )
 		HUD.target[satellite[i].id].realTarget = satellite[i]
 
 		HUD.target[satellite[i].id]:setFillColor( 0.7 )
