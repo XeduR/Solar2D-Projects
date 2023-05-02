@@ -116,7 +116,6 @@ end
 -- deliveryRoute = {}
 -- deliveryRoute[1] = { "planet1", "planet2" }
 
-display.setDefault( "background", 5/255, 5/255, 25/255 )
 display.setDefault( "magTextureFilter", "nearest" )
 display.setDefault( "minTextureFilter", "nearest" )
 
@@ -129,8 +128,9 @@ f:close()
 audio.setVolume( masterVolume )
 -- audio.loadSFX( "assets/audio" )
 
+-- TODO: current work around, figure out the real issue.
 local sfx = {
-	bgm = audio.loadSound( "assets/audio/sinnesloschen-beam-117362.mp3" ),
+	-- bgm = audio.loadSound( "assets/audio/sinnesloschen-beam-117362.mp3" ),
 	success = audio.loadSound( "assets/audio/success.wav" ),
 	failure = audio.loadSound( "assets/audio/failure.wav" ),
 	fire = audio.loadSound( "assets/audio/fire.wav" ),
@@ -623,6 +623,7 @@ end
 
 function scene:create( event )
 	local sceneGroup = self.view
+
 	-- If the project uses savedata, then load existing data or set it up.
 	if event.params and event.params.usesSavedata then
 		loadsave = require("classes.loadsave")
@@ -1101,9 +1102,10 @@ function scene:show( event )
 			composer.removeScene( "scenes.launchScreen" )
 		end
 
+		display.setDefault( "background", 5/255, 5/255, 25/255 )
+
 	elseif event.phase == "did" then
 		-- audio.play( "assets/audio/sinnesloschen-beam-117362.mp3", { channel=1, loops=-1 } )
-		audio.play( sfx.bgm, { channel=1, loops=-1 } )
 
 		newgame()
 	end

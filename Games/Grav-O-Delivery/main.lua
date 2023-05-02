@@ -19,11 +19,16 @@
 -- you are free to customise this game template as you see fit.        --
 -------------------------------------------------------------------------
 
+-- TODO: Prettify this up, for now, just make it work.
+local bgm = audio.loadSound( "assets/audio/sinnesloschen-beam-117362.mp3" )
+audio.play( bgm, { channel=1, loops=-1 } )
+
 local launchParams = {
+	bgm = bgm,
 	-------------------------------------
 	-- debugMode sends prints to browser console on HTML5 platform, skips directly
 	-- to game, toggles on loadsave's error reporting and loads performance meter.
-	debugMode = true,
+	debugMode = false,
 	-- Whether or not the project utilises persistent data via Spyric Loadsave.
 	usesSavedata = true,
 	-- Whether or not the project encodes and protects the save data or not.
@@ -151,7 +156,7 @@ if launchParams.debugMode then
 		framesBetweenUpdate = 5
 	})
 
-	composer.gotoScene( "scenes.game", {params = {usesSavedata = launchParams.usesSavedata}} )
+	composer.gotoScene( "scenes.game", {params = {usesSavedata = launchParams.usesSavedata, bgm=bgm}} )
 else
 	-- Simply suppress error messages when not in debug mode.
 	Runtime:addEventListener( "unhandledError", function()
