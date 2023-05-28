@@ -11,6 +11,6 @@ I was too busy to actually create a proper game during the jam, and as some sort
 - GitHub Copilot: additional code.
 - Bing Image Creator: all images.
 
-![Where everything is made up and the points don't matter](https://github.com/XeduR/Solar2D-Projects/tree/master/Games/Lazy Morality/where-everything-is-made-up-whose-line-is-it-anyway.gif)
+![Where everything is made up and the points don't matter](https://github.com/XeduR/Solar2D-Projects/blob/master/Games/Lazy%20Morality/where-everything-is-made-up-whose-line-is-it-anyway.gif)
 
 ---
