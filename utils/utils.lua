@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021-2022 Eetu Rantanen                                          --
+--  © 2021-2023 Eetu Rantanen                                          --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -93,16 +93,20 @@ function display.hex2rgb( hex, dontNormalise )
 	end
 end
 
--- Check that the object is a display object, i.e. a table, and check that its width and height
--- are not 0, i.e. that the display object rendered correctly. Optionally remove the it afterwards.
-function display.isValid( object, removeAfterCheck )
+-- Check that a given image file exists and it's not corrupted or otherwise invalid and it can be shown.
+function display.isValidImage( filename, directory )
+	local image = display.newImage( filename, directory )
 	local isValid = false
-	if type(object) == "table" and object.width ~= 0 and object.height ~= 0 then
-		isValid = true
+
+	if image then
+		image.isVisible = false
+
+		-- display.newImage will automatically detect and assign the image's dimensions.
+		-- If the image file is corrupted or otherwise invalid, then its width will be 0.
+		isValid = image.width and image.width ~= 0
+		dRemove( image )
 	end
-	if removeAfterCheck then
-		dRemove(object)
-	end
+
 	return isValid
 end
 
@@ -175,6 +179,7 @@ function string.formatThousands( number, separator )
 	integer = reverse( gsub( reverse(integer), "(%d%d%d)", "%1"..separator ))
 	-- Remove the possible space from the start of the integer and merge the strings.
 	if sub( integer, 1, 1 ) == " " then integer = sub( integer, 2 ) end
+	if sub( integer, 1, 1 ) == separator then integer = sub( integer, 2 ) end
 	return minus .. integer .. fraction
 end
 

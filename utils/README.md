@@ -14,6 +14,9 @@ The following libraries have been extended or added:
 
 ## Change log:
 
+### [1.5.2] - 7 November 2023
+- Rewrite display.isValid() and change its name to display.isValidImage() to better describe its intended use.
+
 ### [1.5.1] - 24 December 2022
 - Add the following new functions:
 	- `system.cleanupFolder( folder, directory )`
