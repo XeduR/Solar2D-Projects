@@ -150,15 +150,29 @@ function scene:show( event )
 		-- Lazy hack to prevent the audio from starting again if the player completes the game
 		-- and returns to the menu scene.
 		if not _G.audioPlaying then
-			local options =
-			{
-				fadein = 3500,
-				channel = 1,
-				loops = -1,
-			}
+			_G.audioPlaying = true
 
-			-- local backgroundMusic = audio.loadStream( "assets/audio/Bittersweet.mp3" )
-			audio.play( "assets/audio/Bittersweet_stream.mp3", options )
+			-- Quick and dirty fix to some weird audio issues in the browser,
+			-- where audio doesn't play at all if it's started too early.
+			local delay = 0
+			if system.getInfo( "environment" ) == "browser" then
+				delay = 2500
+			end
+
+			timer.performWithDelay( delay, function()
+				_G.audioPlaying = true
+
+
+				local options =
+				{
+					fadein = 1500,
+					channel = 1,
+					loops = -1,
+				}
+
+				-- local backgroundMusic = audio.loadStream( "assets/audio/Bittersweet.mp3" )
+				audio.play( "assets/audio/Bittersweet_stream.mp3", options )
+			end )
 		end
 
 	elseif event.phase == "did" then
