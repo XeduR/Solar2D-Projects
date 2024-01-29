@@ -59,7 +59,7 @@ settings =
 	window =
 	{
 		titleText = {
-			default = "Game Jam Template",
+			default = "XPERIMENT",
 		},
 		defaultMode = "normal", -- "normal", "minimized", "maximized", "fullscreen"
 		defaultViewWidth = 960,

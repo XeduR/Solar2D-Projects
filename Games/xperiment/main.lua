@@ -27,7 +27,7 @@ local launchParams = {
 	-- Whether or not the project utilises persistent data via Spyric Loadsave.
 	usesSavedata = true,
 	-- Whether or not the project encodes and protects the save data or not.
-	protectSavedata = false,
+	protectSavedata = true,
 	-- Set master volume to zero.
 	muteGame = false,
 
