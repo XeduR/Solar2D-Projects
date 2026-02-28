@@ -1,9 +1,8 @@
-local M = {}
+-- Autotile setup in Lua for 47 tile layout.
+local autotile = {}
 
-local random = math.random
-
--- Tile bitmask references.
--- NB! Tiles with more than one variant are listed in tables.
+-- Tilemap's 8-bit bitmask references, i.e.
+-- [bitmask value] = corresponding frame
 local frame = {
     [0] = 1,
     [1] = 1,
@@ -260,60 +259,62 @@ local frame = {
     [252] = 5,
     [253] = 5,
     [254] = 18,
-    [255] = { 12, 19, 30 },
+    [255] = 12, -- Duplicate center tiles, 19 and 30, aren't being used.
 }
 
--- Basic parameters and references required by the module.
-local map, maxRows, maxColumns
-function M.init( m, r, c )
-    map, maxRows, maxColumns = m, r, c
-end
 
 -- Calculate a bitmask value for a given cell and retrieves the corresponding frame id.
-function M.getFrameID( row, column, currentFrame )
-    -- Prevent modifying the outer edges of the game map.
-    if row > 0 and row < maxRows+1 and column > 0 and column < maxColumns+1 then
-        local bitmask = 0
+function autotile.getFrameID( map, row, column, directions )
+    local exponent = 0
+    local bitmask = 0
 
-        if map[row-1][column-1] ~= 0 then
+    -- Check all adjacent cells to the given cell {row;column}.
+
+    if directions == 4 then
+        -- Cell above.
+        if map[row-1] and map[row-1][column] and map[row-1][column] ~= 0 then
             bitmask = bitmask + 1
         end
-        if map[row-1][column] ~= 0 then
+        -- Cell to the left.
+        if map[row] and map[row][column-1] and map[row][column-1] ~= 0 then
             bitmask = bitmask + 2
         end
-        if map[row-1][column+1] ~= 0 then
+        -- Cell to the right.
+        if map[row] and map[row][column+1] and map[row][column+1] ~= 0 then
             bitmask = bitmask + 4
         end
-        if map[row][column-1] ~= 0 then
+        -- Cell below.
+        if map[row+1] and map[row+1][column] and map[row+1][column] ~= 0 then
             bitmask = bitmask + 8
         end
-        if map[row][column+1] ~= 0 then
-            bitmask = bitmask + 16
-        end
-        if map[row+1][column-1] ~= 0 then
-            bitmask = bitmask + 32
-        end
-        if map[row+1][column] ~= 0 then
-            bitmask = bitmask + 64
-        end
-        if map[row+1][column+1] ~= 0 then
-            bitmask = bitmask + 128
-        end
 
-        local id = frame[bitmask]
-        if type( id ) == "table" then
-            -- If the game is trying to update an existing tile,
-            -- then don't return the same frame id to the game.
-            local t = frame[bitmask][random(1,#id)]
-            if currentFrame then
-                while t == currentFrame do
-                    t = frame[bitmask][random(1,#id)]
+        -- With 4-bit approach, the frame ID is equal to bitmask value plus 1.
+        return bitmask+1, bitmask
+
+    else -- Default: Looping through all adjacent cells for 8-directions.
+
+        for rowOffset = -1, 1 do
+            for columnOffset = -1, 1 do
+
+                local rowToCheck = row + rowOffset
+                local columnToCheck = column + columnOffset
+
+                -- Ignore the cell where the tile is being added.
+                if rowToCheck ~= row or columnToCheck ~= column then
+                    -- Treat missing adjacent cells as empty. This can be due to a cell being outside of the map bounds.
+                    if map[rowToCheck] and map[rowToCheck][columnToCheck] and map[rowToCheck][columnToCheck] ~= 0 then
+                        bitmask = bitmask + 2^exponent
+                    end
+
+                    exponent = exponent + 1
                 end
             end
-            id = t
         end
-        return id, bitmask
+
+        -- With 8-bit approach, the frame ID needs to be retrieved from a prepared table.
+        return frame[bitmask], bitmask
     end
 end
 
-return M
+
+return autotile
