@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021-2022 Eetu Rantanen           Last Updated: 25 November 2022 --
+--  © 2021-2026 Eetu Rantanen                                          --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -30,6 +30,8 @@ local launchParams = {
 	protectSavedata = true,
 	-- Set master volume to zero.
 	muteGame = true,
+	-- Use the advanced audio library instead of Solar2D's default library.
+	useAdvancedAudio = true,
 
 	-- launchScreen.lua contents and visual options:
 	logoFilename = "assets/images/launchScreen/XeduR.png",
@@ -40,7 +42,8 @@ local launchParams = {
 	logoAnchorX = 0.5,
 	logoAnchorY = 0.5,
 
-	text = "© 2022 Eetu Rantanen\nwww.xedur.com",
+	-- Show your own copyright information in the launchScreen scene:
+	text = "© 2026 Eetu Rantanen\nwww.xedur.com",
 	font = native.systemFontBold,
 	fontSize = 24,
 	textAlign = "center",
@@ -101,12 +104,11 @@ local composer = require("composer")
 require("classes.screen")
 require("libs.utils")
 
----------------------------------------------------------------------------
--- The sfx module overwrites parts of the standard audio library. If you wish
--- to use Solar2D's standard audio API, then comment out the two lines below.
-require("classes.sfx")
-audio.loadSFX("assets/audio")
----------------------------------------------------------------------------
+if launchParams.useAdvancedAudio then
+	-- NOTE: If you wish to use the standard audio API, then don't require this.
+	-- The advanced audio library overwrites Solar2D's standard audio functions.
+	require("libs.advancedAudio")
+end
 
 if not launchParams.muteGame then
 	audio.setVolume( 0 )

@@ -1,77 +1,38 @@
+-- luacheck: no global (suppress warnings from this file)
+
+-- Line length
 max_line_length = 160
 
-std = {
-  -- Solar2D API and other global libraries.
-  globals = {
-    "_G",
-    "al",
-    "assert",
+-- Use Lua 5.1 as base (Solar2D uses 5.1)
+std = "lua51"
+
+-- Solar2D globals (writable - allows overwriting for wrappers):
+globals = {
+    -- Solar2D core & internals:
     "audio",
-    "cloneArray",
-    "collectgarbage",
-    "coronabaselib",
-    "coroutine",
-    "debug",
     "display",
-    "dofile",
     "easing",
-    "error",
-    "gcinfo",
-    "getfenv",
-    "getmetatable",
     "graphics",
-    "io",
-    "ipairs",
-    "lfs",
-    "load",
-    "loadfile",
-    "loadstring",
-    "lpeg",
-    "math",
     "media",
-    "metatable",
-    "module",
     "native",
     "network",
-    "newproxy",
-    "next",
-    "os",
-    "package",
-    "pairs",
-    "pcall",
     "physics",
-    "print",
-    "rawequal",
-    "rawget",
-    "rawset",
-    "require",
     "Runtime",
-    "select",
-    "sendLaunchAnalytics",
-    "setfenv",
-    "setmetatable",
-    "string",
     "system",
-    "table",
     "timer",
-    "tonumber",
-    "tostring",
     "transition",
-    "type",
-    "unpack",
-    "xpcall",
-    "application",
-    "settings",
+    "metatable",
+
+    -- project/framework specific custom globals:
     "utils",
-  }
 }
--- Commonly used Solar2D/Lua 5.1 function arguments,
--- as well as Luacheck configuration's own globals.
+
+-- Ignore unused arguments with specific names:
+-- 212 = unused argument
 ignore = {
-  "self",
-  "event",
-  "arg",
-  "ignore",
-  "std",
-  "max_line_length",
+    "212/self",
+    "212/event",
+    "212/_",
+    "212/_*",
 }
+

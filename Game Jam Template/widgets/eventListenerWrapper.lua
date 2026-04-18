@@ -25,7 +25,7 @@ local isSimulator = system.getInfo( "environment" ) == "simulator"
 local platform = system.getInfo( "platform" )
 
 function Runtime:addEventListener( eventName, listener )
-	if eventName == "key" and platform == "ios" then
+	if eventName == "key" and platform == "ios" and not isSimulator then
 		return
 	end
 
@@ -52,7 +52,7 @@ function Runtime:addEventListener( eventName, listener )
 end
 
 function Runtime:removeEventListener( eventName, listener )
-	if eventName == "key" and platform == "ios" then
+	if eventName == "key" and platform == "ios" and not isSimulator then
 		return
 	end
 	local super = self._super
