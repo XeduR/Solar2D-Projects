@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2022 Eetu Rantanen                Last Updated: 25 November 2022 --
+--  © 2025 Eetu Rantanen                 Last Updated: 9 February 2025 --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -22,13 +22,12 @@
 -- numbers, but it is slightly slower than Lua's random function.
 --
 -- You can see the pseudorandom number genration in action over at:
--- https://www.xedur.com/demos/Pseudorandom%20Number%20Generator/
+-- https://www.xedur.com/demo/pseudorandom-number-generator/
 -------------------------------------------------------------------------
 
 local rng = {}
 
--- Localised math functions.
-local _abs = math.abs
+-- Localised functions for slight performance improvement.
 local _floor = math.floor
 local _type = type
 
@@ -42,11 +41,19 @@ local seed = 12345
 
 -- Set a new initial random seed.
 function rng.randomseed(n)
-	if _type(n) == "number" then
-		seed = _floor(_abs(n+0.5))
-	else
-		print( "WARNING: bad argument to 'randomseed' (number expected, got ".._type(n)..")" )
+	if _type(n) ~= "number" then
+		print( "WARNING: bad argument #1 to 'randomseed' (number expected, got ".._type(n)..")" )
+		return
 	end
+
+	-- Ensure the seed is a positive integer.
+	seed = _floor(math.abs(n) + 0.5)
+end
+
+-- Get the current random seed. Useful for saving and restoring the state,
+-- while wanting to generate the same sequence of pseudorandom numbers.
+function rng.getSeed()
+	return seed
 end
 
 -- Generate a pseudorandom number using the linear congruential method.
