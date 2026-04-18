@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2021-2023 Eetu Rantanen                                          --
+--  © 2021-2026 Eetu Rantanen                                          --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -93,23 +93,6 @@ function display.hex2rgb( hex, dontNormalise )
 	end
 end
 
--- Check that a given image file exists and it's not corrupted or otherwise invalid and it can be shown.
-function display.isValidImage( filename, directory )
-	local image = display.newImage( filename, directory )
-	local isValid = false
-
-	if image then
-		image.isVisible = false
-
-		-- display.newImage will automatically detect and assign the image's dimensions.
-		-- If the image file is corrupted or otherwise invalid, then its width will be 0.
-		isValid = image.width and image.width ~= 0
-		dRemove( image )
-	end
-
-	return isValid
-end
-
 -- Convert RGB to HEX, and handle normalised (0 to 1) or standard RGB (0 to 255) inputs.
 function display.rgb2hex( r, g, b, notNormalised )
 	-- By default, we're expecting the input to be normalised (as Solar2D uses normalised values).
@@ -130,24 +113,37 @@ end
 --------------------------------------------------------------------------------------------------
 
 -- Return a simple and reliable random seed.
-function math.getseed()
-	return math.floor(os.time() + getTimer()*10)
+function math.generateSeed()
+	local timerStr = string.gsub( tostring( getTimer() ), "%.", math.random(9) )
+
+	return floor(os.time() + tonumber(timerStr) )
 end
 
--- Overwrite and fix the existing math.randomseed function.
+-- Overwrite and fix the existing math.randomseed function (for Lua 5.1).
 local _randomseed = math.randomseed
 function math.randomseed( seed )
 	if type(seed) ~= "number" then
 		print( "WARNING: bad argument #1 to 'randomseed' (number expected, got " .. type(seed) .. ")." )
 		return
 	end
+
+	-- Ensure the seed is a positive integer.
+	seed = floor(math.abs(seed) + 0.5)
+
 	-- Address the integer overflow issue with Lua 5.1 (affects Solar2D):
 	-- Source: http://lua-users.org/lists/lua-l/2013-05/msg00290.html
 	local bitsize = 32
+
 	if seed >= 2^bitsize then
-		seed = seed - math.floor(seed / 2^bitsize) * 2^bitsize
+		seed = seed - floor(seed / 2^bitsize) * 2^bitsize
+		_randomseed(seed - 2^(bitsize-1))
+
+	else
+		_randomseed(seed)
+
 	end
-	_randomseed(seed - 2^(bitsize-1))
+
+	return seed
 end
 
 --------------------------------------------------------------------------------------------------
