@@ -643,28 +643,27 @@ gameLoop = function()
 	--------------------------------------------------------------------------------------
 	-- 7. HUD update
 
+	local hudReady = gameConfig.colors.hudReady
+	local hudCooldown = gameConfig.colors.hudCooldown
+
 	if pingCooldown > 0 then
-		local c = gameConfig.colors.hudPingCooldown
-		uiTextPing.text = "PING " .. string.format( "%.1f", pingCooldown * 0.001 ) .. "S"
-		uiTextPing:setFillColor( c[1], c[2], c[3] )
+		uiTextPing.text = "SONAR READY IN " .. string.format( "%.1f", pingCooldown * 0.001 ) .. "S"
+		uiTextPing:setFillColor( hudCooldown[1], hudCooldown[2], hudCooldown[3] )
 		uiTextPing.alpha = gameConfig.hud.pingCooldownAlpha
 	else
-		local c = gameConfig.colors.hudPingReady
-		uiTextPing.text = "PING READY"
-		uiTextPing:setFillColor( c[1], c[2], c[3] )
+		uiTextPing.text = "SONAR READY"
+		uiTextPing:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
 		uiTextPing.alpha = gameConfig.hud.pingReadyAlpha
 	end
 
 	local torpText = "TORPEDOES: " .. torpedoesRemaining .. "/" .. gameConfig.torpedo.maxTorpedoes
 	if fireCooldown > 0 then
-		local c = gameConfig.colors.hudPingCooldown
-		uiTextTorpedo.text = torpText .. " " .. string.format( "%.1f", fireCooldown * 0.001 ) .. "S"
-		uiTextTorpedo:setFillColor( c[1], c[2], c[3] )
+		uiTextTorpedo.text = torpText .. " - RELOADING " .. string.format( "%.1f", fireCooldown * 0.001 ) .. "S"
+		uiTextTorpedo:setFillColor( hudCooldown[1], hudCooldown[2], hudCooldown[3] )
 		uiTextTorpedo.alpha = gameConfig.hud.pingCooldownAlpha
 	else
-		local c = gameConfig.colors.hudPingReady
 		uiTextTorpedo.text = torpText
-		uiTextTorpedo:setFillColor( c[1], c[2], c[3] )
+		uiTextTorpedo:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
 		uiTextTorpedo.alpha = gameConfig.hud.pingReadyAlpha
 	end
 
@@ -913,11 +912,14 @@ function newGame()
 	uiTextCarrierDir.text = ""
 	carrierDirArrow.alpha = 0
 
-	local c = colors.hudPingReady
-	uiTextPing.text = "PING READY"
+	local c = colors.hudReady
+	uiTextPing.text = "SONAR READY"
 	uiTextPing:setFillColor( c[1], c[2], c[3] )
 	uiTextPing.alpha = gameConfig.hud.pingReadyAlpha
+
 	uiTextTorpedo.text = "TORPEDOES: " .. torpedoesRemaining .. "/" .. gameConfig.torpedo.maxTorpedoes
+	uiTextTorpedo:setFillColor( c[1], c[2], c[3] )
+	uiTextTorpedo.alpha = gameConfig.hud.pingReadyAlpha
 
 	updateCamera()
 
@@ -1099,7 +1101,7 @@ function scene:create( event )
 	snapshot.group:insert( groupUI )
 
 	local hudConfig = gameConfig.hud
-	local hudColor = colors.hudText
+	local hudColor = colors.hudReady
 
 	local hudX = screen.minX + hudConfig.margin - screen.centerX
 	local hudBottomY = screen.maxY - hudConfig.margin - screen.centerY
@@ -1109,7 +1111,7 @@ function scene:create( event )
 		text = "",
 		x = hudX,
 		y = hudBottomY,
-		font = hudConfig.font,
+		font = hudConfig.fontRegular,
 		fontSize = hudConfig.fontSize,
 	} )
 	uiTextTorpedo.anchorX = 0
@@ -1121,7 +1123,7 @@ function scene:create( event )
 		text = "",
 		x = hudX,
 		y = hudBottomY - hudConfig.fontSize - 4,
-		font = hudConfig.font,
+		font = hudConfig.fontRegular,
 		fontSize = hudConfig.fontSize,
 		align = "left",
 	} )
@@ -1134,7 +1136,7 @@ function scene:create( event )
 		text = "",
 		x = 0,
 		y = 0,
-		font = hudConfig.font,
+		font = hudConfig.fontBold,
 		fontSize = hudConfig.gameOverFontSize,
 	} )
 	uiTextGameover.alpha = 0
@@ -1146,22 +1148,20 @@ function scene:create( event )
 		text = "The Red April has been hit!",
 		x = 0,
 		y = hudTopY,
-		font = hudConfig.font,
+		font = hudConfig.fontRegular,
 		fontSize = 24,
 	} )
 	uiTextCarrierHit.anchorY = 0
 	uiTextCarrierHit:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
 	uiTextCarrierHit.alpha = 0
 
-	local dirTextY = ( screen.minY - screen.centerY ) * 0.5
-	local indicatorFontSize = gameConfig.carrierIndicator.fontSize
 	uiTextCarrierDir = display.newText( {
 		parent = groupUI,
 		text = "",
 		x = 0,
-		y = dirTextY,
-		font = hudConfig.font,
-		fontSize = indicatorFontSize,
+		y = ( screen.minY - screen.centerY ) * 0.5,
+		font = hudConfig.fontRegular,
+		fontSize = gameConfig.carrierIndicator.fontSize,
 		align = "center",
 	} )
 	uiTextCarrierDir:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
@@ -1169,7 +1169,7 @@ function scene:create( event )
 
 	carrierDirArrow = display.newImageRect( groupUI, "assets/images/direction.png", 32, 16 )
 	carrierDirArrow.x = 0
-	carrierDirArrow.y = uiTextCarrierDir.y + uiTextCarrierDir.height * 0.5 + carrierDirArrow.height * 0.5 + 26
+	carrierDirArrow.y = uiTextCarrierDir.y + uiTextCarrierDir.height * 0.5 + carrierDirArrow.height * 0.5 + 34
 	carrierDirArrow.alpha = 0
 	carrierDirArrow:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
 
@@ -1187,7 +1187,7 @@ function scene:create( event )
 		text = "The Hunt for Red April",
 		x = 0,
 		y = -200,
-		font = hudConfig.font,
+		font = hudConfig.fontBold,
 		fontSize = 50,
 		align = "center",
 	} )
@@ -1198,7 +1198,7 @@ function scene:create( event )
 		text = "LD59 compo entry by Eetu Rantanen",
 		x = 0,
 		y = -140,
-		font = hudConfig.font,
+		font = hudConfig.fontRegular,
 		fontSize = 24,
 		align = "center",
 	} )
@@ -1206,12 +1206,12 @@ function scene:create( event )
 
 	local instructionsObj = display.newText( {
 		parent = titleGroup,
-		text = "Navigate by sonar. Sink the carrier. Evade the destroyers.\n\nWASD/arrows: Move | Space: Ping sonar | Shift: Fire torpedo",
+		text = "Navigate by sonar. Sink the carrier. Evade the destroyers.\n\nCONTROLS:\nWASD/arrows: Move | Space: Ping sonar | Shift: Fire torpedo",
 		x = 0,
 		y = 60,
-		font = hudConfig.font,
+		font = hudConfig.fontRegular,
 		fontSize = 20,
-		width = 600,
+		width = 800,
 		align = "center",
 	} )
 	instructionsObj.anchorY = 0
@@ -1222,7 +1222,7 @@ function scene:create( event )
 		text = "Press Space to Start",
 		x = 0,
 		y = instructionsObj.y + instructionsObj.height + 40,
-		font = hudConfig.font,
+		font = hudConfig.fontRegular,
 		fontSize = 24,
 	} )
 	titleStartText.anchorY = 0

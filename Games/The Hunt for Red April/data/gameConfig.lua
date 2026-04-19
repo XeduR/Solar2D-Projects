@@ -222,21 +222,21 @@ gameConfig.colors = {
 	ghost = { 1.0, 0.5, 0.4 },
 	depthCharge = { 1.0, 0.6, 0.2 },
 	explosion = { 1.0, 0.8, 0.3 },
-	hudText = { 0.5, 0.9, 0.7 },
-	hudPingReady = { 0, 0.8, 0 },
-	hudPingCooldown = { 0.8, 0, 0 },
+	hudReady = { 0, 0.8, 0 },
+	hudCooldown = { 0.8, 0, 0 },
 }
 
 --------------------------------------------------------------------------------------
 -- HUD
 
 gameConfig.hud = {
-	font = native.systemFont,
-	fontSize = 16,
+	fontRegular = "assets/fonts/Cascadia_Code/CascadiaCode-Regular.ttf",
+	fontBold = "assets/fonts/Cascadia_Code/CascadiaCode-Bold.ttf",
+	fontSize = 24,
 	gameOverFontSize = 36,
 	margin = 12,
-	pingReadyAlpha = 0.7,
-	pingCooldownAlpha = 0.4,
+	pingReadyAlpha = 1,
+	pingCooldownAlpha = 1,
 }
 
 --------------------------------------------------------------------------------------
@@ -257,9 +257,9 @@ gameConfig.crt = {
 gameConfig.restartDelay = 2500 -- ms before restarting after win/lose
 gameConfig.winText = "The Red April has been sunk!"
 gameConfig.loseText = {
-	depthCharge = "Destroyed by depth charge.",
-	collision = "Collided and sunk.",
-	torpedoes = "Out of torpedoes."
+	depthCharge = "You were destroyed by a depth charge.",
+	collision = "You crashed into terrain and sunk.",
+	torpedoes = "You're out of torpedoes."
 }
 
 --------------------------------------------------------------------------------------
