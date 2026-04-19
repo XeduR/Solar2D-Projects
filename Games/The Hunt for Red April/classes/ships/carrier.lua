@@ -30,28 +30,14 @@ end
 -- Public functions
 
 function carrier.new( parentGroup, opts )
-	opts = opts or {}
 	local config = gameConfig.carrier
+	opts = opts or {}
 
 	local group = display.newGroup()
 	parentGroup:insert( group )
 
-	-- Ship's shape
-	local halfL = config.bodyLength * 0.5
-	local halfW = config.bodyWidth * 0.5
-	local bowTaper = halfL * 0.3
-	local vertices = {
-		halfL, 0,
-		halfL - bowTaper, -halfW,
-		-halfL + bowTaper, -halfW,
-		-halfL, -halfW * 0.6,
-		-halfL, halfW * 0.6,
-		-halfL + bowTaper, halfW,
-		halfL - bowTaper, halfW,
-	}
-
 	local color = opts.color or gameConfig.colors.carrier
-	local body = display.newPolygon( group, 0, 0, vertices )
+	local body = display.newPolygon( group, 0, 0, config.shape )
 	body:setFillColor( color[1], color[2], color[3] )
 	body.strokeWidth = config.strokeWidth
 	body:setStrokeColor( color[1], color[2], color[3] )

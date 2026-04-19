@@ -30,24 +30,14 @@ end
 -- Public functions
 
 function destroyer.new( parentGroup, opts )
-	opts = opts or {}
 	local config = gameConfig.destroyer
+	opts = opts or {}
 
 	local group = display.newGroup()
 	parentGroup:insert( group )
 
-	-- Ship's shape
-	local halfL = config.bodyLength * 0.5
-	local halfW = halfL * 0.35
-	local vertices = {
-		halfL, 0,
-		0, -halfW,
-		-halfL, 0,
-		0, halfW,
-	}
-
 	local color = opts.color or gameConfig.colors.destroyer
-	local body = display.newPolygon( group, 0, 0, vertices )
+	local body = display.newPolygon( group, 0, 0, config.shape )
 	body:setFillColor( color[1], color[2], color[3] )
 	body.strokeWidth = config.strokeWidth
 	body:setStrokeColor( color[1], color[2], color[3] )

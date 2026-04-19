@@ -1,4 +1,4 @@
--- Key bindings for The Long Ping.
+-- Key bindings for The Hunt for Red April.
 
 local controls = {}
 

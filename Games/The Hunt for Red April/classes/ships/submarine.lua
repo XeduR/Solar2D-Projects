@@ -20,22 +20,14 @@ end
 -- Public functions
 
 function submarine.new( parentGroup, opts )
-	opts = opts or {}
 	local config = gameConfig.submarine
+	opts = opts or {}
 
 	local group = display.newGroup()
 	parentGroup:insert( group )
 
-	-- Submarine's shape
-	local halfLen = config.bodyLength * 0.5
-	local vertices = {
-		halfLen, 0,
-		-halfLen, -halfLen * 0.6,
-		-halfLen, halfLen * 0.6,
-	}
-
 	local color = opts.color or gameConfig.colors.playerSub
-	local body = display.newPolygon( group, 0, 0, vertices )
+	local body = display.newPolygon( group, 0, 0, config.shape )
 	body:setFillColor( color[1], color[2], color[3] )
 	body.strokeWidth = config.strokeWidth
 	body:setStrokeColor( color[1], color[2], color[3] )

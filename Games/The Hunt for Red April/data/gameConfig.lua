@@ -1,4 +1,4 @@
--- Game-wide tuning constants for The Long Ping.
+-- Game-wide tuning constants for The Hunt for Red April.
 
 local gameConfig = {}
 
@@ -10,8 +10,36 @@ gameConfig.submarine = {
 	turnRate = 0.0035, -- rad/ms
 	drag = 0.97, -- velocity multiplier per frame (1 = no drag)
 	collisionRadius = 14,
-	bodyLength = 20,
-	strokeWidth = 2,
+	shape = {
+		26, -4,
+		28, -1,
+		28, 1,
+		26, 4,
+		20, 6,
+		-14, 6,
+		-22, 4,
+		-26, 2,
+		-26, 5,
+		-28, 5,
+		-28, -5,
+		-26, -5,
+		-26, -2,
+		-22, -4,
+		-14, -6,
+		20, -6,
+	},
+	outerHull = {
+		26, -4,
+		28, -1,
+		28, 1,
+		26, 4,
+		20, 6,
+		-14, 6,
+		-28, 5,
+		-28, -5,
+		-14, -6,
+		20, -6,
+	},
 }
 
 --------------------------------------------------------------------------------------
@@ -22,9 +50,31 @@ gameConfig.carrier = {
 	turnRate = 0.001, -- rad/ms
 	drag = 0.98,
 	collisionRadius = 30,
-	bodyLength = 60,
-	bodyWidth = 20,
-	strokeWidth = 2,
+	shape = {
+		69, -16,
+		76, -6,
+		71, 6,
+		34, 11,
+		-4, 21,
+		-48, 21,
+		-69, 14,
+		-76, 6,
+		-76, -19,
+		-69, -21,
+		34, -21,
+	},
+	outerHull = {
+		76, -6,
+		69, -16,
+		34, -21,
+		-69, -21,
+		-76, -19,
+		-76, 6,
+		-69, 14,
+		-48, 21,
+		-4, 21,
+		71, 6,
+	},
 }
 
 --------------------------------------------------------------------------------------
@@ -35,7 +85,6 @@ gameConfig.destroyer = {
 	turnRate = 0.0025, -- rad/ms
 	drag = 0.97,
 	collisionRadius = 16,
-	bodyLength = 28,
 	patrolCount = 6,
 	escortCount = 3,
 	sonarCooldownMin = 6000, -- ms between pings (lower bound)
@@ -51,7 +100,30 @@ gameConfig.destroyer = {
 	chaseSpreadRadius = 100, -- random offset for non-lead chasers
 	escortRadius = 120, -- orbit distance from carrier
 	escortLeashRadius = 400, -- max distance from carrier before escort aborts chase
-	strokeWidth = 2,
+	shape = {
+		41, 0,
+		35, -5,
+		20, -7,
+		-10, -9,
+		-31, -6,
+		-41, -5,
+		-41, 5,
+		-31, 6,
+		-10, 9,
+		20, 7,
+		35, 5,
+	},
+	outerHull = {
+		41, 0,
+		35, -5,
+		20, -7,
+		-10, -9,
+		-41, -5,
+		-41, 5,
+		-10, 9,
+		20, 7,
+		35, 5,
+	},
 }
 
 --------------------------------------------------------------------------------------

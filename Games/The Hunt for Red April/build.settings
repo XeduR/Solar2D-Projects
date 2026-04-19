@@ -59,7 +59,7 @@ settings =
 	window =
 	{
 		titleText = {
-			default = "The Long Ping",
+			default = "The Hunt for Red April",
 		},
 		defaultMode = "normal", -- "normal", "minimized", "maximized", "fullscreen"
 		defaultViewWidth = 960,

@@ -66,6 +66,53 @@ local function distance( ax, ay, bx, by )
 	return sqrt( dx * dx + dy * dy )
 end
 
+-- Point-in-polygon test against a flat vertex hull rotated by heading around (cx, cy).
+local function pointInRotatedHull( px, py, cx, cy, heading, hull )
+	local cosH = cos( -heading )
+	local sinH = sin( -heading )
+	local dx = px - cx
+	local dy = py - cy
+	local lx = dx * cosH - dy * sinH
+	local ly = dx * sinH + dy * cosH
+
+	local n = #hull
+	local inside = false
+	local jx = hull[n - 1]
+	local jy = hull[n]
+	for i = 1, n, 2 do
+		local ix = hull[i]
+		local iy = hull[i + 1]
+		if ( iy > ly ) ~= ( jy > ly ) and lx < ( jx - ix ) * ( ly - iy ) / ( jy - iy ) + ix then
+			inside = not inside
+		end
+		jx = ix
+		jy = iy
+	end
+	return inside
+end
+
+-- Check if an explosion at (ex, ey) with given radius reaches a rotated hull.
+local function explosionHitsHull( ex, ey, cx, cy, heading, hull, radius )
+	if pointInRotatedHull( ex, ey, cx, cy, heading, hull ) then
+		return true
+	end
+	local cosH = cos( -heading )
+	local sinH = sin( -heading )
+	local dx = ex - cx
+	local dy = ey - cy
+	local lx = dx * cosH - dy * sinH
+	local ly = dx * sinH + dy * cosH
+	local rSq = radius * radius
+	for i = 1, #hull, 2 do
+		local vdx = lx - hull[i]
+		local vdy = ly - hull[i + 1]
+		if vdx * vdx + vdy * vdy <= rSq then
+			return true
+		end
+	end
+	return false
+end
+
 --------------------------------------------------------------------------------------
 -- Functions
 
@@ -97,35 +144,7 @@ end
 -- Spawn a static ghost outline at a ship's position when revealed by sonar.
 local function spawnGhost( x, y, heading, tag )
 	local color = gameConfig.colors.ghost
-	local vertices
-
-	if tag == "carrier" then
-		local config = gameConfig.carrier
-		local halfL = config.bodyLength * 0.5
-		local halfW = config.bodyWidth * 0.5
-		local bowTaper = halfL * 0.3
-		vertices = {
-			halfL, 0,
-			halfL - bowTaper, -halfW,
-			-halfL + bowTaper, -halfW,
-			-halfL, -halfW * 0.6,
-			-halfL, halfW * 0.6,
-			-halfL + bowTaper, halfW,
-			halfL - bowTaper, halfW,
-		}
-	else
-		local config = gameConfig.destroyer
-		local halfL = config.bodyLength * 0.5
-		local halfW = halfL * 0.35
-		vertices = {
-			halfL, 0,
-			0, -halfW,
-			-halfL, 0,
-			0, halfW,
-		}
-	end
-
-	local ghost = display.newPolygon( groupShips, x, y, vertices )
+	local ghost = display.newPolygon( groupShips, x, y, gameConfig[tag].shape )
 	ghost:setFillColor( 0, 0 )
 	ghost.strokeWidth = 1
 	ghost:setStrokeColor( color[1], color[2], color[3] )
@@ -296,8 +315,7 @@ local function onDepthChargeExplode( x, y )
 	if gameOver then return end
 
 	if playerSub and playerSub.isAlive then
-		local d = distance( playerSub.x, playerSub.y, x, y )
-		if d <= gameConfig.depthCharge.blastRadius then
+		if explosionHitsHull( x, y, playerSub.x, playerSub.y, playerSub.getHeading(), gameConfig.submarine.outerHull, gameConfig.depthCharge.blastRadius ) then
 			gameover( false, "depthCharge" )
 		end
 	end
@@ -307,18 +325,20 @@ end
 local function onTorpedoExplode( x, y )
 	if gameOver then return end
 
-	local torpConfig = gameConfig.torpedo
+	local blastRadius = gameConfig.torpedo.blastRadius
+	local destroyerHull = gameConfig.destroyer.outerHull
+	local carrierHull = gameConfig.carrier.outerHull
 
 	for j = 1, #destroyerShip do
 		local d = destroyerShip[j]
-		if d.isAlive and distance( x, y, d.x, d.y ) <= torpConfig.blastRadius + d.collisionRadius then
+		if d.isAlive and explosionHitsHull( x, y, d.x, d.y, d.heading, destroyerHull, blastRadius ) then
 			destroyerController[j].notifyHit()
 			sinkShip( d )
 			return
 		end
 	end
 
-	if carrierShip.isAlive and distance( x, y, carrierShip.x, carrierShip.y ) <= torpConfig.blastRadius + carrierShip.collisionRadius then
+	if carrierShip.isAlive and explosionHitsHull( x, y, carrierShip.x, carrierShip.y, carrierShip.heading, carrierHull, blastRadius ) then
 		gameover( true )
 	end
 end
@@ -398,11 +418,24 @@ gameLoop = function()
 
 	playerSub.update( dt, worldW, worldH )
 
+	-- Transform submarine hull to world coordinates for collision.
+	local subHeading = playerSub.getHeading()
+	local subHull = gameConfig.submarine.outerHull
+	local cosH = cos( subHeading )
+	local sinH = sin( subHeading )
+
 	-- Terrain collision.
 	for i = 1, #terrainObstacles do
-		if map.pointInPolygon( playerSub.x, playerSub.y, terrainObstacles[i].vertices ) then
-			gameover( false, "collision" )
-			return
+		local verts = terrainObstacles[i].vertices
+		for j = 1, #subHull, 2 do
+			local lx = subHull[j]
+			local ly = subHull[j + 1]
+			local wx = playerSub.x + lx * cosH - ly * sinH
+			local wy = playerSub.y + lx * sinH + ly * cosH
+			if map.pointInPolygon( wx, wy, verts ) then
+				gameover( false, "collision" )
+				return
+			end
 		end
 	end
 
@@ -411,10 +444,16 @@ gameLoop = function()
 		local b = levelBounds[i]
 		local halfW = b.width * 0.5
 		local halfH = b.height * 0.5
-		if playerSub.x >= b.x - halfW and playerSub.x <= b.x + halfW and
-		   playerSub.y >= b.y - halfH and playerSub.y <= b.y + halfH then
-			gameover( false, "collision" )
-			return
+		for j = 1, #subHull, 2 do
+			local lx = subHull[j]
+			local ly = subHull[j + 1]
+			local wx = playerSub.x + lx * cosH - ly * sinH
+			local wy = playerSub.y + lx * sinH + ly * cosH
+			if wx >= b.x - halfW and wx <= b.x + halfW and
+			   wy >= b.y - halfH and wy <= b.y + halfH then
+				gameover( false, "collision" )
+				return
+			end
 		end
 	end
 
@@ -513,6 +552,8 @@ gameLoop = function()
 	-- 5. Update torpedoes
 
 	local torpConfig = gameConfig.torpedo
+	local carrierHull = gameConfig.carrier.outerHull
+	local destroyerHull = gameConfig.destroyer.outerHull
 
 	for i = #torpedoes, 1, -1 do
 		local torp = torpedoes[i]
@@ -528,7 +569,7 @@ gameLoop = function()
 			local detonated = false
 
 			-- Check collision with carrier.
-			if carrierShip.isAlive and torp.checkCollision( carrierShip.x, carrierShip.y, carrierShip.collisionRadius ) then
+			if carrierShip.isAlive and pointInRotatedHull( torp.x, torp.y, carrierShip.x, carrierShip.y, carrierShip.heading, carrierHull ) then
 				torp.detonate()
 				detonated = true
 			end
@@ -537,7 +578,7 @@ gameLoop = function()
 			if not detonated then
 				for j = 1, #destroyerShip do
 					local d = destroyerShip[j]
-					if d.isAlive and torp.checkCollision( d.x, d.y, d.collisionRadius ) then
+					if d.isAlive and pointInRotatedHull( torp.x, torp.y, d.x, d.y, d.heading, destroyerHull ) then
 						torp.detonate()
 						detonated = true
 						break
@@ -561,11 +602,12 @@ gameLoop = function()
 	--------------------------------------------------------------------------------------
 	-- 6. Depth charge collision + cleanup
 
-	local subRadius = gameConfig.submarine.collisionRadius
+	local subHullDC = gameConfig.submarine.outerHull
+	local subHeadingDC = playerSub.getHeading()
 	for i = #depthCharges, 1, -1 do
 		local dc = depthCharges[i]
 		if dc.isAlive and not dc.hasExploded then
-			if dc.checkCollision( playerSub.x, playerSub.y, subRadius ) then
+			if pointInRotatedHull( dc.x, dc.y, playerSub.x, playerSub.y, subHeadingDC, subHullDC ) then
 				dc.detonate()
 			end
 		end
