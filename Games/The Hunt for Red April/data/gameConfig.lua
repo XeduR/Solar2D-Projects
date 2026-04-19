@@ -265,7 +265,7 @@ gameConfig.loseText = {
 -- Title screen
 
 gameConfig.titleScreen = {
-	startDelay = 2500,
+	startDelay = 500,
 	blinkInterval = 1200,
 }
 

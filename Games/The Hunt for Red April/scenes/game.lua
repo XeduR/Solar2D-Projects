@@ -259,7 +259,7 @@ local function createSubmarineExplosion( x, y )
 end
 
 
-local function gameover( won, reason )
+local function gameover( won, reason, hitX, hitY )
 	if gameOver then return end
 	if not won and gameConfig.debug.isInvulnerable then return end
 	gameOver = true
@@ -305,7 +305,7 @@ local function gameover( won, reason )
 	end
 
 	if not won and reason ~= "torpedoes" and playerSub then
-		createSubmarineExplosion( playerSub.x, playerSub.y )
+		createSubmarineExplosion( hitX or playerSub.x, hitY or playerSub.y )
 		timer.performWithDelay( gameConfig.submarineExplosion.deathDelay, startDeathSequence )
 	else
 		startDeathSequence()
@@ -318,7 +318,7 @@ local function onDepthChargeExplode( x, y )
 
 	if playerSub and playerSub.isAlive then
 		if explosionHitsHull( x, y, playerSub.x, playerSub.y, playerSub.getHeading(), gameConfig.submarine.outerHull, gameConfig.depthCharge.blastRadius ) then
-			gameover( false, "depthCharge" )
+			gameover( false, "depthCharge", x, y )
 		end
 	end
 end
@@ -452,7 +452,7 @@ gameLoop = function()
 			local wx = playerSub.x + lx * cosH - ly * sinH
 			local wy = playerSub.y + lx * sinH + ly * cosH
 			if map.pointInPolygon( wx, wy, verts ) then
-				gameover( false, "collision" )
+				gameover( false, "collision", wx, wy )
 				return
 			end
 		end
@@ -470,7 +470,7 @@ gameLoop = function()
 			local wy = playerSub.y + lx * sinH + ly * cosH
 			if wx >= b.x - halfW and wx <= b.x + halfW and
 			   wy >= b.y - halfH and wy <= b.y + halfH then
-				gameover( false, "collision" )
+				gameover( false, "collision", wx, wy )
 				return
 			end
 		end
