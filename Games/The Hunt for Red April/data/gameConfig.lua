@@ -50,6 +50,7 @@ gameConfig.carrier = {
 	turnRate = 0.001, -- rad/ms
 	drag = 0.98,
 	collisionRadius = 30,
+	hitpoints = 2,
 	shape = {
 		69, -16,
 		76, -6,

@@ -39,7 +39,8 @@ local pingCooldown, fireCooldown
 local torpedoesRemaining
 local gameOver
 local restartTimer
-local uiTextPing, uiTextTorpedo, uiTextGameover
+local uiTextPing, uiTextTorpedo, uiTextGameover, uiTextCarrierHit
+local carrierHitpoints
 local titleGroup, titleStartText
 local waitingToStart, readyToStart
 local blinkTimer, startDelayTimer
@@ -340,7 +341,19 @@ local function onTorpedoExplode( x, y )
 	end
 
 	if carrierShip.isAlive and explosionHitsHull( x, y, carrierShip.x, carrierShip.y, carrierShip.heading, carrierHull, blastRadius ) then
-		gameover( true )
+		carrierHitpoints = carrierHitpoints - 1
+		if carrierHitpoints <= 0 then
+			gameover( true )
+		else
+			transition.cancel( uiTextCarrierHit )
+			uiTextCarrierHit.alpha = 1
+			transition.to( uiTextCarrierHit, {
+				tag = "game",
+				delay = 1500,
+				time = 1000,
+				alpha = 0,
+			} )
+		end
 	end
 end
 
@@ -857,6 +870,9 @@ function newGame()
 	end
 	uiTextGameover.alpha = 0
 	uiTextGameover.text = ""
+	carrierHitpoints = gameConfig.carrier.hitpoints
+	transition.cancel( uiTextCarrierHit )
+	uiTextCarrierHit.alpha = 0
 
 	local c = colors.hudPingReady
 	uiTextPing.text = "PING READY"
@@ -1054,6 +1070,20 @@ function scene:create( event )
 		fontSize = hudConfig.gameOverFontSize,
 	} )
 	uiTextGameover.alpha = 0
+
+	local carrierHitColor = colors.carrier
+	local hudTopY = screen.minY + hudConfig.margin - screen.centerY
+	uiTextCarrierHit = display.newText( {
+		parent = groupUI,
+		text = "The Red April has been hit!",
+		x = 0,
+		y = hudTopY,
+		font = hudConfig.font,
+		fontSize = 24,
+	} )
+	uiTextCarrierHit.anchorY = 0
+	uiTextCarrierHit:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
+	uiTextCarrierHit.alpha = 0
 
 	--------------------------------------------------------------------------------------
 	-- Title screen
