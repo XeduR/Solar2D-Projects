@@ -381,6 +381,7 @@ local function onTorpedoExplode( x, y )
 
 	if carrierShip.isAlive and explosionHitsHull( x, y, carrierShip.x, carrierShip.y, carrierShip.heading, carrierHull, blastRadius ) then
 		carrierHitpoints = carrierHitpoints - 1
+		broadcastAlert( carrierShip.x, carrierShip.y, "escort" )
 		if carrierHitpoints <= 0 then
 			gameover( true )
 		else
@@ -1059,7 +1060,9 @@ function scene:create( event )
 	mapData = map.load( "data/maps/map.tmj" )
 
 	local colors = gameConfig.colors
-	local terrainColor = colors.terrain
+	local terrainFill = colors.terrainFill
+	local terrainStroke = colors.terrainStroke
+	local levelBoundsFill = colors.levelBounds
 
 	--------------------------------------------------------------------------------------
 	-- CRT snapshot
@@ -1102,6 +1105,23 @@ function scene:create( event )
 	revealGroup.maskScaleY = 0.01
 
 	--------------------------------------------------------------------------------------
+	-- Background with gradient covers the entire level
+
+	local background = display.newRect(
+		worldGroup,
+		mapData.worldWidth * 0.5,
+		mapData.worldHeight * 0.5,
+		mapData.worldWidth,
+		mapData.worldHeight
+	)
+	background.fill = {
+		type = "gradient",
+		color1 = colors.backgroundGradientTop,
+		color2 = colors.backgroundGradientBottom
+	}
+	background:toBack()
+
+	--------------------------------------------------------------------------------------
 	-- Terrain
 
 	terrainObstacles = {}
@@ -1112,9 +1132,9 @@ function scene:create( event )
 	for i = 1, #mapData.terrain do
 		local t = mapData.terrain[i]
 		local obj = display.newPolygon( groupTerrain, t.centerX, t.centerY, t.flatVertices )
-		obj:setFillColor( 0 )
+		obj:setFillColor( terrainFill[1], terrainFill[2], terrainFill[3] )
+		obj:setStrokeColor( terrainStroke[1], terrainStroke[2], terrainStroke[3] )
 		obj.strokeWidth = 4
-		obj:setStrokeColor( terrainColor[1], terrainColor[2], terrainColor[3] )
 		terrainObstacles[#terrainObstacles + 1] = t
 		terrainDisplayObjects[#terrainDisplayObjects + 1] = obj
 	end
@@ -1122,9 +1142,7 @@ function scene:create( event )
 	for i = 1, #mapData.walls do
 		local w = mapData.walls[i]
 		local obj = display.newRect( groupTerrain, w.x, w.y, w.width, w.height )
-		obj:setFillColor( 0 )
-		obj.strokeWidth = 2
-		obj:setStrokeColor( terrainColor[1], terrainColor[2], terrainColor[3] )
+		obj:setFillColor( levelBoundsFill[1], levelBoundsFill[2], levelBoundsFill[3] )
 		levelBounds[#levelBounds + 1] = w
 		wallDisplayObjects[#wallDisplayObjects + 1] = obj
 	end
@@ -1295,7 +1313,7 @@ function scene:create( event )
 
 	local instructionsObj = display.newText( {
 		parent = titleGroup,
-		text = "Navigate by sonar. Sink the carrier. Evade the destroyers.\n\nCONTROLS:\nWASD/arrows: Move | Space: Ping sonar | Shift: Fire torpedo",
+		text = "Navigate by sonar. Sink the carrier. Evade the destroyers.\n\nCONTROLS:\nWASD/arrows: Move | Space: Sonar | Shift/Ctrl: Fire torpedo",
 		x = 0,
 		y = 60,
 		font = hudConfig.fontRegular,

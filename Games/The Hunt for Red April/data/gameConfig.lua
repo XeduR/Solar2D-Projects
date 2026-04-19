@@ -217,13 +217,17 @@ gameConfig.colors = {
 	playerSub = { 0.4, 0.9, 0.6 },
 	carrier = { 1.0, 0, 0 },
 	destroyer = { 1.0, 0.3, 0 },
-	terrain = { 0.25, 0.6, 0.5 },
+	terrainFill = { 0.025, 0.06, 0.05 },
+	terrainStroke = { 0.25, 0.6, 0.5 },
+	levelBounds = { 0.5, 0, 0 },
 	torpedo = { 0.9, 0.9, 0.5 },
 	ghost = { 1.0, 0.3, 0 },
 	depthCharge = { 1.0, 0.6, 0.2 },
 	explosion = { 1.0, 0.8, 0.3 },
 	hudReady = { 0, 0.8, 0 },
 	hudCooldown = { 0.8, 0, 0 },
+	backgroundGradientTop = { 0, 0.05, 0 },
+	backgroundGradientBottom = { 0, 0.02, 0 },
 }
 
 --------------------------------------------------------------------------------------
@@ -243,12 +247,12 @@ gameConfig.hud = {
 -- CRT shader
 
 gameConfig.crt = {
-	scanlineIntensity = 0.25,
-	scanlineCount = 240,
+	scanlineIntensity = 0.6,
+	scanlineCount = 320,
 	curvature = 0.05,
-	vignette = 0.3,
-	humBarStrength = 0.12,
-	humBarSpeed = 0.15,
+	vignette = 0.5,
+	humBarStrength = 0.7,
+	humBarSpeed = 0.25,
 }
 
 --------------------------------------------------------------------------------------
@@ -298,8 +302,10 @@ gameConfig.audio = {
 -- Debug
 
 gameConfig.debug = {
-	-- showCarrierPath = true,
+	-- NB!  The game "stops" on terrain collisions, so camera and AI freeze
+	--		when inside terrain, even if isInvulnerable has been turned on.
 	-- isInvulnerable = true,
+	-- showCarrierPath = true,
 	-- disableShader = true,
 	-- revealAll = true,
 }
