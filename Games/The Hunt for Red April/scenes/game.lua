@@ -40,6 +40,7 @@ local torpedoesRemaining
 local gameOver
 local restartTimer
 local uiTextPing, uiTextTorpedo, uiTextGameover, uiTextCarrierHit
+local uiTextCarrierDir, carrierDirArrow, carrierDirTimer
 local carrierHitpoints
 local titleGroup, titleStartText
 local waitingToStart, readyToStart
@@ -66,6 +67,14 @@ end
 local function distance( ax, ay, bx, by )
 	local dx, dy = bx - ax, by - ay
 	return sqrt( dx * dx + dy * dy )
+end
+
+local compassDirections = { "east", "southeast", "south", "southwest", "west", "northwest", "north", "northeast" }
+
+local function angleToCompass( rad )
+	local d = deg( rad )
+	d = ( d % 360 + 360 ) % 360
+	return compassDirections[math.floor( ( d + 22.5 ) / 45 ) % 8 + 1]
 end
 
 -- Point-in-polygon test against a flat vertex hull rotated by heading around (cx, cy).
@@ -652,6 +661,10 @@ gameLoop = function()
 
 	uiTextTorpedo.text = "TORPEDOES: " .. torpedoesRemaining .. "/" .. gameConfig.torpedo.maxTorpedoes
 
+	if carrierDirArrow.alpha > 0 and carrierShip and carrierShip.isAlive then
+		carrierDirArrow.rotation = deg( atan2( carrierShip.y - playerSub.y, carrierShip.x - playerSub.x ) )
+	end
+
 	--------------------------------------------------------------------------------------
 	-- 8. Sonar mask
 
@@ -687,6 +700,10 @@ function newGame()
 	if startDelayTimer then
 		timer.cancel( startDelayTimer )
 		startDelayTimer = nil
+	end
+	if carrierDirTimer then
+		timer.cancel( carrierDirTimer )
+		carrierDirTimer = nil
 	end
 
 	Runtime:removeEventListener( "enterFrame", gameLoop )
@@ -873,6 +890,9 @@ function newGame()
 	carrierHitpoints = gameConfig.carrier.hitpoints
 	transition.cancel( uiTextCarrierHit )
 	uiTextCarrierHit.alpha = 0
+	uiTextCarrierDir.alpha = 0
+	uiTextCarrierDir.text = ""
+	carrierDirArrow.alpha = 0
 
 	local c = colors.hudPingReady
 	uiTextPing.text = "PING READY"
@@ -916,6 +936,35 @@ local function startGame()
 	lastTime = system.getTimer()
 	carrierController.start()
 	Runtime:addEventListener( "enterFrame", gameLoop )
+
+	local indicatorConfig = gameConfig.carrierIndicator
+	carrierDirTimer = timer.performWithDelay( indicatorConfig.showDelay, function()
+		if not carrierShip or not carrierShip.isAlive then return end
+
+		local cdx = carrierShip.x - playerSub.x
+		local cdy = carrierShip.y - playerSub.y
+		local where = angleToCompass( atan2( cdy, cdx ) )
+		local heading = angleToCompass( carrierShip.heading )
+
+		uiTextCarrierDir.text = "The Red April was last seen to the " .. where .. ",\nheading " .. heading .. "."
+		uiTextCarrierDir.alpha = 1
+		carrierDirArrow.alpha = 1
+		carrierDirArrow.rotation = deg( atan2( cdy, cdx ) )
+
+		carrierDirTimer = timer.performWithDelay( indicatorConfig.displayDuration, function()
+			transition.to( uiTextCarrierDir, {
+				tag = "game",
+				time = indicatorConfig.fadeOutDuration,
+				alpha = 0,
+			} )
+			transition.to( carrierDirArrow, {
+				tag = "game",
+				time = indicatorConfig.fadeOutDuration,
+				alpha = 0,
+			} )
+			carrierDirTimer = nil
+		end )
+	end )
 
 	pingCooldown = gameConfig.ping.cooldown
 	local ping = pingSystem.emit( playerSub.x, playerSub.y, { source = "player", group = groupSub } )
@@ -1084,6 +1133,26 @@ function scene:create( event )
 	uiTextCarrierHit.anchorY = 0
 	uiTextCarrierHit:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
 	uiTextCarrierHit.alpha = 0
+
+	local dirTextY = ( screen.minY - screen.centerY ) * 0.5
+	local indicatorFontSize = gameConfig.carrierIndicator.fontSize
+	uiTextCarrierDir = display.newText( {
+		parent = groupUI,
+		text = "",
+		x = 0,
+		y = dirTextY,
+		font = hudConfig.font,
+		fontSize = indicatorFontSize,
+		align = "center",
+	} )
+	uiTextCarrierDir:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
+	uiTextCarrierDir.alpha = 0
+
+	carrierDirArrow = display.newImageRect( groupUI, "assets/images/direction.png", 32, 16 )
+	carrierDirArrow.x = 0
+	carrierDirArrow.y = uiTextCarrierDir.y + uiTextCarrierDir.height * 0.5 + carrierDirArrow.height * 0.5 + 26
+	carrierDirArrow.alpha = 0
+	carrierDirArrow:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
 
 	--------------------------------------------------------------------------------------
 	-- Title screen

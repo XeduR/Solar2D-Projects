@@ -262,6 +262,16 @@ gameConfig.loseText = {
 }
 
 --------------------------------------------------------------------------------------
+-- Carrier direction indicator (game start)
+
+gameConfig.carrierIndicator = {
+	showDelay = 500, -- ms after game start before showing
+	displayDuration = 5000, -- ms the indicator stays visible
+	fadeOutDuration = 1000, -- ms for fade out
+	fontSize = 24,
+}
+
+--------------------------------------------------------------------------------------
 -- Title screen
 
 gameConfig.titleScreen = {
