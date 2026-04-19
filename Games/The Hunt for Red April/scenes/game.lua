@@ -810,16 +810,26 @@ function newGame()
 
 	-- Spawn patrol destroyers.
 	local patrolWP = mapData.patrolWaypoints
+	local minSpawnDist = destroyerConfig.minimumSpawnDistance
 	for i = 1, destroyerConfig.patrolCount do
 		local wpIndex = ( ( i - 1 ) * 3 ) % #patrolWP + 1
 		local spawnWP = patrolWP[wpIndex]
+		local sx, sy = spawnWP.x, spawnWP.y
+
+		local dist = distance( sx, sy, playerSub.x, playerSub.y )
+		if dist < minSpawnDist and dist > 0 then
+			local dx = sx - playerSub.x
+			local dy = sy - playerSub.y
+			sx = playerSub.x + dx / dist * minSpawnDist
+			sy = playerSub.y + dy / dist * minSpawnDist
+		end
 
 		local ship = destroyer.new( groupShips, {
 			heading = math.random() * pi * 2,
 			color = colors.destroyer,
 		} )
-		ship.x = spawnWP.x
-		ship.y = spawnWP.y
+		ship.x = sx
+		ship.y = sy
 
 		pingSystem.registerRevealable( ship, { isGhostable = true, tag = "destroyer" } )
 

@@ -101,6 +101,7 @@ gameConfig.destroyer = {
 	chaseSpreadRadius = 100, -- random offset for non-lead chasers
 	escortRadius = 120, -- orbit distance from carrier
 	escortLeashRadius = 400, -- max distance from carrier before escort aborts chase
+	minimumSpawnDistance = 300, -- patrol destroyers won't spawn closer than this to the player
 	shape = {
 		41, 0,
 		35, -5,
