@@ -258,7 +258,8 @@ gameConfig.restartDelay = 2500 -- ms before restarting after win/lose
 gameConfig.winText = "The Red April has been sunk!"
 gameConfig.loseText = {
 	depthCharge = "You were destroyed by a depth charge.",
-	collision = "You crashed into terrain and sunk.",
+	collisionTerrain = "You crashed into terrain and sunk.",
+	collisionBounds = "You were blown up for leaving the mission area.",
 	torpedoes = "You're out of torpedoes."
 }
 
@@ -278,6 +279,19 @@ gameConfig.carrierIndicator = {
 gameConfig.titleScreen = {
 	startDelay = 500,
 	blinkInterval = 1200,
+}
+
+--------------------------------------------------------------------------------------
+-- Debug
+
+--------------------------------------------------------------------------------------
+-- Audio
+
+gameConfig.audio = {
+	masterVolume = 0.5,
+	distanceMin = 100, -- full volume at or below this range
+	distanceMax = 600, -- silent at or beyond this range
+	distanceClose = 200, -- threshold for near/far sound variant
 }
 
 --------------------------------------------------------------------------------------

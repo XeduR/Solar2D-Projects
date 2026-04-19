@@ -16,10 +16,15 @@ local destroyerAI = require( "classes.ships.destroyerAI" )
 local depthCharge = require( "classes.depthCharge" )
 local torpedo = require( "classes.torpedo" )
 local sonar = require( "classes.sonar" )
+local sfx = require( "classes.sfx" )
+local loadsave = require( "classes.loadsave" )
 local crtShader = require( "assets.shaders.crt_shader" )
 
 --------------------------------------------------------------------------------------
 -- Forward declarations & variables
+
+local hudReady = gameConfig.colors.hudReady
+local hudCooldown = gameConfig.colors.hudCooldown
 
 local snapshot
 local worldGroup, groupSub, groupTerrain, groupShips, groupUI, revealGroup
@@ -41,6 +46,7 @@ local gameOver
 local restartTimer
 local uiTextPing, uiTextTorpedo, uiTextGameover, uiTextCarrierHit
 local uiTextCarrierDir, carrierDirArrow, carrierDirTimer
+local uiTextSounds
 local carrierHitpoints
 local titleGroup, titleStartText
 local waitingToStart, readyToStart
@@ -206,6 +212,9 @@ end
 
 -- Multi-layer carrier explosion for the victory moment.
 local function createCarrierExplosion( x, y )
+	if playerSub then
+		sfx.playDirectional( "carrierExplode", x, y, playerSub.x, playerSub.y, playerSub.getHeading() )
+	end
 	local config = gameConfig.carrierExplosion
 	local layers = {
 		{ radius = config.innerRadius, color = config.innerColor, delay = 0 },
@@ -237,6 +246,7 @@ end
 
 -- Small explosion on the submarine when destroyed.
 local function createSubmarineExplosion( x, y )
+	sfx.playPlayer( "submarineExplode" )
 	local config = gameConfig.submarineExplosion
 	local color = gameConfig.colors.explosion
 
@@ -272,6 +282,7 @@ local function gameover( won, reason, hitX, hitY )
 	if gameOver then return end
 	if not won and gameConfig.debug.isInvulnerable then return end
 	gameOver = true
+	sfx.stopEngineHum()
 
 	Runtime:removeEventListener( "enterFrame", gameLoop )
 
@@ -313,6 +324,12 @@ local function gameover( won, reason, hitX, hitY )
 		} )
 	end
 
+	-- Send a ping to reveal the game's end state.
+	pingCooldown = gameConfig.ping.cooldown
+	local ping = pingSystem.emit( playerSub.x, playerSub.y, { source = "player", group = groupSub } )
+	ping.ring:toBack()
+	activePlayerPing = ping
+
 	if not won and reason ~= "torpedoes" and playerSub then
 		createSubmarineExplosion( hitX or playerSub.x, hitY or playerSub.y )
 		timer.performWithDelay( gameConfig.submarineExplosion.deathDelay, startDeathSequence )
@@ -323,6 +340,9 @@ end
 
 
 local function onDepthChargeExplode( x, y )
+	if playerSub and playerSub.isAlive then
+		sfx.playDirectional( "depthCharge", x, y, playerSub.x, playerSub.y, playerSub.getHeading() )
+	end
 	if gameOver then return end
 
 	if playerSub and playerSub.isAlive then
@@ -336,6 +356,8 @@ end
 local function onTorpedoExplode( x, y )
 	if gameOver then return end
 
+	sfx.playDirectional( "torpedoExplode", x, y, playerSub.x, playerSub.y, playerSub.getHeading() )
+
 	local blastRadius = gameConfig.torpedo.blastRadius
 	local destroyerHull = gameConfig.destroyer.outerHull
 	local carrierHull = gameConfig.carrier.outerHull
@@ -343,6 +365,7 @@ local function onTorpedoExplode( x, y )
 	for j = 1, #destroyerShip do
 		local d = destroyerShip[j]
 		if d.isAlive and explosionHitsHull( x, y, d.x, d.y, d.heading, destroyerHull, blastRadius ) then
+			sfx.playDirectional( "destroyerExplode", d.x, d.y, playerSub.x, playerSub.y, playerSub.getHeading() )
 			destroyerController[j].notifyHit()
 			sinkShip( d )
 			return
@@ -414,6 +437,7 @@ gameLoop = function()
 	-- Player's sonar ping.
 	if isAction( "ping" ) and pingCooldown <= 0 then
 		pingCooldown = pingConfig.cooldown
+		sfx.playPlayer( "sonarPlayer" )
 		local ping = pingSystem.emit( playerSub.x, playerSub.y, { source = "player", group = groupSub } )
 		ping.ring:toBack()
 		activePlayerPing = ping
@@ -428,6 +452,7 @@ gameLoop = function()
 		fireCooldown = gameConfig.torpedo.cooldown
 		torpedoesRemaining = torpedoesRemaining - 1
 		local heading = playerSub.getHeading()
+		sfx.playTorpedoLaunch( heading )
 		local spawnDist = gameConfig.submarine.collisionRadius + 5
 		local tx = playerSub.x + cos( heading ) * spawnDist
 		local ty = playerSub.y + sin( heading ) * spawnDist
@@ -441,6 +466,7 @@ gameLoop = function()
 	-- 2. Player physics
 
 	playerSub.update( dt, worldW, worldH )
+	sfx.updateEngineHum( playerSub.getSpeed(), gameConfig.submarine.maxSpeed )
 
 	-- Transform submarine hull to world coordinates for collision.
 	local subHeading = playerSub.getHeading()
@@ -457,7 +483,7 @@ gameLoop = function()
 			local wx = playerSub.x + lx * cosH - ly * sinH
 			local wy = playerSub.y + lx * sinH + ly * cosH
 			if map.pointInPolygon( wx, wy, verts ) then
-				gameover( false, "collision", wx, wy )
+				gameover( false, "collisionTerrain", wx, wy )
 				return
 			end
 		end
@@ -475,7 +501,7 @@ gameLoop = function()
 			local wy = playerSub.y + lx * sinH + ly * cosH
 			if wx >= b.x - halfW and wx <= b.x + halfW and
 			   wy >= b.y - halfH and wy <= b.y + halfH then
-				gameover( false, "collision", wx, wy )
+				gameover( false, "collisionBounds", wx, wy )
 				return
 			end
 		end
@@ -493,6 +519,7 @@ gameLoop = function()
 
 			-- Sonar ping request.
 			if ai.consumePingRequest() then
+				sfx.playDirectional( "sonarDestroyer", ship.x, ship.y, playerSub.x, playerSub.y, playerSub.getHeading() )
 				local dPing = pingSystem.emit( ship.x, ship.y, {
 					source = "destroyer",
 					range = destroyerConfig.sonarRange,
@@ -643,9 +670,6 @@ gameLoop = function()
 	--------------------------------------------------------------------------------------
 	-- 7. HUD update
 
-	local hudReady = gameConfig.colors.hudReady
-	local hudCooldown = gameConfig.colors.hudCooldown
-
 	if pingCooldown > 0 then
 		uiTextPing.text = "SONAR READY IN " .. string.format( "%.1f", pingCooldown * 0.001 ) .. "S"
 		uiTextPing:setFillColor( hudCooldown[1], hudCooldown[2], hudCooldown[3] )
@@ -693,6 +717,7 @@ end
 
 
 function newGame()
+	sfx.stopEngineHum()
 	-- Cancel active transitions and timers.
 	transition.cancel( "game" )
 	if restartTimer then
@@ -912,13 +937,12 @@ function newGame()
 	uiTextCarrierDir.text = ""
 	carrierDirArrow.alpha = 0
 
-	local c = colors.hudReady
 	uiTextPing.text = "SONAR READY"
-	uiTextPing:setFillColor( c[1], c[2], c[3] )
+	uiTextPing:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
 	uiTextPing.alpha = gameConfig.hud.pingReadyAlpha
 
 	uiTextTorpedo.text = "TORPEDOES: " .. torpedoesRemaining .. "/" .. gameConfig.torpedo.maxTorpedoes
-	uiTextTorpedo:setFillColor( c[1], c[2], c[3] )
+	uiTextTorpedo:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
 	uiTextTorpedo.alpha = gameConfig.hud.pingReadyAlpha
 
 	updateCamera()
@@ -956,6 +980,7 @@ local function startGame()
 	keysDown = {}
 	lastTime = system.getTimer()
 	carrierController.start()
+	sfx.startEngineHum()
 	Runtime:addEventListener( "enterFrame", gameLoop )
 
 	local indicatorConfig = gameConfig.carrierIndicator
@@ -991,6 +1016,9 @@ local function startGame()
 	local ping = pingSystem.emit( playerSub.x, playerSub.y, { source = "player", group = groupSub } )
 	ping.ring:toBack()
 	activePlayerPing = ping
+
+	sfx.playPlayer( "sonarPlayer" )
+
 	revealGroup.maskX = playerSub.x
 	revealGroup.maskY = playerSub.y
 	revealGroup.maskScaleX = 0.01
@@ -1101,7 +1129,6 @@ function scene:create( event )
 	snapshot.group:insert( groupUI )
 
 	local hudConfig = gameConfig.hud
-	local hudColor = colors.hudReady
 
 	local hudX = screen.minX + hudConfig.margin - screen.centerX
 	local hudBottomY = screen.maxY - hudConfig.margin - screen.centerY
@@ -1116,7 +1143,7 @@ function scene:create( event )
 	} )
 	uiTextTorpedo.anchorX = 0
 	uiTextTorpedo.anchorY = 1
-	uiTextTorpedo:setFillColor( hudColor[1], hudColor[2], hudColor[3] )
+	uiTextTorpedo:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
 
 	uiTextPing = display.newText( {
 		parent = groupUI,
@@ -1129,13 +1156,15 @@ function scene:create( event )
 	} )
 	uiTextPing.anchorX = 0
 	uiTextPing.anchorY = 1
-	uiTextPing:setFillColor( hudColor[1], hudColor[2], hudColor[3] )
+	uiTextPing:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
 
 	uiTextGameover = display.newText( {
 		parent = groupUI,
 		text = "",
 		x = 0,
 		y = 0,
+		align = "center",
+		width = 860,
 		font = hudConfig.fontBold,
 		fontSize = hudConfig.gameOverFontSize,
 	} )
@@ -1173,6 +1202,59 @@ function scene:create( event )
 	carrierDirArrow.alpha = 0
 	carrierDirArrow:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
 
+	-- Sound toggle.
+	sfx.init()
+
+	local savedSettings = loadsave.load( "settings.json", "redapril" )
+	local soundsOn = not savedSettings or savedSettings.audio ~= false
+
+	local soundsX = screen.maxX - hudConfig.margin - screen.centerX
+	uiTextSounds = display.newText( {
+		parent = groupUI,
+		text = "SOUNDS: " .. ( soundsOn and "ON" or "OFF" ),
+		x = soundsX,
+		y = hudTopY,
+		font = hudConfig.fontRegular,
+		fontSize = hudConfig.fontSize,
+	} )
+	uiTextSounds.anchorX = 1
+	uiTextSounds.anchorY = 0
+
+	if soundsOn then
+		uiTextSounds:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
+	else
+		uiTextSounds:setFillColor( hudCooldown[1], hudCooldown[2], hudCooldown[3] )
+		sfx.setEnabled( false )
+	end
+
+	-- Invisible touch target over the text (snapshot children can't receive touch events).
+	local soundsHitRect = display.newRect(
+		sceneGroup,
+		screen.maxX - hudConfig.margin - uiTextSounds.width * 0.5,
+		screen.minY + hudConfig.margin + uiTextSounds.height * 0.5,
+		uiTextSounds.width + 12,
+		uiTextSounds.height + 8
+	)
+	soundsHitRect.isVisible = false
+	soundsHitRect.isHitTestable = true
+
+	soundsHitRect:addEventListener( "touch", function( event ) -- luacheck: ignore
+		if event.phase == "began" then
+			local isOn = not sfx.isEnabled()
+			sfx.setEnabled( isOn )
+			loadsave.save( { audio = isOn }, "settings.json", "redapril" )
+
+			if isOn then
+				uiTextSounds.text = "SOUNDS: ON"
+				uiTextSounds:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
+			else
+				uiTextSounds.text = "SOUNDS: OFF"
+				uiTextSounds:setFillColor( hudCooldown[1], hudCooldown[2], hudCooldown[3] )
+			end
+		end
+		return true
+	end )
+
 	--------------------------------------------------------------------------------------
 	-- Title screen
 
@@ -1195,7 +1277,7 @@ function scene:create( event )
 
 	local subtitleObj = display.newText( {
 		parent = titleGroup,
-		text = "LD59 compo entry by Eetu Rantanen",
+		text = "LD59 jam entry by Eetu Rantanen",
 		x = 0,
 		y = -140,
 		font = hudConfig.fontRegular,
