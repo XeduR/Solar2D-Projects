@@ -834,6 +834,7 @@ function newGame()
 			role = "patrol",
 			waypoints = patrolWP,
 			config = destroyerConfig,
+			allShips = destroyerShip,
 		} )
 
 		destroyerShip[#destroyerShip + 1] = ship
@@ -865,6 +866,7 @@ function newGame()
 			carrier = carrierShip,
 			config = destroyerConfig,
 			escortAngle = angle,
+			allShips = destroyerShip,
 		} )
 
 		destroyerShip[#destroyerShip + 1] = ship
@@ -1053,11 +1055,12 @@ function scene:create( event )
 
 	groupTerrain = display.newGroup()
 	revealGroup:insert( groupTerrain )
-	groupShips = display.newGroup()
-	revealGroup:insert( groupShips )
 
 	local mask = graphics.newMask( "assets/images/mask.png" )
 	revealGroup:setMask( mask )
+
+	groupShips = display.newGroup()
+	worldGroup:insert( groupShips )
 	revealGroup.maskScaleX = 0.01
 	revealGroup.maskScaleY = 0.01
 
@@ -1073,7 +1076,7 @@ function scene:create( event )
 		local t = mapData.terrain[i]
 		local obj = display.newPolygon( groupTerrain, t.centerX, t.centerY, t.flatVertices )
 		obj:setFillColor( 0 )
-		obj.strokeWidth = 2
+		obj.strokeWidth = 4
 		obj:setStrokeColor( terrainColor[1], terrainColor[2], terrainColor[3] )
 		terrainObstacles[#terrainObstacles + 1] = t
 		terrainDisplayObjects[#terrainDisplayObjects + 1] = obj

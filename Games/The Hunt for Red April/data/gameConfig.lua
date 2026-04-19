@@ -7,8 +7,8 @@ local gameConfig = {}
 
 gameConfig.submarine = {
 	maxSpeed = 0.12, -- px/ms
-	turnRate = 0.0035, -- rad/ms
-	drag = 0.97, -- velocity multiplier per frame (1 = no drag)
+	turnRate = 0.0008, -- rad/ms
+	drag = 0.995, -- velocity multiplier per frame (1 = no drag)
 	collisionRadius = 14,
 	shape = {
 		26, -4,
@@ -47,7 +47,6 @@ gameConfig.submarine = {
 
 gameConfig.carrier = {
 	maxSpeed = 0.05, -- px/ms
-	turnRate = 0.001, -- rad/ms
 	drag = 0.98,
 	collisionRadius = 30,
 	hitpoints = 2,
@@ -82,8 +81,8 @@ gameConfig.carrier = {
 -- Destroyer
 
 gameConfig.destroyer = {
-	maxSpeed = 0.1, -- px/ms
-	turnRate = 0.0025, -- rad/ms
+	maxSpeed = 0.2, -- px/ms
+	turnRate = 0.001, -- rad/ms
 	drag = 0.97,
 	collisionRadius = 16,
 	patrolCount = 6,
@@ -101,6 +100,7 @@ gameConfig.destroyer = {
 	chaseSpreadRadius = 100, -- random offset for non-lead chasers
 	escortRadius = 120, -- orbit distance from carrier
 	escortLeashRadius = 400, -- max distance from carrier before escort aborts chase
+	separationRadius = 80, -- destroyers steer away from each other within this range
 	minimumSpawnDistance = 300, -- patrol destroyers won't spawn closer than this to the player
 	shape = {
 		41, 0,
@@ -167,10 +167,10 @@ gameConfig.torpedo = {
 	speed = 0.25, -- px/ms
 	maxTorpedoes = 8,
 	collisionRadius = 6,
-	cooldown = 800, -- ms between shots
+	cooldown = 8000, -- ms between shots
 	trailLength = 12,
-	trailAlpha = 0.15,
-	trailStrokeWidth = 2,
+	trailAlpha = 1,
+	trailStrokeWidth = 4,
 	armingDistance = 30,
 	fuseDuration = 1500, -- ms before auto-detonation
 	blastRadius = 30,

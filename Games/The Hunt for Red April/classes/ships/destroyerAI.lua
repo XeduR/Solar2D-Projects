@@ -32,6 +32,7 @@ function destroyerAI.new( opts )
 	local config = opts.config or gameConfig.destroyer
 	local ship = opts.ship
 	local carrierRef = opts.carrier
+	local allShips = opts.allShips
 
 	self.role = opts.role or "patrol"
 	ship.role = self.role
@@ -225,6 +226,27 @@ function destroyerAI.new( opts )
 		local age = now - state.target.time
 		local predX = state.target.x + state.target.vx * age * config.predictionFactor + state.chaseOffsetX
 		local predY = state.target.y + state.target.vy * age * config.predictionFactor + state.chaseOffsetY
+
+		-- Steer away from nearby destroyers to avoid stacking.
+		if allShips then
+			local sepRadius = config.separationRadius
+			local sepX, sepY = 0, 0
+			for i = 1, #allShips do
+				local other = allShips[i]
+				if other ~= ship and other.isAlive then
+					local d = distance( ship.x, ship.y, other.x, other.y )
+					if d < sepRadius and d > 0 then
+						local strength = ( sepRadius - d ) / sepRadius
+						local dx, dy = ship.x - other.x, ship.y - other.y
+						local invD = 1 / d
+						sepX = sepX + dx * invD * strength * sepRadius
+						sepY = sepY + dy * invD * strength * sepRadius
+					end
+				end
+			end
+			predX = predX + sepX
+			predY = predY + sepY
+		end
 
 		state.desiredHeading = angleTo( ship.x, ship.y, predX, predY )
 		state.thrust = 0.9
