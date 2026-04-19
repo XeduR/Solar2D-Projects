@@ -408,11 +408,7 @@ gameLoop = function()
 
 	local hasInput = dx ~= 0 or dy ~= 0
 	if hasInput then
-		local len = sqrt( dx * dx + dy * dy )
-		dx = dx / len
-		dy = dy / len
-		playerSub.setHeading( atan2( dy, dx ) )
-		playerSub.applyThrust( dx, dy, 1.0 )
+		playerSub.applyHeadingThrust( atan2( dy, dx ), 1.0, dt )
 	end
 
 	-- Player's sonar ping.

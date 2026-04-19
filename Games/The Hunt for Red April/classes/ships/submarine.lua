@@ -6,6 +6,9 @@ local gameConfig = require( "data.gameConfig" )
 -- Localised functions
 
 local sqrt = math.sqrt
+local cos = math.cos
+local sin = math.sin
+local pi = math.pi
 
 --------------------------------------------------------------------------------------
 -- Private functions
@@ -14,6 +17,13 @@ local function clamp( v, lo, hi )
 	if v < lo then return lo end
 	if v > hi then return hi end
 	return v
+end
+
+local function angleDiff( from, to )
+	local diff = to - from
+	while diff > pi do diff = diff - 2 * pi end
+	while diff < -pi do diff = diff + 2 * pi end
+	return diff
 end
 
 --------------------------------------------------------------------------------------
@@ -54,14 +64,21 @@ function submarine.new( parentGroup, opts )
 		return group.heading
 	end
 
-	-- Apply thrust in a given direction and update velocity.
-	function group.applyThrust( thrustX, thrustY, thrust )
+	-- Turn toward desired heading and accelerate in that direction.
+	function group.applyHeadingThrust( desiredHeading, thrust, dt )
 		if not group.isAlive then return end
 
-		local speed = config.maxSpeed * thrust
+		local diff = angleDiff( group.heading, desiredHeading )
+		local maxTurn = config.turnRate * dt
+		if diff > maxTurn then diff = maxTurn
+		elseif diff < -maxTurn then diff = -maxTurn end
+		group.heading = group.heading + diff
+		body.rotation = math.deg( group.heading )
+
+		local targetSpeed = config.maxSpeed * thrust
 		local rate = 1 - config.drag
-		group.vx = group.vx + ( thrustX * speed - group.vx ) * rate
-		group.vy = group.vy + ( thrustY * speed - group.vy ) * rate
+		group.vx = group.vx + ( cos( group.heading ) * targetSpeed - group.vx ) * rate
+		group.vy = group.vy + ( sin( group.heading ) * targetSpeed - group.vy ) * rate
 	end
 
 	-- Move sub by velocity, apply drag, clamp to world bounds.

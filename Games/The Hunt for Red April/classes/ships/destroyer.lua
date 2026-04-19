@@ -74,9 +74,10 @@ function destroyer.new( parentGroup, opts )
 		group.heading = group.heading + diff
 		body.rotation = math.deg( group.heading )
 
-		local speed = config.maxSpeed * thrust
-		group.vx = cos( group.heading ) * speed
-		group.vy = sin( group.heading ) * speed
+		local targetSpeed = config.maxSpeed * thrust
+		local rate = 1 - config.drag
+		group.vx = group.vx + ( cos( group.heading ) * targetSpeed - group.vx ) * rate
+		group.vy = group.vy + ( sin( group.heading ) * targetSpeed - group.vy ) * rate
 	end
 
 	function group.update( dt, worldW, worldH )
