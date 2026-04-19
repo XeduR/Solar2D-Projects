@@ -42,7 +42,7 @@ local keysDown = {}
 local lastTime
 local pingCooldown, fireCooldown
 local torpedoesRemaining
-local gameOver
+local isGameover
 local restartTimer
 local uiTextPing, uiTextTorpedo, uiTextGameover, uiTextCarrierHit
 local uiTextCarrierDir, carrierDirArrow, carrierDirTimer
@@ -279,9 +279,9 @@ end
 
 
 local function gameover( won, reason, hitX, hitY )
-	if gameOver then return end
+	if isGameover then return end
 	if not won and gameConfig.debug.isInvulnerable then return end
-	gameOver = true
+	isGameover = true
 	sfx.stopEngineHum()
 
 	Runtime:removeEventListener( "enterFrame", gameLoop )
@@ -312,6 +312,13 @@ local function gameover( won, reason, hitX, hitY )
 			alpha = 0,
 			onComplete = function()
 				uiTextGameover.text = message
+
+				if won then
+					uiTextGameover:setFillColor( hudReady[1], hudReady[2], hudReady[3]  )
+				else
+					uiTextGameover:setFillColor( hudCooldown[1], hudCooldown[2], hudCooldown[3] )
+				end
+
 				transition.to( uiTextGameover, {
 					tag = "game",
 					time = 500,
@@ -343,7 +350,7 @@ local function onDepthChargeExplode( x, y )
 	if playerSub and playerSub.isAlive then
 		sfx.playDirectional( "depthCharge", x, y, playerSub.x, playerSub.y, playerSub.getHeading() )
 	end
-	if gameOver then return end
+	if isGameover then return end
 
 	if playerSub and playerSub.isAlive then
 		if explosionHitsHull( x, y, playerSub.x, playerSub.y, playerSub.getHeading(), gameConfig.submarine.outerHull, gameConfig.depthCharge.blastRadius ) then
@@ -354,7 +361,7 @@ end
 
 
 local function onTorpedoExplode( x, y )
-	if gameOver then return end
+	if isGameover then return end
 
 	sfx.playDirectional( "torpedoExplode", x, y, playerSub.x, playerSub.y, playerSub.getHeading() )
 
@@ -399,7 +406,7 @@ local function updateCamera()
 end
 
 -- Main game loop.
-gameLoop = function()
+function gameLoop()
 	if not playerSub then return end
 
 	local now = system.getTimer()
@@ -408,7 +415,7 @@ gameLoop = function()
 
 	if dt > 50 then dt = 50 end
 
-	if gameOver then return end
+	if isGameover then return end
 
 	local worldW = mapData.worldWidth
 	local worldH = mapData.worldHeight
@@ -466,7 +473,6 @@ gameLoop = function()
 	-- 2. Player physics
 
 	playerSub.update( dt, worldW, worldH )
-	sfx.updateEngineHum( playerSub.getSpeed(), gameConfig.submarine.maxSpeed )
 
 	-- Transform submarine hull to world coordinates for collision.
 	local subHeading = playerSub.getHeading()
@@ -644,7 +650,7 @@ gameLoop = function()
 		end
 	end
 
-	-- Out of torpedoes: gameover after the final torpedo detonates.
+	-- Out of torpedoes: isGameover after the final torpedo detonates.
 	if torpedoesRemaining <= 0 and #torpedoes == 0 then
 		gameover( false, "torpedoes" )
 		return
@@ -785,7 +791,7 @@ function newGame()
 	pingCooldown = 0
 	fireCooldown = 0
 	torpedoesRemaining = gameConfig.torpedo.maxTorpedoes
-	gameOver = false
+	isGameover = false
 
 	local colors = gameConfig.colors
 	local destroyerConfig = gameConfig.destroyer
@@ -1027,6 +1033,7 @@ end
 
 
 local function onKeyEvent( event )
+	print( event.keyName )
 	if event.phase == "down" then
 		if waitingToStart and readyToStart and event.keyName == "space" then
 			startGame()

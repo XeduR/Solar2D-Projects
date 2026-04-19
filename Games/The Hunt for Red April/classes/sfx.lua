@@ -90,7 +90,7 @@ function sfx.setEnabled( value )
 			audio.stop( i )
 		end
 	elseif engineHumActive then
-		audio.play( audioDir .. "engineHum.wav", { type = "engine", loops = -1, volume = 0 } )
+		audio.play( audioDir .. "engineHum.mp3", { type = "engine", loops = -1, volume = 0 } )
 	end
 end
 
@@ -138,23 +138,12 @@ end
 function sfx.startEngineHum()
 	engineHumActive = true
 	if not isEnabled then return end
-	audio.play( audioDir .. "engineHum.wav", { type = "engine", loops = -1, volume = 0 } )
+	audio.play( audioDir .. "engineHum.mp3", { type = "engine", loops = -1 } )
 end
 
 function sfx.stopEngineHum()
 	engineHumActive = false
 	audio.stop( 1 )
-end
-
--- Update engine hum volume based on current speed relative to max speed.
-function sfx.updateEngineHum( speed, maxSpeed )
-	if not isEnabled then return end
-	local vol = 0
-	if maxSpeed > 0 then
-		vol = speed / maxSpeed
-		if vol > 1 then vol = 1 end
-	end
-	audio.setVolume( vol, { channel = 1 } )
 end
 
 return sfx

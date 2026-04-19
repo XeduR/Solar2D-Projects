@@ -14,11 +14,11 @@ The game started as a sub-vs-sub duel prototype and pivoted to a submarine-vs-su
 
 ## How to play
 
-- **WASD** to steer and throttle the submarine
+- **WASD**/**Arrow keys** to steer and throttle the submarine
 - **Space** to emit a sonar ping (reveals terrain, ships, and depth charges, but alerts nearby destroyers)
-- **Left click** to fire a torpedo
+- **Shift**/**Ctrl** to fire a torpedo
 
-**Win** by torpedoing the carrier (one hit). **Lose** by getting caught in a depth charge blast or colliding with terrain.
+**Win** by torpedoing the carrier (two hits). **Lose** by getting caught in a depth charge blast, colliding with terrain, or running out of torpedoes.
 
 Destroyers patrol the map and escort the carrier. When they detect you (via their own sonar or your ping), they chase your predicted position and drop depth charges. Torpedoes can also destroy destroyers to thin the escort.
 
