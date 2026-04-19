@@ -22,7 +22,8 @@ local crtShader = require( "assets.shaders.crt_shader" )
 -- Forward declarations & variables
 
 local snapshot
-local worldGroup, groupSub, groupTerrain, groupShips, groupUI
+local worldGroup, groupSub, groupTerrain, groupShips, groupUI, revealGroup
+local activePlayerPing
 local playerSub
 local carrierShip, carrierController
 local destroyerShip, destroyerController
@@ -397,6 +398,11 @@ gameLoop = function()
 		pingCooldown = pingConfig.cooldown
 		local ping = pingSystem.emit( playerSub.x, playerSub.y, { source = "player", group = groupSub } )
 		ping.ring:toBack()
+		activePlayerPing = ping
+		revealGroup.maskX = playerSub.x
+		revealGroup.maskY = playerSub.y
+		revealGroup.maskScaleX = 0.01
+		revealGroup.maskScaleY = 0.01
 	end
 
 	-- Player's torpedo.
@@ -634,7 +640,21 @@ gameLoop = function()
 	uiTextTorpedo.text = "TORPEDOES: " .. torpedoesRemaining .. "/" .. gameConfig.torpedo.maxTorpedoes
 
 	--------------------------------------------------------------------------------------
-	-- 8. Camera
+	-- 8. Sonar mask
+
+	if activePlayerPing then
+		if activePlayerPing.ring then
+			local scale = activePlayerPing.radius / 64
+			if scale < 0.01 then scale = 0.01 end
+			revealGroup.maskScaleX = scale
+			revealGroup.maskScaleY = scale
+		else
+			activePlayerPing = nil
+		end
+	end
+
+	--------------------------------------------------------------------------------------
+	-- 9. Camera
 
 	updateCamera()
 end
@@ -824,12 +844,17 @@ function newGame()
 		end
 	end
 
-	if gameConfig.debug.revealAll then
-		pingSystem.setRevealAll( true )
-	end
-
 	-- Reset display state.
 	worldGroup.alpha = 1
+	activePlayerPing = nil
+	revealGroup.maskScaleX = 0.01
+	revealGroup.maskScaleY = 0.01
+
+	if gameConfig.debug.revealAll then
+		pingSystem.setRevealAll( true )
+		revealGroup.maskScaleX = 100
+		revealGroup.maskScaleY = 100
+	end
 	uiTextGameover.alpha = 0
 	uiTextGameover.text = ""
 
@@ -875,6 +900,15 @@ local function startGame()
 	lastTime = system.getTimer()
 	carrierController.start()
 	Runtime:addEventListener( "enterFrame", gameLoop )
+
+	pingCooldown = gameConfig.ping.cooldown
+	local ping = pingSystem.emit( playerSub.x, playerSub.y, { source = "player", group = groupSub } )
+	ping.ring:toBack()
+	activePlayerPing = ping
+	revealGroup.maskX = playerSub.x
+	revealGroup.maskY = playerSub.y
+	revealGroup.maskScaleX = 0.01
+	revealGroup.maskScaleY = 0.01
 end
 
 
@@ -931,10 +965,19 @@ function scene:create( event )
 
 	groupSub = display.newGroup()
 	worldGroup:insert( groupSub )
+
+	revealGroup = display.newGroup()
+	worldGroup:insert( revealGroup )
+
 	groupTerrain = display.newGroup()
-	worldGroup:insert( groupTerrain )
+	revealGroup:insert( groupTerrain )
 	groupShips = display.newGroup()
-	worldGroup:insert( groupShips )
+	revealGroup:insert( groupShips )
+
+	local mask = graphics.newMask( "assets/images/mask.png" )
+	revealGroup:setMask( mask )
+	revealGroup.maskScaleX = 0.01
+	revealGroup.maskScaleY = 0.01
 
 	--------------------------------------------------------------------------------------
 	-- Terrain

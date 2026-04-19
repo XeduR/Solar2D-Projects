@@ -147,7 +147,7 @@ gameConfig.depthCharge = {
 
 gameConfig.ping = {
 	ringSpeed = 0.4, -- px/ms
-	ringMaxRadius = 600,
+	ringMaxRadius = 400,
 	ringThickness = 4,
 	ringStartAlpha = 0.8,
 	revealFadeIn = 100, -- ms
