@@ -659,7 +659,18 @@ gameLoop = function()
 		uiTextPing.alpha = gameConfig.hud.pingReadyAlpha
 	end
 
-	uiTextTorpedo.text = "TORPEDOES: " .. torpedoesRemaining .. "/" .. gameConfig.torpedo.maxTorpedoes
+	local torpText = "TORPEDOES: " .. torpedoesRemaining .. "/" .. gameConfig.torpedo.maxTorpedoes
+	if fireCooldown > 0 then
+		local c = gameConfig.colors.hudPingCooldown
+		uiTextTorpedo.text = torpText .. " " .. string.format( "%.1f", fireCooldown * 0.001 ) .. "S"
+		uiTextTorpedo:setFillColor( c[1], c[2], c[3] )
+		uiTextTorpedo.alpha = gameConfig.hud.pingCooldownAlpha
+	else
+		local c = gameConfig.colors.hudPingReady
+		uiTextTorpedo.text = torpText
+		uiTextTorpedo:setFillColor( c[1], c[2], c[3] )
+		uiTextTorpedo.alpha = gameConfig.hud.pingReadyAlpha
+	end
 
 	if carrierDirArrow.alpha > 0 and carrierShip and carrierShip.isAlive then
 		carrierDirArrow.rotation = deg( atan2( carrierShip.y - playerSub.y, carrierShip.x - playerSub.x ) )
@@ -1103,7 +1114,6 @@ function scene:create( event )
 		y = hudBottomY - hudConfig.fontSize - 4,
 		font = hudConfig.font,
 		fontSize = hudConfig.fontSize,
-		width = 200,
 		align = "left",
 	} )
 	uiTextPing.anchorX = 0
