@@ -1,10 +1,12 @@
 # The Hunt for Red April
 
-A sonar-based submarine stealth game made for [Ludum Dare 59](https://ldjam.com/).
+A sonar-based submarine stealth game made for [Ludum Dare 59](https://ldjam.com/). This game was supposed to be made for COMPO, but I realised I wouldn't be able to produce the necessary audio by myself, so I opted for a JAM entry.
 
 The theme of LD59 is **Signal**.
 
-![the-hunt-proto-4](the-hunt-proto-4.gif)
+![the-hunt-proto-6](the-hunt-proto-6.gif)
+
+Final version of the game (with fairly heavy gif compression).
 
 ## Premise
 
@@ -26,11 +28,19 @@ Destroyers patrol the map and escort the carrier. When they detect you (via thei
 
 I initially planned on developing a submarine vs submarine type of a duel game (titled "The Long Ping"), but after finishing the first prototype, I figured it'd be too much work to get the pathfinding and dueling gameplay to work smoothly and feel engaging, so I pivoted to a bit more asymmetric approach.
 
+The first prototype with submarine vs submarine.
+
 ![the-hunt-proto-1](the-hunt-proto-1.gif)
+
 
 With ships, they don't need to path around the underwater terrain and I felt that their AI can be significantly simpler as they can just swarm the player's submarine. With that, the game became "The Hunt for Red April", which is an odd choice given that the game is no longer about hunting a sub, but sometimes I miss the mark with my game jam games' names.
 
+The game at different stages of development:
+
+![the-hunt-proto-3](the-hunt-proto-2.gif)
 ![the-hunt-proto-3](the-hunt-proto-3.gif)
+![the-hunt-proto-3](the-hunt-proto-4.gif)
+![the-hunt-proto-3](the-hunt-proto-5.gif)
 
 ## Tools
 
