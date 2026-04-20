@@ -50,6 +50,7 @@ gameConfig.carrier = {
 	drag = 0.98,
 	collisionRadius = 30,
 	hitpoints = 2,
+	minimumSpawnDistance = 600, -- carrier won't spawn closer than this to the player
 	shape = {
 		69, -16,
 		76, -6,
@@ -85,7 +86,7 @@ gameConfig.destroyer = {
 	turnRate = 0.001, -- rad/ms
 	drag = 0.97,
 	collisionRadius = 16,
-	patrolCount = 4,
+	patrolCount = 3,
 	escortCount = 2,
 	sonarCooldownMin = 4000, -- ms between pings (lower bound)
 	sonarCooldownMax = 6500, -- ms between pings (upper bound)
@@ -101,7 +102,7 @@ gameConfig.destroyer = {
 	escortRadius = 120, -- orbit distance from carrier
 	escortLeashRadius = 400, -- max distance from carrier before escort aborts chase
 	separationRadius = 80, -- destroyers steer away from each other within this range
-	minimumSpawnDistance = 300, -- patrol destroyers won't spawn closer than this to the player
+	minimumSpawnDistance = 400, -- patrol destroyers won't spawn closer than this to the player
 	shape = {
 		41, 0,
 		35, -5,
@@ -148,7 +149,7 @@ gameConfig.patrol = {
 	escortRadius = 160, -- orbit distance from carrier
 	escortLeashRadius = 500, -- max distance from carrier before escort aborts chase
 	separationRadius = 60, -- patrol boats steer away from each other within this range
-	minimumSpawnDistance = 300, -- patrol boats won't spawn closer than this to the player
+	minimumSpawnDistance = 500, -- patrol boats won't spawn closer than this to the player
 	shape = {
 		20, 0,
 		17, -3,
@@ -212,7 +213,7 @@ gameConfig.ping = {
 
 gameConfig.torpedo = {
 	speed = 0.25, -- px/ms
-	maxTorpedoes = 6,
+	maxTorpedoes = 8,
 	collisionRadius = 6,
 	cooldown = 8000, -- ms between shots
 	trailLength = 12,
@@ -310,7 +311,7 @@ gameConfig.restartDelay = 2500 -- ms before restarting after win/lose
 gameConfig.winText = "The Red April has been sunk!"
 gameConfig.loseText = {
 	depthCharge = "You were destroyed by a depth charge.",
-	collisionTerrain = "You crashed into terrain and sunk.",
+	collisionTerrain = "You crashed into terrain and sank.",
 	collisionBounds = "You were blown up for leaving the mission area.",
 	torpedoes = "You're out of torpedoes."
 }

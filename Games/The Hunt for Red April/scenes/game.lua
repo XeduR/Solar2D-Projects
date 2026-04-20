@@ -878,49 +878,83 @@ function newGame()
 	playerSub.x = spawn.x
 	playerSub.y = spawn.y
 
-	-- Spawn carrier.
-	local route = mapData.carrierRoutes[math.random( #mapData.carrierRoutes )]
-	local startIdx = math.random( #route )
+	-- Spawn carrier with minimum distance check from player.
+	local carrierConfig = gameConfig.carrier
+	local carrierMinDist = carrierConfig.minimumSpawnDistance
+	local routes = mapData.carrierRoutes
+	local routeOrder = {}
+	for i = 1, #routes do routeOrder[i] = i end
+	local startRouteIdx = math.random( #routeOrder )
+
+	local chosenRoute, chosenStartIdx
+	for ri = 0, #routes - 1 do
+		local routeIdx = routeOrder[( startRouteIdx - 1 + ri ) % #routes + 1]
+		local route = routes[routeIdx]
+		local startVertex = math.random( #route )
+
+		for vi = 0, #route - 1 do
+			local idx = ( startVertex - 1 + vi ) % #route + 1
+			local dist = distance( route[idx].x, route[idx].y, playerSub.x, playerSub.y )
+			if dist >= carrierMinDist then
+				chosenRoute = route
+				chosenStartIdx = idx
+				break
+			end
+		end
+		if chosenRoute then break end
+	end
+
+	-- Fallback: use first route, first vertex if everything is too close.
+	if not chosenRoute then
+		chosenRoute = routes[1]
+		chosenStartIdx = 1
+	end
+
 	local carrierDirection = math.random( 2 ) == 1 and 1 or -1
 
 	carrierShip = carrier.new( groupShips, {
 		color = colors.carrier,
 	} )
-	carrierShip.x = route[startIdx].x
-	carrierShip.y = route[startIdx].y
+	carrierShip.x = chosenRoute[chosenStartIdx].x
+	carrierShip.y = chosenRoute[chosenStartIdx].y
 
 	pingSystem.registerRevealable( carrierShip, { isGhostable = true, tag = "carrier" } )
 
 	carrierController = carrierAI.new( {
 		ship = carrierShip,
-		waypoints = route,
-		startIndex = startIdx,
+		waypoints = chosenRoute,
+		startIndex = chosenStartIdx,
 		direction = carrierDirection,
 	} )
 
 	if gameConfig.debug.showCarrierPath then
-		for i = 1, #route do
-			local j = i % #route + 1
-			local line = display.newLine( groupShips, route[i].x, route[i].y, route[j].x, route[j].y )
+		for i = 1, #chosenRoute do
+			local j = i % #chosenRoute + 1
+			local line = display.newLine( groupShips, chosenRoute[i].x, chosenRoute[i].y, chosenRoute[j].x, chosenRoute[j].y )
 			line.strokeWidth = 1
 		end
 	end
 
+	-- Shuffle ship spawn points for non-escort ships.
+	local shipSpawns = mapData.shipSpawnPoints
+	local shuffled = {}
+	for i = 1, #shipSpawns do shuffled[i] = i end
+	for i = #shuffled, 2, -1 do
+		local j = math.random( i )
+		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+	end
+	local spawnIdx = 0
+
+	local function nextSpawnPoint()
+		spawnIdx = spawnIdx % #shuffled + 1
+		local point = shipSpawns[shuffled[spawnIdx]]
+		return point.x, point.y
+	end
+
 	-- Spawn patrol destroyers.
 	local patrolWP = mapData.patrolWaypoints
-	local minSpawnDist = destroyerConfig.minimumSpawnDistance
 	for i = 1, destroyerConfig.patrolCount do
-		local wpIndex = ( ( i - 1 ) * 3 ) % #patrolWP + 1
-		local spawnWP = patrolWP[wpIndex]
-		local sx, sy = spawnWP.x, spawnWP.y
-
-		local dist = distance( sx, sy, playerSub.x, playerSub.y )
-		if dist < minSpawnDist and dist > 0 then
-			local dx = sx - playerSub.x
-			local dy = sy - playerSub.y
-			sx = playerSub.x + dx / dist * minSpawnDist
-			sy = playerSub.y + dy / dist * minSpawnDist
-		end
+		local sx, sy = nextSpawnPoint()
 
 		local ship = destroyer.new( groupShips, {
 			heading = math.random() * pi * 2,
@@ -978,17 +1012,7 @@ function newGame()
 	-- Spawn patrol boats (patrol role).
 	local patrolConfig = gameConfig.patrol
 	for i = 1, patrolConfig.patrolCount do
-		local wpIndex = ( ( i - 1 ) * 5 + 2 ) % #patrolWP + 1
-		local spawnWP = patrolWP[wpIndex]
-		local sx, sy = spawnWP.x, spawnWP.y
-
-		local dist = distance( sx, sy, playerSub.x, playerSub.y )
-		if dist < patrolConfig.minimumSpawnDistance and dist > 0 then
-			local dx = sx - playerSub.x
-			local dy = sy - playerSub.y
-			sx = playerSub.x + dx / dist * patrolConfig.minimumSpawnDistance
-			sy = playerSub.y + dy / dist * patrolConfig.minimumSpawnDistance
-		end
+		local sx, sy = nextSpawnPoint()
 
 		local ship = patrol.new( groupShips, {
 			heading = math.random() * pi * 2,
@@ -1461,11 +1485,11 @@ function scene:create( event )
 
 	local instructionsObj = display.newText( {
 		parent = titleGroup,
-		text = "Navigate by sonar. Sink the carrier. Evade the destroyers.\n\nCONTROLS:\nWASD/arrows: Move | Space: Sonar | Shift/Ctrl: Fire torpedo",
+		text = "Navigate by sonar. Sink the carrier. Evade the enemy ships.\n\nCONTROLS:\nWASD/arrows: Move | Space: Sonar | Shift/Ctrl: Fire torpedo",
 		x = 0,
 		y = 60,
 		font = hudConfig.fontRegular,
-		fontSize = 20,
+		fontSize = 22,
 		width = 800,
 		align = "center",
 	} )

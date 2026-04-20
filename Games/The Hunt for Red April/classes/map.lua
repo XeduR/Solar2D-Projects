@@ -34,6 +34,7 @@ function map.load( filename )
 		terrain = {},
 		carrierRoutes = {},
 		spawnPoints = {},
+		shipSpawnPoints = {},
 	}
 
 	for i = 1, #data.layers do
@@ -98,7 +99,18 @@ function map.load( filename )
 				end
 			end
 
-		elseif layer.name == "spawn" and layer.type == "objectgroup" then
+		elseif layer.name == "spawn_ship" and layer.type == "objectgroup" then
+			for j = 1, #layer.objects do
+				local obj = layer.objects[j]
+				if obj.point then
+					result.shipSpawnPoints[#result.shipSpawnPoints + 1] = {
+						x = obj.x,
+						y = obj.y,
+					}
+				end
+			end
+
+		elseif layer.name == "spawn_player" and layer.type == "objectgroup" then
 			for j = 1, #layer.objects do
 				local obj = layer.objects[j]
 				if obj.point then
