@@ -85,10 +85,10 @@ gameConfig.destroyer = {
 	turnRate = 0.001, -- rad/ms
 	drag = 0.97,
 	collisionRadius = 16,
-	patrolCount = 6,
-	escortCount = 3,
-	sonarCooldownMin = 6000, -- ms between pings (lower bound)
-	sonarCooldownMax = 9000, -- ms between pings (upper bound)
+	patrolCount = 4,
+	escortCount = 2,
+	sonarCooldownMin = 4000, -- ms between pings (lower bound)
+	sonarCooldownMax = 6500, -- ms between pings (upper bound)
 	sonarRange = 250, -- much smaller than player's 600
 	chaseDurationPatrol = 15000, -- ms before patrol gives up chase
 	chaseDurationEscort = 10000, -- ms before escort gives up chase
@@ -129,6 +129,53 @@ gameConfig.destroyer = {
 }
 
 --------------------------------------------------------------------------------------
+-- Patrol boat
+
+gameConfig.patrol = {
+	maxSpeed = 0.28, -- px/ms, much faster than destroyer
+	turnRate = 0.002, -- rad/ms, more agile than destroyer
+	drag = 0.97,
+	collisionRadius = 10,
+	patrolCount = 2,
+	escortCount = 1,
+	chaseDurationPatrol = 12000, -- ms before patrol gives up chase
+	chaseDurationEscort = 8000, -- ms before escort gives up chase
+	depthChargeCooldown = 4000, -- ms
+	depthChargeDropRange = 120, -- only drops when within this range of target
+	predictionFactor = 1.5, -- higher than destroyer to get ahead of player
+	leadDistance = 100, -- extra distance ahead of predicted position
+	chaseSpreadRadius = 60, -- random offset for non-lead chasers
+	escortRadius = 160, -- orbit distance from carrier
+	escortLeashRadius = 500, -- max distance from carrier before escort aborts chase
+	separationRadius = 60, -- patrol boats steer away from each other within this range
+	minimumSpawnDistance = 300, -- patrol boats won't spawn closer than this to the player
+	shape = {
+		20, 0,
+		17, -3,
+		10, -4,
+		-5, -5,
+		-16, -3,
+		-20, -2,
+		-20, 2,
+		-16, 3,
+		-5, 5,
+		10, 4,
+		17, 3,
+	},
+	outerHull = {
+		20, 0,
+		17, -3,
+		10, -4,
+		-5, -5,
+		-20, -2,
+		-20, 2,
+		-5, 5,
+		10, 4,
+		17, 3,
+	},
+}
+
+--------------------------------------------------------------------------------------
 -- Depth charge
 
 gameConfig.depthCharge = {
@@ -165,7 +212,7 @@ gameConfig.ping = {
 
 gameConfig.torpedo = {
 	speed = 0.25, -- px/ms
-	maxTorpedoes = 8,
+	maxTorpedoes = 6,
 	collisionRadius = 6,
 	cooldown = 8000, -- ms between shots
 	trailLength = 12,
@@ -217,6 +264,7 @@ gameConfig.colors = {
 	playerSub = { 0.4, 0.9, 0.6 },
 	carrier = { 1.0, 0, 0 },
 	destroyer = { 1.0, 0.3, 0 },
+	patrol = { 1.0, 0.3, 0 },
 	terrainFill = { 0.025, 0.06, 0.05 },
 	terrainStroke = { 0.25, 0.6, 0.5 },
 	levelBounds = { 0.5, 0, 0 },
@@ -292,9 +340,9 @@ gameConfig.titleScreen = {
 -- Audio
 
 gameConfig.audio = {
-	masterVolume = 0.5,
-	distanceMin = 100, -- full volume at or below this range
-	distanceMax = 600, -- silent at or beyond this range
+	masterVolume = 0.45,
+	distanceMin = 150, -- full volume at or below this range
+	distanceMax = 650, -- silent at or beyond this range
 	distanceClose = 200, -- threshold for near/far sound variant
 }
 

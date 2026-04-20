@@ -77,7 +77,6 @@ function sfx.init()
 
 	for i = 1, #directionalSounds do
 		for j = 1, #directionalSuffixes do
-			print( audioDir .. directionalSounds[i] .. directionalSuffixes[j] .. ".wav" )
 			audio.loadSound( audioDir .. directionalSounds[i] .. directionalSuffixes[j] .. ".wav" )
 		end
 	end

@@ -13,6 +13,8 @@ local carrier = require( "classes.ships.carrier" )
 local carrierAI = require( "classes.ships.carrierAI" )
 local destroyer = require( "classes.ships.destroyer" )
 local destroyerAI = require( "classes.ships.destroyerAI" )
+local patrol = require( "classes.ships.patrol" )
+local patrolAI = require( "classes.ships.patrolAI" )
 local depthCharge = require( "classes.depthCharge" )
 local torpedo = require( "classes.torpedo" )
 local sonar = require( "classes.sonar" )
@@ -23,15 +25,13 @@ local crtShader = require( "assets.shaders.crt_shader" )
 --------------------------------------------------------------------------------------
 -- Forward declarations & variables
 
-local hudReady = gameConfig.colors.hudReady
-local hudCooldown = gameConfig.colors.hudCooldown
-
 local snapshot
 local worldGroup, groupSub, groupTerrain, groupShips, groupUI, revealGroup
 local activePlayerPing
 local playerSub
 local carrierShip, carrierController
 local destroyerShip, destroyerController
+local patrolShip, patrolController
 local pingSystem
 local torpedoes, depthCharges, destroyerPingTrackers, ghostObjects
 local terrainObstacles
@@ -43,14 +43,14 @@ local lastTime
 local pingCooldown, fireCooldown
 local torpedoesRemaining
 local isGameover
-local restartTimer
-local uiTextPing, uiTextTorpedo, uiTextGameover, uiTextCarrierHit
-local uiTextCarrierDir, carrierDirArrow, carrierDirTimer
-local uiTextSounds
 local carrierHitpoints
 local titleGroup, titleStartText
 local waitingToStart, readyToStart
-local blinkTimer, startDelayTimer
+local gameTimers = {}
+local ui = {
+	hudReady = gameConfig.colors.hudReady,
+	hudCooldown = gameConfig.colors.hudCooldown,
+}
 
 --------------------------------------------------------------------------------------
 -- Localised functions
@@ -154,6 +154,11 @@ local function broadcastAlert( x, y, alerterRole )
 	for i = 1, #destroyerController do
 		if destroyerShip[i].isAlive then
 			destroyerController[i].notifyAlert( x, y, alerterRole )
+		end
+	end
+	for i = 1, #patrolController do
+		if patrolShip[i].isAlive then
+			patrolController[i].notifyAlert( x, y, alerterRole )
 		end
 	end
 end
@@ -311,20 +316,20 @@ local function gameover( won, reason, hitX, hitY )
 			time = 1500,
 			alpha = 0,
 			onComplete = function()
-				uiTextGameover.text = message
+				ui.gameover.text = message
 
 				if won then
-					uiTextGameover:setFillColor( hudReady[1], hudReady[2], hudReady[3]  )
+					ui.gameover:setFillColor( ui.hudReady[1], ui.hudReady[2], ui.hudReady[3]  )
 				else
-					uiTextGameover:setFillColor( hudCooldown[1], hudCooldown[2], hudCooldown[3] )
+					ui.gameover:setFillColor( ui.hudCooldown[1], ui.hudCooldown[2], ui.hudCooldown[3] )
 				end
 
-				transition.to( uiTextGameover, {
+				transition.to( ui.gameover, {
 					tag = "game",
 					time = 500,
 					alpha = 1,
 					onComplete = function()
-						restartTimer = timer.performWithDelay( gameConfig.restartDelay, newGame )
+						gameTimers.restart = timer.performWithDelay( gameConfig.restartDelay, newGame )
 					end,
 				} )
 			end,
@@ -367,6 +372,7 @@ local function onTorpedoExplode( x, y )
 
 	local blastRadius = gameConfig.torpedo.blastRadius
 	local destroyerHull = gameConfig.destroyer.outerHull
+	local patrolHull = gameConfig.patrol.outerHull
 	local carrierHull = gameConfig.carrier.outerHull
 
 	for j = 1, #destroyerShip do
@@ -379,15 +385,25 @@ local function onTorpedoExplode( x, y )
 		end
 	end
 
+	for j = 1, #patrolShip do
+		local p = patrolShip[j]
+		if p.isAlive and explosionHitsHull( x, y, p.x, p.y, p.heading, patrolHull, blastRadius ) then
+			sfx.playDirectional( "destroyerExplode", p.x, p.y, playerSub.x, playerSub.y, playerSub.getHeading() )
+			patrolController[j].notifyHit()
+			sinkShip( p )
+			return
+		end
+	end
+
 	if carrierShip.isAlive and explosionHitsHull( x, y, carrierShip.x, carrierShip.y, carrierShip.heading, carrierHull, blastRadius ) then
 		carrierHitpoints = carrierHitpoints - 1
 		broadcastAlert( carrierShip.x, carrierShip.y, "escort" )
 		if carrierHitpoints <= 0 then
 			gameover( true )
 		else
-			transition.cancel( uiTextCarrierHit )
-			uiTextCarrierHit.alpha = 1
-			transition.to( uiTextCarrierHit, {
+			transition.cancel( ui.carrierHit )
+			ui.carrierHit.alpha = 1
+			transition.to( ui.carrierHit, {
 				tag = "game",
 				delay = 1500,
 				time = 1000,
@@ -580,6 +596,46 @@ function gameLoop()
 	end
 
 	--------------------------------------------------------------------------------------
+	-- 3b. Patrol boat AI + physics + outputs
+
+	for i = 1, #patrolShip do
+		local ship = patrolShip[i]
+		local ai = patrolController[i]
+		if ship.isAlive then
+			ai.update( dt )
+			ship.update( dt, worldW, worldH )
+
+			-- Depth charge request (single drop, no burst).
+			local wantsDrop, dropX, dropY = ai.consumeDepthChargeRequest()
+			if wantsDrop then
+				local dcConfig = gameConfig.depthCharge
+				local dc = depthCharge.new( groupShips, dropX, dropY, {
+					onExplode = onDepthChargeExplode,
+				} )
+
+				pingSystem.registerRevealable( dc.displayObject, {
+					width = dcConfig.radius * 2,
+					height = dcConfig.radius * 2,
+				} )
+				depthCharges[#depthCharges + 1] = dc
+
+				local dcColor = gameConfig.colors.depthCharge
+				local indicator = display.newCircle( groupShips, dropX, dropY, dcConfig.indicatorRadius )
+				indicator:setFillColor( dcColor[1], dcColor[2], dcColor[3] )
+				transition.to( indicator, {
+					tag = "game",
+					time = dcConfig.indicatorFadeDuration,
+					alpha = 0,
+					onComplete = function()
+						display.remove( indicator )
+						indicator = nil
+					end,
+				} )
+			end
+		end
+	end
+
+	--------------------------------------------------------------------------------------
 	-- 4. destroyer's sonar ping
 
 	local pingSpeed = pingConfig.ringSpeed
@@ -612,6 +668,7 @@ function gameLoop()
 	local torpConfig = gameConfig.torpedo
 	local carrierHull = gameConfig.carrier.outerHull
 	local destroyerHull = gameConfig.destroyer.outerHull
+	local patrolHull = gameConfig.patrol.outerHull
 
 	for i = #torpedoes, 1, -1 do
 		local torp = torpedoes[i]
@@ -637,6 +694,18 @@ function gameLoop()
 				for j = 1, #destroyerShip do
 					local d = destroyerShip[j]
 					if d.isAlive and pointInRotatedHull( torp.x, torp.y, d.x, d.y, d.heading, destroyerHull ) then
+						torp.detonate()
+						detonated = true
+						break
+					end
+				end
+			end
+
+			-- Check collision with patrol boats.
+			if not detonated then
+				for j = 1, #patrolShip do
+					local p = patrolShip[j]
+					if p.isAlive and pointInRotatedHull( torp.x, torp.y, p.x, p.y, p.heading, patrolHull ) then
 						torp.detonate()
 						detonated = true
 						break
@@ -678,28 +747,28 @@ function gameLoop()
 	-- 7. HUD update
 
 	if pingCooldown > 0 then
-		uiTextPing.text = "SONAR READY IN " .. string.format( "%.1f", pingCooldown * 0.001 ) .. "S"
-		uiTextPing:setFillColor( hudCooldown[1], hudCooldown[2], hudCooldown[3] )
-		uiTextPing.alpha = gameConfig.hud.pingCooldownAlpha
+		ui.ping.text = "SONAR READY IN " .. string.format( "%.1f", pingCooldown * 0.001 ) .. "S"
+		ui.ping:setFillColor( ui.hudCooldown[1], ui.hudCooldown[2], ui.hudCooldown[3] )
+		ui.ping.alpha = gameConfig.hud.pingCooldownAlpha
 	else
-		uiTextPing.text = "SONAR READY"
-		uiTextPing:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
-		uiTextPing.alpha = gameConfig.hud.pingReadyAlpha
+		ui.ping.text = "SONAR READY"
+		ui.ping:setFillColor( ui.hudReady[1], ui.hudReady[2], ui.hudReady[3] )
+		ui.ping.alpha = gameConfig.hud.pingReadyAlpha
 	end
 
 	local torpText = "TORPEDOES: " .. torpedoesRemaining .. "/" .. gameConfig.torpedo.maxTorpedoes
 	if fireCooldown > 0 then
-		uiTextTorpedo.text = torpText .. " - RELOADING " .. string.format( "%.1f", fireCooldown * 0.001 ) .. "S"
-		uiTextTorpedo:setFillColor( hudCooldown[1], hudCooldown[2], hudCooldown[3] )
-		uiTextTorpedo.alpha = gameConfig.hud.pingCooldownAlpha
+		ui.torpedo.text = torpText .. " - RELOADING " .. string.format( "%.1f", fireCooldown * 0.001 ) .. "S"
+		ui.torpedo:setFillColor( ui.hudCooldown[1], ui.hudCooldown[2], ui.hudCooldown[3] )
+		ui.torpedo.alpha = gameConfig.hud.pingCooldownAlpha
 	else
-		uiTextTorpedo.text = torpText
-		uiTextTorpedo:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
-		uiTextTorpedo.alpha = gameConfig.hud.pingReadyAlpha
+		ui.torpedo.text = torpText
+		ui.torpedo:setFillColor( ui.hudReady[1], ui.hudReady[2], ui.hudReady[3] )
+		ui.torpedo.alpha = gameConfig.hud.pingReadyAlpha
 	end
 
-	if carrierDirArrow.alpha > 0 and carrierShip and carrierShip.isAlive then
-		carrierDirArrow.rotation = deg( atan2( carrierShip.y - playerSub.y, carrierShip.x - playerSub.x ) )
+	if ui.dirArrow.alpha > 0 and carrierShip and carrierShip.isAlive then
+		ui.dirArrow.rotation = deg( atan2( carrierShip.y - playerSub.y, carrierShip.x - playerSub.x ) )
 	end
 
 	--------------------------------------------------------------------------------------
@@ -727,21 +796,21 @@ function newGame()
 	sfx.stopEngineHum()
 	-- Cancel active transitions and timers.
 	transition.cancel( "game" )
-	if restartTimer then
-		timer.cancel( restartTimer )
-		restartTimer = nil
+	if gameTimers.restart then
+		timer.cancel( gameTimers.restart )
+		gameTimers.restart = nil
 	end
-	if blinkTimer then
-		timer.cancel( blinkTimer )
-		blinkTimer = nil
+	if gameTimers.blink then
+		timer.cancel( gameTimers.blink )
+		gameTimers.blink = nil
 	end
-	if startDelayTimer then
-		timer.cancel( startDelayTimer )
-		startDelayTimer = nil
+	if gameTimers.startDelay then
+		timer.cancel( gameTimers.startDelay )
+		gameTimers.startDelay = nil
 	end
-	if carrierDirTimer then
-		timer.cancel( carrierDirTimer )
-		carrierDirTimer = nil
+	if gameTimers.carrierDir then
+		timer.cancel( gameTimers.carrierDir )
+		gameTimers.carrierDir = nil
 	end
 
 	Runtime:removeEventListener( "enterFrame", gameLoop )
@@ -788,6 +857,8 @@ function newGame()
 	ghostObjects = {}
 	destroyerShip = {}
 	destroyerController = {}
+	patrolShip = {}
+	patrolController = {}
 	keysDown = {}
 	pingCooldown = 0
 	fireCooldown = 0
@@ -904,6 +975,74 @@ function newGame()
 		destroyerController[#destroyerController + 1] = ai
 	end
 
+	-- Spawn patrol boats (patrol role).
+	local patrolConfig = gameConfig.patrol
+	for i = 1, patrolConfig.patrolCount do
+		local wpIndex = ( ( i - 1 ) * 5 + 2 ) % #patrolWP + 1
+		local spawnWP = patrolWP[wpIndex]
+		local sx, sy = spawnWP.x, spawnWP.y
+
+		local dist = distance( sx, sy, playerSub.x, playerSub.y )
+		if dist < patrolConfig.minimumSpawnDistance and dist > 0 then
+			local dx = sx - playerSub.x
+			local dy = sy - playerSub.y
+			sx = playerSub.x + dx / dist * patrolConfig.minimumSpawnDistance
+			sy = playerSub.y + dy / dist * patrolConfig.minimumSpawnDistance
+		end
+
+		local ship = patrol.new( groupShips, {
+			heading = math.random() * pi * 2,
+			color = colors.patrol,
+		} )
+		ship.x = sx
+		ship.y = sy
+
+		pingSystem.registerRevealable( ship, { isGhostable = true, tag = "patrol" } )
+
+		local ai = patrolAI.new( {
+			ship = ship,
+			role = "patrol",
+			waypoints = patrolWP,
+			config = patrolConfig,
+			allShips = patrolShip,
+		} )
+
+		patrolShip[#patrolShip + 1] = ship
+		patrolController[#patrolController + 1] = ai
+	end
+
+	-- Spawn patrol boats (escort role).
+	local patrolEscortAngles = { 0, pi, pi * 0.5, -pi * 0.5 }
+	for i = 1, patrolConfig.escortCount do
+		local angle = patrolEscortAngles[i] or ( pi * ( i / patrolConfig.escortCount ) )
+		local carrierHeading = carrierShip.heading
+		local spawnAngle = carrierHeading + angle
+		local spawnX = carrierShip.x + cos( spawnAngle ) * patrolConfig.escortRadius
+		local spawnY = carrierShip.y + sin( spawnAngle ) * patrolConfig.escortRadius
+
+		local ship = patrol.new( groupShips, {
+			heading = carrierHeading,
+			color = colors.patrol,
+		} )
+		ship.x = spawnX
+		ship.y = spawnY
+
+		pingSystem.registerRevealable( ship, { isGhostable = true, tag = "patrol" } )
+
+		local ai = patrolAI.new( {
+			ship = ship,
+			role = "escort",
+			waypoints = patrolWP,
+			carrier = carrierShip,
+			config = patrolConfig,
+			escortAngle = angle,
+			allShips = patrolShip,
+		} )
+
+		patrolShip[#patrolShip + 1] = ship
+		patrolController[#patrolController + 1] = ai
+	end
+
 	-- Sonar reveal callback.
 	pingSystem.onReveal = function( entry, ping )
 		if ping.source == "player" and entry.tag == "destroyer" then
@@ -916,7 +1055,17 @@ function newGame()
 			end
 		end
 
-		if entry.tag == "destroyer" or entry.tag == "carrier" then
+		if ping.source == "player" and entry.tag == "patrol" then
+			for i = 1, #patrolShip do
+				if patrolShip[i] == entry.object and patrolShip[i].isAlive then
+					patrolController[i].notifyPlayerDetected( ping.x, ping.y )
+					broadcastAlert( ping.x, ping.y, patrolController[i].role )
+					break
+				end
+			end
+		end
+
+		if entry.tag == "destroyer" or entry.tag == "carrier" or entry.tag == "patrol" then
 			local obj = entry.object
 			if obj and obj.isAlive then
 				spawnGhost( obj.x, obj.y, obj.heading, entry.tag )
@@ -935,22 +1084,22 @@ function newGame()
 		revealGroup.maskScaleX = 100
 		revealGroup.maskScaleY = 100
 	end
-	uiTextGameover.alpha = 0
-	uiTextGameover.text = ""
+	ui.gameover.alpha = 0
+	ui.gameover.text = ""
 	carrierHitpoints = gameConfig.carrier.hitpoints
-	transition.cancel( uiTextCarrierHit )
-	uiTextCarrierHit.alpha = 0
-	uiTextCarrierDir.alpha = 0
-	uiTextCarrierDir.text = ""
-	carrierDirArrow.alpha = 0
+	transition.cancel( ui.carrierHit )
+	ui.carrierHit.alpha = 0
+	ui.carrierDir.alpha = 0
+	ui.carrierDir.text = ""
+	ui.dirArrow.alpha = 0
 
-	uiTextPing.text = "SONAR READY"
-	uiTextPing:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
-	uiTextPing.alpha = gameConfig.hud.pingReadyAlpha
+	ui.ping.text = "SONAR READY"
+	ui.ping:setFillColor( ui.hudReady[1], ui.hudReady[2], ui.hudReady[3] )
+	ui.ping.alpha = gameConfig.hud.pingReadyAlpha
 
-	uiTextTorpedo.text = "TORPEDOES: " .. torpedoesRemaining .. "/" .. gameConfig.torpedo.maxTorpedoes
-	uiTextTorpedo:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
-	uiTextTorpedo.alpha = gameConfig.hud.pingReadyAlpha
+	ui.torpedo.text = "TORPEDOES: " .. torpedoesRemaining .. "/" .. gameConfig.torpedo.maxTorpedoes
+	ui.torpedo:setFillColor( ui.hudReady[1], ui.hudReady[2], ui.hudReady[3] )
+	ui.torpedo.alpha = gameConfig.hud.pingReadyAlpha
 
 	updateCamera()
 
@@ -961,10 +1110,10 @@ function newGame()
 	readyToStart = false
 
 	local titleConfig = gameConfig.titleScreen
-	startDelayTimer = timer.performWithDelay( titleConfig.startDelay, function()
+	gameTimers.startDelay = timer.performWithDelay( titleConfig.startDelay, function()
 		readyToStart = true
 		titleStartText.isVisible = true
-		blinkTimer = timer.performWithDelay( titleConfig.blinkInterval, function()
+		gameTimers.blink = timer.performWithDelay( titleConfig.blinkInterval, function()
 			titleStartText.isVisible = not titleStartText.isVisible
 		end, 0 )
 	end )
@@ -974,13 +1123,13 @@ end
 local function startGame()
 	waitingToStart = false
 
-	if blinkTimer then
-		timer.cancel( blinkTimer )
-		blinkTimer = nil
+	if gameTimers.blink then
+		timer.cancel( gameTimers.blink )
+		gameTimers.blink = nil
 	end
-	if startDelayTimer then
-		timer.cancel( startDelayTimer )
-		startDelayTimer = nil
+	if gameTimers.startDelay then
+		timer.cancel( gameTimers.startDelay )
+		gameTimers.startDelay = nil
 	end
 
 	titleGroup.isVisible = false
@@ -991,7 +1140,7 @@ local function startGame()
 	Runtime:addEventListener( "enterFrame", gameLoop )
 
 	local indicatorConfig = gameConfig.carrierIndicator
-	carrierDirTimer = timer.performWithDelay( indicatorConfig.showDelay, function()
+	gameTimers.carrierDir = timer.performWithDelay( indicatorConfig.showDelay, function()
 		if not carrierShip or not carrierShip.isAlive then return end
 
 		local cdx = carrierShip.x - playerSub.x
@@ -999,23 +1148,23 @@ local function startGame()
 		local where = angleToCompass( atan2( cdy, cdx ) )
 		local heading = angleToCompass( carrierShip.heading )
 
-		uiTextCarrierDir.text = "The Red April was last seen to the " .. where .. ",\nheading " .. heading .. "."
-		uiTextCarrierDir.alpha = 1
-		carrierDirArrow.alpha = 1
-		carrierDirArrow.rotation = deg( atan2( cdy, cdx ) )
+		ui.carrierDir.text = "The Red April was last seen to the " .. where .. ",\nheading " .. heading .. "."
+		ui.carrierDir.alpha = 1
+		ui.dirArrow.alpha = 1
+		ui.dirArrow.rotation = deg( atan2( cdy, cdx ) )
 
-		carrierDirTimer = timer.performWithDelay( indicatorConfig.displayDuration, function()
-			transition.to( uiTextCarrierDir, {
+		gameTimers.carrierDir = timer.performWithDelay( indicatorConfig.displayDuration, function()
+			transition.to( ui.carrierDir, {
 				tag = "game",
 				time = indicatorConfig.fadeOutDuration,
 				alpha = 0,
 			} )
-			transition.to( carrierDirArrow, {
+			transition.to( ui.dirArrow, {
 				tag = "game",
 				time = indicatorConfig.fadeOutDuration,
 				alpha = 0,
 			} )
-			carrierDirTimer = nil
+			gameTimers.carrierDir = nil
 		end )
 	end )
 
@@ -1034,7 +1183,6 @@ end
 
 
 local function onKeyEvent( event )
-	print( event.keyName )
 	if event.phase == "down" then
 		if waitingToStart and readyToStart and event.keyName == "space" then
 			startGame()
@@ -1158,7 +1306,7 @@ function scene:create( event )
 	local hudX = screen.minX + hudConfig.margin - screen.centerX
 	local hudBottomY = screen.maxY - hudConfig.margin - screen.centerY
 
-	uiTextTorpedo = display.newText( {
+	ui.torpedo = display.newText( {
 		parent = groupUI,
 		text = "",
 		x = hudX,
@@ -1166,11 +1314,11 @@ function scene:create( event )
 		font = hudConfig.fontRegular,
 		fontSize = hudConfig.fontSize,
 	} )
-	uiTextTorpedo.anchorX = 0
-	uiTextTorpedo.anchorY = 1
-	uiTextTorpedo:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
+	ui.torpedo.anchorX = 0
+	ui.torpedo.anchorY = 1
+	ui.torpedo:setFillColor( ui.hudReady[1], ui.hudReady[2], ui.hudReady[3] )
 
-	uiTextPing = display.newText( {
+	ui.ping = display.newText( {
 		parent = groupUI,
 		text = "",
 		x = hudX,
@@ -1179,11 +1327,11 @@ function scene:create( event )
 		fontSize = hudConfig.fontSize,
 		align = "left",
 	} )
-	uiTextPing.anchorX = 0
-	uiTextPing.anchorY = 1
-	uiTextPing:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
+	ui.ping.anchorX = 0
+	ui.ping.anchorY = 1
+	ui.ping:setFillColor( ui.hudReady[1], ui.hudReady[2], ui.hudReady[3] )
 
-	uiTextGameover = display.newText( {
+	ui.gameover = display.newText( {
 		parent = groupUI,
 		text = "",
 		x = 0,
@@ -1193,11 +1341,11 @@ function scene:create( event )
 		font = hudConfig.fontBold,
 		fontSize = hudConfig.gameOverFontSize,
 	} )
-	uiTextGameover.alpha = 0
+	ui.gameover.alpha = 0
 
 	local carrierHitColor = colors.carrier
 	local hudTopY = screen.minY + hudConfig.margin - screen.centerY
-	uiTextCarrierHit = display.newText( {
+	ui.carrierHit = display.newText( {
 		parent = groupUI,
 		text = "The Red April has been hit!",
 		x = 0,
@@ -1205,11 +1353,11 @@ function scene:create( event )
 		font = hudConfig.fontRegular,
 		fontSize = 24,
 	} )
-	uiTextCarrierHit.anchorY = 0
-	uiTextCarrierHit:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
-	uiTextCarrierHit.alpha = 0
+	ui.carrierHit.anchorY = 0
+	ui.carrierHit:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
+	ui.carrierHit.alpha = 0
 
-	uiTextCarrierDir = display.newText( {
+	ui.carrierDir = display.newText( {
 		parent = groupUI,
 		text = "",
 		x = 0,
@@ -1218,14 +1366,14 @@ function scene:create( event )
 		fontSize = gameConfig.carrierIndicator.fontSize,
 		align = "center",
 	} )
-	uiTextCarrierDir:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
-	uiTextCarrierDir.alpha = 0
+	ui.carrierDir:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
+	ui.carrierDir.alpha = 0
 
-	carrierDirArrow = display.newImageRect( groupUI, "assets/images/direction.png", 32, 16 )
-	carrierDirArrow.x = 0
-	carrierDirArrow.y = uiTextCarrierDir.y + uiTextCarrierDir.height * 0.5 + carrierDirArrow.height * 0.5 + 34
-	carrierDirArrow.alpha = 0
-	carrierDirArrow:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
+	ui.dirArrow = display.newImageRect( groupUI, "assets/images/direction.png", 32, 16 )
+	ui.dirArrow.x = 0
+	ui.dirArrow.y = ui.carrierDir.y + ui.carrierDir.height * 0.5 + ui.dirArrow.height * 0.5 + 34
+	ui.dirArrow.alpha = 0
+	ui.dirArrow:setFillColor( carrierHitColor[1], carrierHitColor[2], carrierHitColor[3] )
 
 	-- Sound toggle.
 	sfx.init()
@@ -1234,7 +1382,7 @@ function scene:create( event )
 	local soundsOn = not savedSettings or savedSettings.audio ~= false
 
 	local soundsX = screen.maxX - hudConfig.margin - screen.centerX
-	uiTextSounds = display.newText( {
+	ui.sounds = display.newText( {
 		parent = groupUI,
 		text = "SOUNDS: " .. ( soundsOn and "ON" or "OFF" ),
 		x = soundsX,
@@ -1242,23 +1390,23 @@ function scene:create( event )
 		font = hudConfig.fontRegular,
 		fontSize = hudConfig.fontSize,
 	} )
-	uiTextSounds.anchorX = 1
-	uiTextSounds.anchorY = 0
+	ui.sounds.anchorX = 1
+	ui.sounds.anchorY = 0
 
 	if soundsOn then
-		uiTextSounds:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
+		ui.sounds:setFillColor( ui.hudReady[1], ui.hudReady[2], ui.hudReady[3] )
 	else
-		uiTextSounds:setFillColor( hudCooldown[1], hudCooldown[2], hudCooldown[3] )
+		ui.sounds:setFillColor( ui.hudCooldown[1], ui.hudCooldown[2], ui.hudCooldown[3] )
 		sfx.setEnabled( false )
 	end
 
 	-- Invisible touch target over the text (snapshot children can't receive touch events).
 	local soundsHitRect = display.newRect(
 		sceneGroup,
-		screen.maxX - hudConfig.margin - uiTextSounds.width * 0.5,
-		screen.minY + hudConfig.margin + uiTextSounds.height * 0.5,
-		uiTextSounds.width + 12,
-		uiTextSounds.height + 8
+		screen.maxX - hudConfig.margin - ui.sounds.width * 0.5,
+		screen.minY + hudConfig.margin + ui.sounds.height * 0.5,
+		ui.sounds.width + 12,
+		ui.sounds.height + 8
 	)
 	soundsHitRect.isVisible = false
 	soundsHitRect.isHitTestable = true
@@ -1270,11 +1418,11 @@ function scene:create( event )
 			loadsave.save( { audio = isOn }, "settings.json", "redapril" )
 
 			if isOn then
-				uiTextSounds.text = "SOUNDS: ON"
-				uiTextSounds:setFillColor( hudReady[1], hudReady[2], hudReady[3] )
+				ui.sounds.text = "SOUNDS: ON"
+				ui.sounds:setFillColor( ui.hudReady[1], ui.hudReady[2], ui.hudReady[3] )
 			else
-				uiTextSounds.text = "SOUNDS: OFF"
-				uiTextSounds:setFillColor( hudCooldown[1], hudCooldown[2], hudCooldown[3] )
+				ui.sounds.text = "SOUNDS: OFF"
+				ui.sounds:setFillColor( ui.hudCooldown[1], ui.hudCooldown[2], ui.hudCooldown[3] )
 			end
 		end
 		return true
