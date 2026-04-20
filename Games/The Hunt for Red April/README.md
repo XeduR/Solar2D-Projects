@@ -14,16 +14,20 @@ You command a lone submarine hunting an aircraft carrier escorted by a fleet of 
 
 The game started as a sub-vs-sub duel prototype and pivoted to a submarine-vs-surface-fleet design during the jam.
 
-## How to play
+## Objective
 
-The submarine uses tank controls:
-
-- **W**/**up** and **S**/**down** to increase and decrease the throttle. The sub reverses at up to 30% of its forward max speed.
-- **A**/**left** and **D**/**right** to turn
-- **Space** to emit a sonar ping (reveals terrain, ships, and depth charges, but alerts nearby destroyers)
-- **Shift**/**Ctrl** to fire a torpedo
+Navigate by sonar. Sink the carrier. Evade enemy ships.
 
 **Win** by torpedoing the carrier (two hits). **Lose** by getting caught in a depth charge blast, colliding with terrain, or running out of torpedoes.
+
+## Controls
+
+- **W**/**UP**: increase throttle
+- **S**/**DOWN**: decrease throttle
+- **A**/**LEFT**: turn left
+- **D**/**RIGHT**: turn right
+- **SPACE**: emit a sonar ping (reveals terrain, ships, and depth charges, but alerts nearby destroyers)
+- **SHIFT**/**CTRL**: fire a torpedo
 
 Destroyers patrol the map and escort the carrier. When they detect you (via their own sonar or your ping), they chase your predicted position and drop depth charges. Torpedoes can also destroy destroyers to thin the escort.
 
