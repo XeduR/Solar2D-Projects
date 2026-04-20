@@ -444,19 +444,12 @@ function gameLoop()
 	fireCooldown = fireCooldown - dt
 
 	--------------------------------------------------------------------------------------
-	-- 1. Player input
+	-- 1. Player input (tank controls)
 
-	local dx = 0
-	local dy = 0
-	if isAction( "thrustRight" ) then dx = dx + 1 end
-	if isAction( "thrustLeft" ) then dx = dx - 1 end
-	if isAction( "thrustDown" ) then dy = dy + 1 end
-	if isAction( "thrustUp" ) then dy = dy - 1 end
-
-	local hasInput = dx ~= 0 or dy ~= 0
-	if hasInput then
-		playerSub.applyHeadingThrust( atan2( dy, dx ), 1.0, dt )
-	end
+	if isAction( "thrustUp" ) then playerSub.adjustThrottle( 1, dt ) end
+	if isAction( "thrustDown" ) then playerSub.adjustThrottle( -1, dt ) end
+	if isAction( "thrustLeft" ) then playerSub.turn( -1, dt ) end
+	if isAction( "thrustRight" ) then playerSub.turn( 1, dt ) end
 
 	-- Player's sonar ping.
 	if isAction( "ping" ) and pingCooldown <= 0 then
@@ -1011,7 +1004,7 @@ function newGame()
 
 	-- Spawn patrol boats (patrol role).
 	local patrolConfig = gameConfig.patrol
-	for i = 1, patrolConfig.patrolCount do
+	for _ = 1, patrolConfig.patrolCount do
 		local sx, sy = nextSpawnPoint()
 
 		local ship = patrol.new( groupShips, {
@@ -1037,7 +1030,7 @@ function newGame()
 
 	-- Spawn patrol boats (escort role).
 	local patrolEscortAngles = { 0, pi, pi * 0.5, -pi * 0.5 }
-	for i = 1, patrolConfig.escortCount do
+	for _ = 1, patrolConfig.escortCount do
 		local angle = patrolEscortAngles[i] or ( pi * ( i / patrolConfig.escortCount ) )
 		local carrierHeading = carrierShip.heading
 		local spawnAngle = carrierHeading + angle
@@ -1485,7 +1478,8 @@ function scene:create( event )
 
 	local instructionsObj = display.newText( {
 		parent = titleGroup,
-		text = "Navigate by sonar. Sink the carrier. Evade the enemy ships.\n\nCONTROLS:\nWASD/arrows: Move | Space: Sonar | Shift/Ctrl: Fire torpedo",
+		text = "Navigate by sonar. Sink the carrier. Evade the enemy ships.\n\n"
+			.. "CONTROLS:\nW/S: Throttle (forward/reverse) | A/D: Turn\nSpace: Sonar | Shift/Ctrl: Fire torpedo",
 		x = 0,
 		y = 60,
 		font = hudConfig.fontRegular,

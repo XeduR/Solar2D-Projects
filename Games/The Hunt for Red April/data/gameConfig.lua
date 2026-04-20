@@ -7,6 +7,8 @@ local gameConfig = {}
 
 gameConfig.submarine = {
 	maxSpeed = 0.12, -- px/ms
+	reverseRate = 0.3, -- max reverse speed as a fraction of maxSpeed
+	throttleRate = 0.001, -- throttle change per ms while holding w/s
 	turnRate = 0.0008, -- rad/ms
 	drag = 0.995, -- velocity multiplier per frame (1 = no drag)
 	collisionRadius = 14,

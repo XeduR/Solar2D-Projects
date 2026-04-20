@@ -16,7 +16,10 @@ The game started as a sub-vs-sub duel prototype and pivoted to a submarine-vs-su
 
 ## How to play
 
-- **WASD**/**Arrow keys** to steer and throttle the submarine
+The submarine uses tank controls:
+
+- **W**/**up** and **S**/**down** to increase and decrease the throttle. The sub reverses at up to 30% of its forward max speed.
+- **A**/**left** and **D**/**right** to turn
 - **Space** to emit a sonar ping (reveals terrain, ships, and depth charges, but alerts nearby destroyers)
 - **Shift**/**Ctrl** to fire a torpedo
 
