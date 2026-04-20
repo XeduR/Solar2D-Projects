@@ -946,7 +946,7 @@ function newGame()
 
 	-- Spawn patrol destroyers.
 	local patrolWP = mapData.patrolWaypoints
-	for i = 1, destroyerConfig.patrolCount do
+	for _ = 1, destroyerConfig.patrolCount do
 		local sx, sy = nextSpawnPoint()
 
 		local ship = destroyer.new( groupShips, {
@@ -1030,7 +1030,7 @@ function newGame()
 
 	-- Spawn patrol boats (escort role).
 	local patrolEscortAngles = { 0, pi, pi * 0.5, -pi * 0.5 }
-	for _ = 1, patrolConfig.escortCount do
+	for i = 1, patrolConfig.escortCount do
 		local angle = patrolEscortAngles[i] or ( pi * ( i / patrolConfig.escortCount ) )
 		local carrierHeading = carrierShip.heading
 		local spawnAngle = carrierHeading + angle
