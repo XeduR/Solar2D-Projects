@@ -17,20 +17,23 @@
 
 -- Some of these functions are added to a new global utils table, whereas
 -- others are added to their respective global libraries, e.g. _G.table.
--------------------------------------------------------------------------
-
-local M = {}
-
 -- All functions with uncertain relations are stored in the utils table.
 -- Other functions are added to their respective libraries, e.g. string.
-_G.utils = {}
+
+-- This library's purpose is to extend the built-in globals, so silence
+--  luacheck about those errors.
+-------------------------------------------------------------------------
+
+-- luacheck: ignore 122 142 143
+
+local utils = {}
+_G.utils = utils
 
 local lfs = require("lfs")
 
 -- Localised global functions.
 local pathForFile = system.pathForFile
 local getTimer = system.getTimer
-local dRemove = display.remove
 local remove = os.remove
 local random = math.random
 local floor = math.floor
@@ -46,8 +49,6 @@ local tonumber = tonumber
 local tostring = tostring
 local pairs = pairs
 local type = type
-
-local isWindows = (package.config:sub(1,1) == "\\")
 
 --------------------------------------------------------------------------------------------------
 -- display
@@ -87,9 +88,11 @@ function display.hex2rgb( hex, dontNormalise )
 	local m = dontNormalise and 1 or 255
 	hex = gsub( hex, "#", "" )
 	if len(hex) == 3 then
-		return tonumber("0x"..hex:sub(1,1))/m, tonumber("0x"..hex:sub(2,2))/m, tonumber("0x"..hex:sub(3,3))/m
+		-- Expand the shorthand hex by duplicating each digit, e.g. "f2a" means "ff22aa".
+		local red, green, blue = sub( hex, 1, 1 ), sub( hex, 2, 2 ), sub( hex, 3, 3 )
+		return tonumber("0x"..red..red)/m, tonumber("0x"..green..green)/m, tonumber("0x"..blue..blue)/m
 	else
-		return tonumber("0x"..hex:sub(1,2))/m, tonumber("0x"..hex:sub(3,4))/m, tonumber("0x"..hex:sub(5,6))/m
+		return tonumber("0x"..sub( hex, 1, 2 ))/m, tonumber("0x"..sub( hex, 3, 4 ))/m, tonumber("0x"..sub( hex, 5, 6 ))/m
 	end
 end
 
@@ -97,8 +100,8 @@ end
 function display.rgb2hex( r, g, b, notNormalised )
 	-- By default, we're expecting the input to be normalised (as Solar2D uses normalised values).
 	local m = notNormalised and 1 or 255
-	local rgb = floor(r * m) * 0x10000 + floor(g * m) * 0x100 + floor(b * m)
-	return format( "%x", rgb )
+	local rgb = floor(r * m + 0.5) * 0x10000 + floor(g * m + 0.5) * 0x100 + floor(b * m + 0.5)
+	return format( "%06x", rgb )
 end
 
 -- Scale a display object to the smallest possible size where it satisfies both
@@ -106,6 +109,8 @@ end
 function display.scaleDisplayObject( target, requiredWidth, requiredHeight )
 	local scale = math.max( requiredWidth/target.width, requiredHeight/target.height )
 	target.xScale, target.yScale = scale, scale
+
+	return scale
 end
 
 --------------------------------------------------------------------------------------------------
@@ -114,7 +119,7 @@ end
 
 -- Return a simple and reliable random seed.
 function math.generateSeed()
-	local timerStr = string.gsub( tostring( getTimer() ), "%.", math.random(9) )
+	local timerStr = gsub( tostring( getTimer() ), "%.", math.random(9) )
 
 	return floor(os.time() + tonumber(timerStr) )
 end
@@ -127,20 +132,19 @@ function math.randomseed( seed )
 		return
 	end
 
-	-- Ensure the seed is a positive integer.
+	-- Ensure the seed is a non-negative integer.
 	seed = floor(math.abs(seed) + 0.5)
 
-	-- Address the integer overflow issue with Lua 5.1 (affects Solar2D):
+	-- Address the integer overflow issue with Lua 5.1 (affects Solar2D): wrap the seed to 32 bits
+	-- and map the upper half to negative so the signed 32-bit cast inside srand can't overflow.
 	-- Source: http://lua-users.org/lists/lua-l/2013-05/msg00290.html
 	local bitsize = 32
+	seed = seed % 2^bitsize
 
-	if seed >= 2^bitsize then
-		seed = seed - floor(seed / 2^bitsize) * 2^bitsize
-		_randomseed(seed - 2^(bitsize-1))
-
+	if seed >= 2^(bitsize-1) then
+		_randomseed(seed - 2^bitsize)
 	else
 		_randomseed(seed)
-
 	end
 
 	return seed
@@ -155,32 +159,52 @@ function string.count( s, character )
 	return select( 2, gsub( s, character, "") )
 end
 
--- Pass a string (s) and find the last occurance of a specific character.
+-- Pass a string (s) and find the starting index of the last occurrence of a character (or substring).
 function string.findLast( s, character )
-	local n = find( s, character.."[^"..character.."]*$" )
-	return n
+	local n = find( reverse(s), reverse(character), 1, true )
+	return n and len(s) - n - len(character) + 2
 end
 
--- Format a number so that it the thousands are split from another using a separator (space by default).
--- i.e. input: 123456790 -> 1 234 567 890, or -1234.5678 -> -1 234.5678
+-- Format a number so that the thousands are separated from each other by a separator (space by default).
+-- i.e. input: 1234567890 -> 1 234 567 890, or -1234.5678 -> -1 234.5678
 function string.formatThousands( number, separator )
 	if type(number) ~= "number" then
 		print( "WARNING: bad argument #1 to 'formatThousands' (number expected, got " .. type(number) .. ")." )
 		return number
 	end
 	separator = separator or " "
+
+	-- Non-finite numbers (inf/nan) have no digits to format.
+	if number ~= number or number == math.huge or number == -math.huge then
+		return tostring(number)
+	end
+
+	local numberStr = tostring(number)
+	if find( numberStr, "e", 1, true ) then
+		if math.abs(number) < 1 then
+			-- Tiny fractions like 1e-05 have no thousands to separate.
+			return numberStr
+		end
+		-- tostring switches to exponent notation around 1e+15, so expand large numbers manually.
+		numberStr = format( "%.0f", number )
+	end
+
 	-- Separate the integer from the possible minus and fraction.
-	local minus, integer, fraction = select( 3, find( tostring(number), "([-]?)(%d+)([.]?%d*)" ) )
-	-- Reverse the integer, add a thousands separator every 3 digits and restore the integer.
-	integer = reverse( gsub( reverse(integer), "(%d%d%d)", "%1"..separator ))
-	-- Remove the possible space from the start of the integer and merge the strings.
-	if sub( integer, 1, 1 ) == " " then integer = sub( integer, 2 ) end
-	if sub( integer, 1, 1 ) == separator then integer = sub( integer, 2 ) end
+	local minus, integer, fraction = select( 3, find( numberStr, "([-]?)(%d+)([.]?%d*)" ) )
+	-- Reverse the integer and add a reversed separator after every 3 digits, then restore both.
+	integer = reverse( gsub( reverse(integer), "(%d%d%d)", "%1"..reverse(separator) ))
+	-- If the digit count is divisible by 3, then the gsub added one leading separator too many.
+	if sub( integer, 1, len(separator) ) == separator then
+		integer = sub( integer, len(separator)+1 )
+	end
+
 	return minus .. integer .. fraction
 end
 
 -- Pass a string (s) to split and character by which to split the string.
 function string.split( s, character )
+	-- Escape pattern magic characters so that any separator is treated as plain text.
+	character = gsub( character, "(%W)", "%%%1" )
 	local t = {}
 	for _s in gmatch(s, "([^"..character.."]+)") do
 		t[#t+1] = _s
@@ -197,6 +221,26 @@ end
 -- system
 --------------------------------------------------------------------------------------------------
 
+-- Return the true platform that the Solar2D Simulator or an app is running on.
+function system.getTruePlatform()
+	-- NOTE: "environment" on Linux doesn't seem to realise when it's on "simulator" vs "device".
+	if system.getInfo( "environment" ) == "simulator" then
+		local handle = io.open( "/Applications", "r" )
+		if handle then
+			handle:close()
+			return "macos"
+		end
+		handle = io.open( "/proc/version", "r" )
+		if handle then
+			handle:close()
+			return "linux"
+		end
+		return "win32"
+	end
+	-- NOTE: "platform" returns "Linux" instead of "linux".
+	return system.getInfo( "platform" ):lower()
+end
+
 -- Check if a given file exists or not.
 function system.checkForFile( filename, directory )
 	if type(filename) ~= "string" then
@@ -204,20 +248,19 @@ function system.checkForFile( filename, directory )
 		return false
 	end
 
-	if sub( filename, -4 ) == ".lua" then
+	-- Lua files in the resource directory may be compiled into the app binary, so check them via require.
+	if sub( filename, -4 ) == ".lua" and (directory == nil or directory == system.ResourceDirectory) then
 		local filepath = gsub( gsub( sub( filename, 1, -5 ), "%\\", "/"), "%/", "." )
 		-- If the module is already loaded, then the file clearly exists.
-		-- Otherwise, clean up the module after checking if the file exists.
-		local cleanup = not _G.package.loaded[filepath]
-		if not cleanup then
+		if _G.package.loaded[filepath] then
 			return true
-		else
-			local success = pcall( function() require( filepath ) end )
-			if success and cleanup then
-				_G.package.loaded[filepath] = nil
-			end
-			return success
 		end
+		-- Otherwise, clean up the loaded module after checking that the file exists.
+		local success = pcall( require, filepath )
+		if success then
+			_G.package.loaded[filepath] = nil
+		end
+		return success
 	else
 		local path = pathForFile( filename, directory or system.ResourceDirectory )
 		if path then
@@ -234,7 +277,17 @@ end
 -- Remove all files and subfolders inside a given folder.
 -- (NB! Be careful when using this function as it does exactly as advertised.)
 function system.cleanupFolder( folder, directory, subfolder )
+	if type(folder) ~= "string" then
+		print( "WARNING: bad argument #1 to 'cleanupFolder' (string expected, got " .. type(folder) .. ")." )
+		return
+	end
+	directory = directory or system.DocumentsDirectory
+
 	local path = pathForFile( folder, directory )
+	if not path or lfs.attributes( path, "mode" ) ~= "directory" then
+		return
+	end
+
 	for file in lfs.dir( path ) do
 		if file ~= "." and file ~= ".." then
 			local filepath = path .. "/" .. file
@@ -249,39 +302,27 @@ function system.cleanupFolder( folder, directory, subfolder )
 
 	-- Don't remove the target folder itself.
 	if subfolder then
-		-- Change directory to ensure the OS isn't using (and locking) the one being removed.
+		-- Change directory to ensure the OS isn't using (and locking) the folder being removed.
 		lfs.chdir( pathForFile( "", system.DocumentsDirectory ) )
-		if isWindows then
-			-- os.remove doesn't work on folders on non-POSIX compliant OSes, i.e. Windows.
-			os.execute( 'rmdir "' .. path .. '"' )
-		else
-			remove( path )
-		end
+		-- os.remove doesn't work on folders on non-POSIX compliant OSes, i.e. Windows, but lfs.rmdir does.
+		lfs.rmdir( path )
 	end
 end
 
--- Check if a folder exists in a given directory or create it.
+-- Check if a folder exists in a given directory or create it (including any missing parent folders).
 function system.createFolder( folder, directory )
 	folder = gsub( folder, "%\\", "/" )
 	directory = directory or system.DocumentsDirectory
 
 	local path = pathForFile( folder, directory )
-	if lfs.attributes( path, "mode" ) ~= "directory" then
-		local parent, subfolder
+	if not path or lfs.attributes( path, "mode" ) ~= "directory" then
+		local currentPath = pathForFile( "", directory )
 
-		local index = string.findLast( folder, "/" )
-		if index then
-			parent, subfolder = sub( folder, 1, index-1 ), sub( folder, index+1 )
-		else
-			parent, subfolder = "", folder
-		end
-
-		path = pathForFile( parent, directory )
-		local success = lfs.chdir( path )
-		if success then
-			lfs.mkdir( subfolder )
-		else
-			return false
+		for segment in gmatch( folder, "[^/]+" ) do
+			currentPath = currentPath .. "/" .. segment
+			if lfs.attributes( currentPath, "mode" ) ~= "directory" and not lfs.mkdir( currentPath ) then
+				return false
+			end
 		end
 	end
 	return true
@@ -292,11 +333,18 @@ end
 --------------------------------------------------------------------------------------------------
 
 -- Create a deep copy of a table and all of its entries (doesn't copy metatables).
-function table.copy( t )
+-- Cyclic and shared subtables are copied once and their references are preserved.
+function table.copy( t, copyCache )
+	copyCache = copyCache or {}
+	if copyCache[t] then
+		return copyCache[t]
+	end
+
 	local copy = {}
+	copyCache[t] = copy
 	for k, v in pairs(t) do
 		if type(v) == "table" then
-			v = table.copy(v)
+			v = table.copy( v, copyCache )
 		end
 		copy[k] = v
 	end
@@ -312,8 +360,8 @@ function table.count( t )
 	return count
 end
 
--- Returns the next entry in a numeric array and optionally
--- reshuffles the table upon reaching the final entry.
+-- Returns the next entry in a numeric array and optionally reshuffles the table
+-- upon reaching the final entry. The iteration state is stored in t._index.
 function table.getNext( t, shuffle )
 	if not t._index then
 		t._index = 1
@@ -354,11 +402,12 @@ local function printSubtable( printCache, t, indent )
 		printCache[tostring(t)] = true
 		if ( type( t ) == "table" ) then
 			for pos,val in pairs( t ) do
-				local key = type(pos) == "string" and "[\"" .. pos .. "\"] = " or "[" .. pos .. "] = "
+				local posStr = tostring(pos)
+				local key = type(pos) == "string" and "[\"" .. posStr .. "\"] = " or "[" .. posStr .. "] = "
 				if ( type(val) == "table" ) then
 					print( indent .. key .. " {" )
-					printSubtable( printCache, val, indent .. rep( " ", len(pos)+8 ) )
-					print( indent .. rep( " ", len(pos)+6 ) .. "}" )
+					printSubtable( printCache, val, indent .. rep( " ", len(posStr)+8 ) )
+					print( indent .. rep( " ", len(posStr)+6 ) .. "}" )
 				elseif ( type(val) == "string" ) then
 					print( indent .. key .. "\"" .. val .. "\"" )
 				else
@@ -380,6 +429,8 @@ function table.print( t, variableName )
 		print( (variableName or tostring(t)) .. " = {" )
 		printSubtable( printCache, t, "  " )
 		print( "}" )
+	else
+		print( "WARNING: bad argument #1 to 'table.print' (table expected, got " .. type(t) .. ")." )
 	end
 end
 
@@ -407,7 +458,8 @@ end
 --------------------------------------------------------------------------------------------------
 
 -- Simple benchmarking: check how long it takes for a function, f1, to be run over n iterations.
--- If two functions are given, then check which is faster and by how much.
+-- If two functions are given, then check which is faster and by how much. Note: only works on
+-- synchronous functions, as it doesn't account for asynchronous operations.
 function utils.benchmark( f1, f2, iterations )
 	if type(f1) ~= "function" then
 		print( "WARNING: bad argument #1 to 'benchmark' (function expected, got " .. type(f1) .. ")." )
@@ -470,4 +522,4 @@ end
 
 --------------------------------------------------------------------------------------------------
 
-return M
+return utils
