@@ -8,7 +8,7 @@
 --      d8'  `888b   888    .o 888   888   888   888   888  `88b.      --
 --    o888o  o88888o `Y8bod8P' `Y8bod88P"  `V88V"V8P' o888o  o888o     --
 --                                                                     --
---  © 2025 Eetu Rantanen                 Last Updated: 9 February 2025 --
+--  © 2026 Eetu Rantanen                                               --
 -------------------------------------------------------------------------
 --  License: MIT                                                       --
 -------------------------------------------------------------------------
@@ -19,7 +19,9 @@
 -- using the same randomseed.
 --
 -- This module's random function will generate consistent pseudorandom
--- numbers, but it is slightly slower than Lua's random function.
+-- numbers, but it is slower than Lua's random function. This module is
+-- intended for deterministic gameplay/simulation results. Its output is
+-- predictable by design. Don't use it for anything that needs to be secure.
 --
 -- You can see the pseudorandom number genration in action over at:
 -- https://www.xedur.com/demo/pseudorandom-number-generator/
@@ -29,6 +31,7 @@ local rng = {}
 
 -- Localised functions for slight performance improvement.
 local _floor = math.floor
+local _abs = math.abs
 local _type = type
 
 -- Initial randomisation parameters (you can leave these as is).
@@ -45,9 +48,14 @@ function rng.randomseed(n)
 		print( "WARNING: bad argument #1 to 'randomseed' (number expected, got ".._type(n)..")" )
 		return
 	end
+	-- Reject NaN (n ~= n) and infinities; either would poison every future result.
+	if n ~= n or n == math.huge or n == -math.huge then
+		print( "WARNING: bad argument #1 to 'randomseed' (finite number expected, got "..tostring(n)..")" )
+		return
+	end
 
 	-- Ensure the seed is a positive integer.
-	seed = _floor(math.abs(n) + 0.5)
+	seed = _floor(_abs(n) + 0.5)
 end
 
 -- Get the current random seed. Useful for saving and restoring the state,
@@ -63,7 +71,9 @@ function rng.random(x,y)
 	-- With no arguments,  return a pseudorandom number (fraction) between 0 and 1.
 	-- With one argument,  return a pseudorandom number (integer)  between 1 and x.
 	-- With two arguments, return a pseudorandom number (integer)  between x and y.
-	return _type(x) ~= "number" and r or _type(y) ~= "number" and _floor((x-1)*r+1.5) or _floor((y-x)*r+x+0.5)
+	return _type(x) ~= "number" and r
+		or _type(y) ~= "number" and _floor(x*r) + 1
+		or _floor((y-x+1)*r) + x
 end
 
 -------------------------------------------------------------------------
