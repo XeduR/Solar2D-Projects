@@ -6,14 +6,18 @@ local screens = {}
 -- Libraries, classes, scripts, configs, etc.
 
 local screen = require( "classes.screen" )
+local gameText = require( "classes.gameText" )
+local hud = require( "classes.hud" )
 local scores = require( "classes.scores" )
 local sheets = require( "classes.sheets" )
 local sound = require( "classes.sound" )
+local textBlock = require( "classes.textBlock" )
 local config = require( "data.screens" )
 local endingLines = require( "data.endingLines" )
 
 local gameOverConfig = config.gameOver
 local helpConfig = config.help
+local promptConfig = config.prompt
 
 --------------------------------------------------------------------------------------
 -- Forward declarations & variables
@@ -27,7 +31,6 @@ overlayMethods.__index = overlayMethods
 local min = math.min
 local max = math.max
 local sqrt = math.sqrt
-local sin = math.sin
 local random = math.random
 
 --------------------------------------------------------------------------------------
@@ -45,7 +48,7 @@ local function newScreenRect( group, color )
 end
 
 local function newLabel( group, text, labelX, labelY, font, fontSize, color )
-	local label = display.newText( {
+	local label = gameText.new( {
 		parent = group,
 		text = text,
 		x = labelX,
@@ -179,9 +182,17 @@ local function newGameOverText( group, text, labelX, labelY, font, fontSize, col
 	return label
 end
 
-local function newHighlight( group, rowY, theme )
-	local highlight = sheets.newImage( group, config.family, gameOverConfig.highlightImage, theme.highlightVariant )
-	highlight.x, highlight.y = screen.centerX, rowY
+-- Spans both of the row's right-aligned labels, from the rank text's left edge to the value column, and goes behind them.
+local function newHighlight( group, rankLabel, valueLabel, theme )
+	local left = rankLabel.x - rankLabel.width - gameOverConfig.highlightMarginX
+	local right = valueLabel.x + gameOverConfig.highlightMarginX
+
+	local width = right - left
+	local highlight = sheets.newNineSlice( group, config.family, gameOverConfig.highlightImage, width, gameOverConfig.highlightHeight, theme.highlightVariant )
+	highlight.x, highlight.y = ( left + right ) * 0.5, rankLabel.y
+
+	gameText.toFront( rankLabel )
+	gameText.toFront( valueLabel )
 
 	return highlight
 end
@@ -191,13 +202,21 @@ local function newScoreRow( group, rowY, rankText, valueText, theme, isHighlight
 	local color = theme.text
 
 	if isHighlighted then
-		newHighlight( group, rowY, theme )
 		font = gameOverConfig.rowHighlightFont
 		color = theme.highlightText
 	end
 
-	newGameOverText( group, rankText, screen.centerX + gameOverConfig.rankColumnX, rowY, font, gameOverConfig.rowFontSize, color, 1 )
-	newGameOverText( group, valueText, screen.centerX + gameOverConfig.valueColumnX, rowY, font, gameOverConfig.rowFontSize, color, 1 )
+	local rankLabel = newGameOverText( group, rankText, screen.centerX + gameOverConfig.rankColumnX, rowY, font, gameOverConfig.rowFontSize, color, 1 )
+	local valueLabel = newGameOverText( group, valueText, screen.centerX + gameOverConfig.valueColumnX, rowY, font, gameOverConfig.rowFontSize, color, 1 )
+
+	if isHighlighted then
+		newHighlight( group, rankLabel, valueLabel, theme )
+	end
+end
+
+-- The run's own row sits below the list, past an extra gap.
+local function runRowY()
+	return screen.minY + gameOverConfig.listOffsetY + gameOverConfig.rowCount * gameOverConfig.rowSpacing + gameOverConfig.runGap
 end
 
 local function newScoreList( group, params, theme )
@@ -212,9 +231,7 @@ local function newScoreList( group, params, theme )
 	end
 
 	if not params.rank and params.runKnots then
-		local rowY = top + gameOverConfig.rowCount * gameOverConfig.rowSpacing + gameOverConfig.runGap
-
-		newScoreRow( group, rowY, gameOverConfig.runLabel, scores.formatKnots( params.runKnots ), theme, true )
+		newScoreRow( group, runRowY(), gameOverConfig.runLabel, scores.formatKnots( params.runKnots ), theme, true )
 	end
 end
 
@@ -225,28 +242,36 @@ local function newEndingLine( group, cause, theme )
 		return nil
 	end
 
-	local line = display.newText( {
+	local style = gameOverConfig
+
+	-- The run row's highlight slot is used even when the run made the list, so the line never moves.
+	local above = runRowY() + style.highlightHeight * 0.5
+	local below = screen.maxY - style.endingLineFloorOffset
+
+	local line = textBlock.new( {
 		parent = group,
 		text = lines[random( #lines )],
 		x = screen.centerX,
-		y = screen.maxY - gameOverConfig.endingLineOffsetFromBottom,
-		width = gameOverConfig.endingLineWidth,
-		font = gameOverConfig.endingLineFont,
-		fontSize = gameOverConfig.endingLineFontSize,
+		y = ( above + below ) * 0.5,
+		width = style.endingLineWidth,
+		font = style.endingLineFont,
+		fontSize = style.endingLineFontSize,
 		align = "center",
+		colour = theme.text,
 	} )
-	line:setFillColor( unpack( theme.text ) )
 
 	return line
 end
 
--- Heading and numbered instructions share one left edge inside the card art's outline box.
-local function newHelpCard( group )
+local function helpToggleText( showInstructions )
+	return showInstructions and helpConfig.toggleUnchecked or helpConfig.toggleChecked
+end
+
+-- Heading, instructions, and the toggle share one left edge; the card is sized around all of its lines, prompt included.
+local function newHelpCard( group, showInstructions )
 	local card = display.newGroup()
 	group:insert( card )
 	card.x, card.y = screen.centerX, screen.centerY
-
-	local panel = sheets.newImage( card, config.family, helpConfig.image )
 
 	local heading = newLabel( card, helpConfig.heading, 0, 0, helpConfig.headingFont, helpConfig.headingFontSize, helpConfig.headingColor )
 	local lines = { heading }
@@ -256,56 +281,62 @@ local function newHelpCard( group )
 		lines[#lines + 1] = newLabel( card, text, 0, 0, helpConfig.instructionFont, helpConfig.instructionFontSize, helpConfig.instructionColor )
 	end
 
-	local prompt = newLabel( card, helpConfig.prompt, 0, 0, helpConfig.promptFont, helpConfig.promptFontSize, helpConfig.promptColor )
-	prompt.anchorY = 0
+	local toggle = newLabel( card, helpToggleText( showInstructions ), 0, 0, helpConfig.toggleFont, helpConfig.toggleFontSize, helpConfig.toggleColor )
+	local prompt = newLabel( card, helpConfig.prompt, 0, 0, promptConfig.font, promptConfig.fontSize, helpConfig.promptColor )
 	prompt.isVisible = false
 
-	local shadow = helpConfig.shadowSize
-	local sheet = sheets.load( config.family, helpConfig.image )
-	local width = sheet.frameWidth - shadow
-	local height = sheet.frameHeight - shadow
+	local lineY = 0
+
+	for i = 1, #lines do
+		lines[i].y = lineY
+		lineY = lineY + lines[i].height + ( i == 1 and helpConfig.headingGap or helpConfig.instructionGap )
+	end
+
+	toggle.y = lineY - helpConfig.instructionGap + helpConfig.toggleGap
+	prompt.y = toggle.y + toggle.height + helpConfig.promptGap
+
+	lines[#lines + 1] = toggle
+	lines[#lines + 1] = prompt
+
+	local contentWidth = 0
+	for i = 1, #lines do
+		contentWidth = max( contentWidth, lines[i].width )
+	end
+
+	local width = contentWidth + helpConfig.paddingX * 2
+	local height = prompt.y + prompt.height + helpConfig.paddingY * 2
 	local left = -width * 0.5 + helpConfig.paddingX
-	local lineY = -height * 0.5 + helpConfig.paddingY
+	local top = -height * 0.5 + helpConfig.paddingY
 
 	for i = 1, #lines do
 		local line = lines[i]
 		line.anchorX, line.anchorY = 0, 0
-		line.x, line.y = left, lineY
-		lineY = lineY + line.height + ( i == 1 and helpConfig.headingGap or helpConfig.instructionGap )
+		line.x, line.y = left, line.y + top
 	end
 
-	prompt.y = lineY - helpConfig.instructionGap + helpConfig.promptGap
-
-	-- The drop shadow is drawn into the art on its right and bottom, so the image is shifted to keep the outline centred.
+	-- The drop shadow is drawn into the art on its right and bottom, so the image grows by it and shifts to keep the outline centred.
+	local shadow = helpConfig.shadowSize
+	local panel = sheets.newNineSlice( card, config.family, helpConfig.image, width + shadow, height + shadow )
 	panel.x, panel.y = shadow * 0.5, shadow * 0.5
+	panel:toBack()
 
-	return card, prompt
+	return card, prompt, toggle
 end
 
--- The press area sits outside the fading content group, so the button works from the first frame.
-local function newPlayAgain( hitGroup, labelGroup, theme, onPress )
-	local style = gameOverConfig
-	local buttonX = screen.centerX
-	local buttonY = screen.maxY - style.playAgainOffsetFromBottom
+-- Hidden until the delay passes, then blinks between lit and dim, starting lit.
+local function updatePrompt( prompt, elapsed, delay )
+	local sinceShown = elapsed - delay
 
-	local hitArea = display.newRect( hitGroup, buttonX, buttonY, style.playAgainHitWidth, style.playAgainHitHeight )
-	hitArea.isVisible = false
-	hitArea.isHitTestable = true
+	prompt.isVisible = sinceShown >= 0
 
-	local label = newGameOverText( labelGroup, style.playAgain, buttonX, buttonY, style.playAgainFont, style.playAgainFontSize, theme.text )
+	if sinceShown < 0 then
+		return
+	end
 
-	hitArea:addEventListener( "touch", function( event )
-		if event.phase == "began" then
-			onPress()
+	local cycle = promptConfig.blinkOnTime + promptConfig.blinkOffTime
+	local isOn = sinceShown % cycle < promptConfig.blinkOnTime
 
-			-- After onPress, since starting a new game stops every effect.
-			sound.play( "click" )
-		end
-
-		return true
-	end )
-
-	return label
+	prompt.alpha = isOn and 1 or promptConfig.blinkDimAlpha
 end
 
 function overlayMethods:updateGameOver( dt )
@@ -318,9 +349,7 @@ function overlayMethods:updateGameOver( dt )
 	active.elapsed = active.elapsed + dt
 	active.content.alpha = min( 1, active.elapsed / gameOverConfig.fadeInDuration )
 
-	local cycle = gameOverConfig.blinkOnTime + gameOverConfig.blinkOffTime
-	local isOn = active.elapsed % cycle < gameOverConfig.blinkOnTime
-	active.playAgain.alpha = isOn and 1 or gameOverConfig.blinkDimAlpha
+	updatePrompt( active.prompt, active.elapsed, promptConfig.delay )
 end
 
 function overlayMethods:hideHelp()
@@ -344,24 +373,15 @@ function overlayMethods:updateHelp( dt )
 	active.card.alpha = pop
 	active.dim.alpha = pop
 
-	local sincePrompt = active.elapsed - helpConfig.lockout
-
-	if sincePrompt < 0 then
-		return
-	end
-
-	local fadeIn = min( 1, sincePrompt / helpConfig.promptFadeInDuration )
-	local pulse = 1 - helpConfig.promptPulseDepth * ( 0.5 + 0.5 * sin( sincePrompt * helpConfig.promptPulseSpeed ) )
-
-	active.prompt.isVisible = true
-	active.prompt.alpha = fadeIn * pulse
+	updatePrompt( active.prompt, active.elapsed, helpConfig.promptDelay )
 end
 
 --------------------------------------------------------------------------------------
 -- Public functions
 
--- The card dismisses on the first press after the lockout; its own background swallows every press.
-function overlayMethods:showHelp( onDismiss )
+-- The card closes through dismissHelp; its own background swallows every press.
+-- toggle: optional { showInstructions, onToggle() }; pressing the toggle text reports onToggle and leaves the card open.
+function overlayMethods:showHelp( onDismiss, toggle )
 	if self.help then
 		self:hideHelp()
 	end
@@ -373,31 +393,64 @@ function overlayMethods:showHelp( onDismiss )
 	local dim = newScreenRect( group, helpConfig.dimColor )
 	dim.isHitTestable = true
 
-	local card, prompt = newHelpCard( group )
+	local showInstructions = true
+	local onToggle
+
+	if toggle then
+		showInstructions = toggle.showInstructions
+		onToggle = toggle.onToggle
+	end
+
+	local card, prompt, toggleLabel = newHelpCard( group, showInstructions )
 
 	local help = {
 		group = group,
 		dim = dim,
 		card = card,
 		prompt = prompt,
+		toggle = toggleLabel,
 		elapsed = 0,
+		onDismiss = onDismiss,
 	}
 	self.help = help
 
-	dim:addEventListener( "touch", function( event )
-		if event.phase == "began" and self.help == help and help.elapsed >= helpConfig.lockout then
-			sound.play( "click" )
-			self:hideHelp()
+	dim:addEventListener( "touch", function()
+		return true
+	end )
 
-			if onDismiss then
-				onDismiss()
-			end
+	toggleLabel:addEventListener( "touch", function( event )
+		if event.phase == "began" and onToggle then
+			onToggle()
 		end
 
 		return true
 	end )
 
 	self:updateHelp( 0 )
+end
+
+function overlayMethods:setShowInstructions( showInstructions )
+	if self.help then
+		self.help.toggle.text = helpToggleText( showInstructions )
+	end
+end
+
+-- A key press closes the card only once its prompt shows; returns whether it closed.
+function overlayMethods:dismissHelp()
+	local help = self.help
+
+	if not help or help.elapsed < helpConfig.promptDelay then
+		return false
+	end
+
+	sound.play( "click" )
+	self:hideHelp()
+
+	if help.onDismiss then
+		help.onDismiss()
+	end
+
+	return true
 end
 
 function overlayMethods:isHelpShowing()
@@ -443,11 +496,21 @@ function overlayMethods:showGameOver( params, onPlayAgain )
 	local top = screen.minY
 	local style = gameOverConfig
 
+	local buttons = hud.buttonLayout()
 	local logo = sheets.newImage( content, config.family, style.logoImage )
-	logo.anchorY = 0
-	logo.x, logo.y = centerX, top + style.logoOffsetY
+	logo.x, logo.y = centerX, buttons.top + logo.contentHeight * 0.5
 
-	newGameOverText( content, config.credits, centerX, top + style.creditsOffsetY, style.creditsFont, style.creditsFontSize, theme.dimText )
+	textBlock.new( {
+		parent = content,
+		text = table.concat( config.credits, "\n" ),
+		x = centerX,
+		y = top + style.creditsOffsetY,
+		font = style.creditsFont,
+		fontSize = style.creditsFontSize,
+		align = "center",
+		colour = theme.dimText,
+	} )
+
 	newGameOverText( content, style.listHeader, centerX, top + style.listHeaderOffsetY, style.listHeaderFont, style.listHeaderFontSize, theme.text )
 
 	local divider = display.newRect( content, centerX, top + style.dividerOffsetY, style.dividerWidth, style.dividerHeight )
@@ -456,24 +519,38 @@ function overlayMethods:showGameOver( params, onPlayAgain )
 	newScoreList( content, params, theme )
 	newEndingLine( content, params.cause, theme )
 
-	local hasPressed = false
-	local playAgain = newPlayAgain( group, content, theme, function()
-		if hasPressed then
-			return
-		end
-
-		hasPressed = true
-
-		if onPlayAgain then
-			onPlayAgain()
-		end
-	end )
+	-- Outside the fading content group, so the blink alone decides how it shows.
+	local promptY = screen.maxY - style.promptOffsetFromBottom
+	local prompt = newGameOverText( group, style.prompt, centerX, promptY, promptConfig.font, promptConfig.fontSize, theme.text )
 
 	self.gameOver = {
 		content = content,
-		playAgain = playAgain,
+		prompt = prompt,
 		elapsed = 0,
+		onPlayAgain = onPlayAgain,
 	}
+
+	updatePrompt( prompt, 0, promptConfig.delay )
+end
+
+-- Any key plays again once the prompt shows; earlier keys are swallowed. Returns whether it played again.
+function overlayMethods:pressGameOverKey()
+	local active = self.gameOver
+
+	if not active or active.hasPlayedAgain or active.elapsed < promptConfig.delay then
+		return false
+	end
+
+	active.hasPlayedAgain = true
+
+	if active.onPlayAgain then
+		active.onPlayAgain()
+	end
+
+	-- After onPlayAgain, since starting a new game stops every effect.
+	sound.play( "click" )
+
+	return true
 end
 
 function overlayMethods:update( dt )

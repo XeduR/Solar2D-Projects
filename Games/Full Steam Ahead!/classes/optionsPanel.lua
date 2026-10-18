@@ -1,10 +1,11 @@
--- Options panel with the volume sliders; a press anywhere outside it closes it.
+-- Options panel with the volume sliders and the instructions toggle; a press anywhere outside it closes it.
 
 local optionsPanel = {}
 
 --------------------------------------------------------------------------------------
 -- Libraries, classes, scripts, configs, etc.
 
+local gameText = require( "classes.gameText" )
 local screen = require( "classes.screen" )
 local sheets = require( "classes.sheets" )
 local slider = require( "classes.slider" )
@@ -41,7 +42,7 @@ local function newBackground( group )
 end
 
 local function newTitle( group )
-	local title = display.newText( {
+	local title = gameText.new( {
 		parent = group,
 		text = config.title,
 		x = 0,
@@ -52,6 +53,21 @@ local function newTitle( group )
 	title:setFillColor( unpack( config.titleColor ) )
 
 	return title
+end
+
+local function newToggle( group )
+	local toggle = gameText.new( {
+		parent = group,
+		text = config.toggleUnchecked,
+		x = -config.width * 0.5 + config.paddingX,
+		y = -config.height * 0.5 + config.toggleOffsetY,
+		font = config.toggleFont,
+		fontSize = config.toggleFontSize,
+	} )
+	toggle.anchorX = 0
+	toggle:setFillColor( unpack( config.toggleColor ) )
+
+	return toggle
 end
 
 function panelMethods:setOpen( isOpen )
@@ -105,7 +121,11 @@ function panelMethods:isOpen()
 	return self.isPanelOpen
 end
 
--- volumes: { master, music, sfx } in 0..1. callbacks: onChange( key, value ), onRelease( key, value ), onClose().
+function panelMethods:setShowInstructions( showInstructions )
+	self.toggle.text = showInstructions and config.toggleChecked or config.toggleUnchecked
+end
+
+-- volumes: { master, music, sfx } in 0..1. callbacks: onChange( key, value ), onRelease( key, value ), onToggleInstructions(), onClose().
 function optionsPanel.new( parentGroup, volumes, callbacks )
 	local panel = setmetatable( {}, panelMethods )
 
@@ -127,6 +147,7 @@ function optionsPanel.new( parentGroup, volumes, callbacks )
 	newTitle( body )
 
 	panel.sliders = {}
+	local trackWidth = sheets.load( family, hudConfig.slider.trackImage ).frameWidth
 
 	for i = 1, #config.sliders do
 		local entry = config.sliders[i]
@@ -135,7 +156,7 @@ function optionsPanel.new( parentGroup, volumes, callbacks )
 		panel.sliders[key] = slider.new( body, {
 			label = entry.label,
 			value = volumes and volumes[key] or 0,
-			x = 0,
+			x = -config.width * 0.5 + config.paddingX + trackWidth * 0.5,
 			y = -config.height * 0.5 + config.firstSliderOffsetY + ( i - 1 ) * config.sliderSpacing,
 
 			onChange = function( value )
@@ -151,6 +172,16 @@ function optionsPanel.new( parentGroup, volumes, callbacks )
 			end,
 		} )
 	end
+
+	panel.toggle = newToggle( body )
+
+	panel.toggle:addEventListener( "touch", function( event )
+		if event.phase == "began" and panel.callbacks.onToggleInstructions then
+			panel.callbacks.onToggleInstructions()
+		end
+
+		return true
+	end )
 
 	-- Presses on the panel body must not reach the blocker, which would close the panel.
 	panel.background:addEventListener( "touch", function()

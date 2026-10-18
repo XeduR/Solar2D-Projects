@@ -85,53 +85,53 @@ return {
 		angry = { 1, 0.796, 0.733 },
 	},
 
-	-- Bubble style per anger tier; shake is how far the bubble trembles.
+	-- Bubble style per anger tier; font sizes stay on the font's 8-pixel grid, and shake is how far the bubble trembles.
 	tiers = {
 		[0] = {
-			font = fonts.regular,
-			fontSize = fonts.large,
+			font = fonts.face,
+			fontSize = fonts.small,
 			padding = 15,
-			maxTextWidth = 360,
+			maxTextWidth = 400,
 			textColour = palette.textDark,
 			variant = "calm",
 			shake = 0,
 		},
 
 		[1] = {
-			font = fonts.regular,
+			font = fonts.face,
 			fontSize = fonts.large,
 			padding = 18,
-			maxTextWidth = 390,
+			maxTextWidth = 480,
 			textColour = palette.angerTiers[1],
 			variant = "calm",
 			shake = 0,
 		},
 
 		[2] = {
-			font = fonts.bold,
+			font = fonts.face,
 			fontSize = fonts.large,
 			padding = 21,
-			maxTextWidth = 420,
+			maxTextWidth = 576,
 			textColour = palette.angerTiers[2],
 			variant = "cross",
 			shake = 0,
 		},
 
 		[3] = {
-			font = fonts.bold,
-			fontSize = fonts.large,
+			font = fonts.face,
+			fontSize = 32,
 			padding = 24,
-			maxTextWidth = 460,
+			maxTextWidth = 680,
 			textColour = palette.angerTiers[3],
 			variant = "angry",
 			shake = 2.5,
 		},
 
 		[4] = {
-			font = fonts.bold,
-			fontSize = fonts.large,
+			font = fonts.face,
+			fontSize = 32,
 			padding = 27,
-			maxTextWidth = 500,
+			maxTextWidth = 816,
 			textColour = palette.angerTiers[4],
 			variant = "angry",
 			shake = 4.5,
@@ -143,13 +143,13 @@ return {
 		variant = "calm",
 		padding = 24,
 		creditsGap = 12,
-		creditsFont = fonts.regular,
+		creditsFont = fonts.face,
 		creditsFontSize = fonts.small,
 		textColour = palette.textDark,
 		shake = 0,
 
-		-- Distance from the top screen edge to the title bubble's top edge.
-		topOffset = 69,
+		-- Distance from the top screen edge to the title bubble's top edge; the bubble is wider than the gap beside the HUD buttons, so it starts below them.
+		topOffset = 135,
 	},
 
 	-- How fast a shaking bubble trembles, in radians per second.

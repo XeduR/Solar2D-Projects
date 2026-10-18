@@ -1,20 +1,18 @@
 # Full Steam Ahead!
 
-A tiny humorous game made for Ludum Dare 60, theme "old tech". A pompous steamboat captain demands ever more speed, and you are the unseen stoker shovelling coal so fast that the boat reaches escape velocity, leaves Earth, and streaks through space as a comet dodging planets and asteroids. Slow down and the captain gets angrier until he fires you. Your score is your top speed in knots.
+A tiny humorous game made for Ludum Dare 60 (COMPO), theme "old tech". A pompous steamboat captain demands ever more speed, and you are the unseen stoker shovelling coal to make the boat go faster and faster. Slow down and the captain gets angrier until he fires you. **Your score is your top speed in knots**.
 
 ## How to play
 
-- Press the engine room circle in the bottom-left corner to shovel coal.
-- In space, press and hold anywhere else to climb, and release to fall.
+- Press `Space` or `Enter` to shovel coal and make the boat go faster!
+- Hold `Up arrow` or `W` to go up, release to fall.
 - Keep shovelling, or the captain fires you.
-- Hitting a planet, an asteroid, or the top or bottom edge of the screen ends the run.
-- Options sets the master, music, and SFX volume.
-- Reset starts over from the beginning.
+- Don't crash!
 
 ## Release
 
 - The release target is HTML5.
-- The game was made for Ludum Dare 60.
+- The game was made for Ludum Dare 60 (COMPO).
 
 ## Running from source
 
@@ -22,7 +20,7 @@ Open this folder in the Solar2D Simulator.
 
 ## Third-party modules
 
-The game is built on a game jam template that bundles these modules:
+The game is built on my [Game Jam Template](https://github.com/XeduR/Solar2D-Projects/tree/master/Game%20Jam%20Template) that bundles these modules:
 
 - [Loadsave - Spyric](https://github.com/SpyricGames/Solar2D-Plugins-Public/blob/main/Loadsave/spyric/loadsave.lua)
 - [Screen - Spyric](https://github.com/SpyricGames/Solar2D-Plugins-Public/blob/main/Screen/spyric/screen.lua)
@@ -39,4 +37,15 @@ MIT
 
 ### Font
 
-The in-game text uses [Pixelify Sans](https://github.com/eifetx/Pixelify-Sans), Copyright 2021 The Pixelify Sans Project Authors, licensed under the SIL Open Font License, Version 1.1. `assets/fonts/PixelifySans-Regular.ttf` and `assets/fonts/PixelifySans-Bold.ttf` are static weight 400 and 700 instances of the variable font from [google/fonts](https://github.com/google/fonts/tree/47d54ca1ebb14fd864695f1d39dc734f39017c33/ofl/pixelifysans). The full licence text is in `assets/fonts/OFL.txt`.
+The in-game text uses Press Start 2P by CodeMan38, Copyright 2012 The Press Start 2P Project Authors (cody@zone38.net), with Reserved Font Name "Press Start 2P", licensed under the SIL Open Font License, Version 1.1. `assets/fonts/PressStart2P-Regular.ttf` comes from [google/fonts](https://github.com/google/fonts/tree/e06fe11c39051bddaef73ec338a9d1c8175723f1/ofl/pressstart2p). The full licence text is in `assets/fonts/OFL.txt`.
+
+## Note on AI usage
+
+Claude Opus 5.5 was used in this project for the following task:
+
+- Write and review this README and other documentation.
+- Clean up and extend documentation (comments) in code.
+- Perform two code reviews.
+  - Fix math functions in classes/drawing.lua, and classes/boat.lua.
+
+All other code, as well as all art, music, sfx, etc. were created by me, with the exception of Press Start 2P font (see above). Everything was designed and all of the dialogue was written by me. 

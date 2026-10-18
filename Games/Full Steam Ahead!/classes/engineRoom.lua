@@ -11,6 +11,7 @@ local palette = require( "data.palette" )
 local screen = require( "classes.screen" )
 local sheets = require( "classes.sheets" )
 local drawing = require( "classes.drawing" )
+local textBlock = require( "classes.textBlock" )
 local sound = require( "classes.sound" )
 
 --------------------------------------------------------------------------------------
@@ -230,18 +231,18 @@ local function newTooltip( group )
 	local tooltip = display.newGroup()
 	group:insert( tooltip )
 
-	local label = display.newText( {
+	local label = textBlock.new( {
 		parent = tooltip,
 		text = tooltipConfig.text,
-		x = 0,
-		y = 0,
+		width = tooltipConfig.wrapWidth,
 		font = tooltipConfig.font,
 		fontSize = tooltipConfig.fontSize,
+		align = "center",
+		colour = palette.textLight,
 	} )
-	setColour( label, palette.textLight )
 
-	local plateWidth = snapToPixels( label.width + tooltipConfig.paddingX * 2 )
-	local plateHeight = snapToPixels( label.height + tooltipConfig.paddingY * 2 )
+	local plateWidth = snapToPixels( label.blockWidth + tooltipConfig.paddingX * 2 )
+	local plateHeight = snapToPixels( label.blockHeight + tooltipConfig.paddingY * 2 )
 	local plate = sheets.newNineSlice( tooltip, config.families.room, tooltipConfig.plateImage, plateWidth, plateHeight )
 	plate.alpha = tooltipConfig.plateAlpha
 	plate:toBack()

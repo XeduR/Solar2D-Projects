@@ -8,10 +8,12 @@ local captain = {}
 local screen = require( "classes.screen" )
 local sheets = require( "classes.sheets" )
 local drawing = require( "classes.drawing" )
+local gameText = require( "classes.gameText" )
+local textBlock = require( "classes.textBlock" )
 local sound = require( "classes.sound" )
 local config = require( "data.captain" )
 local lines = require( "data.captainLines" )
-local credits = require( "data.screens" ).credits
+local credits = table.concat( require( "data.screens" ).credits, " " )
 local pixelScale = require( "data.art" ).pixelScale
 
 --------------------------------------------------------------------------------------
@@ -69,33 +71,17 @@ local function popScale( progress )
 end
 
 local function newBubbleText( group, text, style )
-	local label = display.newText( {
+	local label = textBlock.new( {
 		parent = group,
 		text = text,
-		x = 0,
-		y = 0,
 		font = style.font,
 		fontSize = style.fontSize,
+		width = style.maxTextWidth,
+		align = "center",
+		colour = style.textColour,
 	} )
 
-	if label.width > style.maxTextWidth then
-		display.remove( label )
-
-		label = display.newText( {
-			parent = group,
-			text = text,
-			x = 0,
-			y = 0,
-			width = style.maxTextWidth,
-			font = style.font,
-			fontSize = style.fontSize,
-			align = "center",
-		} )
-	end
-
-	label:setFillColor( unpack( style.textColour ) )
-
-	return label.width, label.height
+	return label.blockWidth, label.blockHeight
 end
 
 -- The logo with the credit line under it, centred on the group origin.
@@ -103,7 +89,7 @@ local function newTitleContent( group, style )
 	local logo = sheets.newImage( group, config.family, config.logoImage )
 	logo.anchorY = 0
 
-	local creditLine = display.newText( {
+	local creditLine = gameText.new( {
 		parent = group,
 		text = credits,
 		x = 0,
@@ -354,7 +340,11 @@ function bubbleMethods:update( dt, targetX, targetY, anchorX, anchorY )
 		self.hasPosition = true
 	end
 
-	local fitScale = min( ( screen.maxX - screen.minX ) * 0.5 / self.outerHalfWidth, ( screen.maxY - screen.minY ) * 0.5 / self.outerHalfHeight )
+	-- Fits the same box clampToScreen keeps inside the margins, so an oversized bubble is never centred across a screen edge.
+	local margin = config.screenMargin
+	local boxWidth = self.outerHalfWidth * 2 + max( config.shadowOffsetX, 0 )
+	local boxHeight = self.outerHalfHeight * 2 + max( config.shadowOffsetY, 0 )
+	local fitScale = min( ( screen.maxX - screen.minX - margin * 2 ) / boxWidth, ( screen.maxY - screen.minY - margin * 2 ) / boxHeight )
 	local scale = min( popScale( self.age / config.pop.duration ), fitScale )
 	local restX, restY = self:clampToScreen( self.centreX, self.centreY, 1 )
 

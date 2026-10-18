@@ -24,6 +24,7 @@ local hud = require( "classes.hud" )
 local optionsPanel = require( "classes.optionsPanel" )
 local sheets = require( "classes.sheets" )
 local sound = require( "classes.sound" )
+local controls = require( "classes.controls" )
 
 --------------------------------------------------------------------------------------
 -- Forward declarations & variables
@@ -52,7 +53,6 @@ local isPaused = false
 local previousTime = 0
 local lastWarnedTier = 0
 local titleIdleTime = 0
-local thrustTouchId
 
 -- Set by muteGame; the master volume stays at zero until the Master slider moves.
 local isMuted = false
@@ -84,19 +84,12 @@ local function isPlaying()
 	return state == "phase1" or state == "launch" or state == "phase2"
 end
 
-local function releaseThrust()
-	if thrustTouchId then
-		display.getCurrentStage():setFocus( inputCatcher, nil )
-		thrustTouchId = nil
-	end
+-- The boat thrusts only in phase 2 while the game runs and a thrust key is held.
+local function syncThrust()
+	local isThrusting = state == "phase2" and not isPaused and controls.isThrustHeld()
 
-	boat:setThrust( false )
-	sound.setLayer( "thrust", 0 )
-end
-
-local function releaseInput()
-	display.getCurrentStage():setFocus( nil )
-	releaseThrust()
+	boat:setThrust( isThrusting )
+	sound.setLayer( "thrust", isThrusting and 1 or 0 )
 end
 
 -- The credit line is part of the title bubble.
@@ -160,19 +153,33 @@ local function startPhase2()
 	model:setAngerFrozen( false )
 	field:setActive( true )
 	syncGameTransitions()
+	syncThrust()
 
 	if not isPaused then
 		sound.resumeLoops()
 	end
 end
 
+-- The card and the Options panel show the same saved setting, so both labels follow every flip.
+local function toggleShowInstructions()
+	saveData.showInstructions = not saveData.showInstructions
+	overlay:setShowInstructions( saveData.showInstructions )
+	panel:setShowInstructions( saveData.showInstructions )
+	sound.play( "click" )
+	save.write( saveData )
+end
+
 -- The game holds still under the help card until it is dismissed.
 local function showHelp()
 	state = "help"
-	releaseInput()
+	syncThrust()
 	syncGameTransitions()
 	sound.pauseLoops()
-	overlay:showHelp( startPhase2 )
+
+	overlay:showHelp( startPhase2, {
+		showInstructions = saveData.showInstructions,
+		onToggle = toggleShowInstructions,
+	} )
 end
 
 local function showGameOver( theme, cause )
@@ -192,7 +199,7 @@ end
 
 local function getFired()
 	state = "ending"
-	releaseThrust()
+	syncThrust()
 	boat:setCoasting( true )
 	talk:quip( "fired" )
 
@@ -213,7 +220,7 @@ end
 
 local function crash( hitX, hitY, cause )
 	state = "ending"
-	releaseThrust()
+	syncThrust()
 	boat:explode( hitX, hitY )
 
 	sound.stopLoops()
@@ -252,7 +259,11 @@ local function checkTransitions()
 		startLaunch()
 
 	elseif state == "launch" and view:isLaunchDone() then
-		showHelp()
+		if saveData.showInstructions then
+			showHelp()
+		else
+			startPhase2()
+		end
 	end
 end
 
@@ -360,29 +371,10 @@ local function onEnterFrame()
 	end
 end
 
+-- Shovelling and thrust are on the keyboard; presses outside the engine room only talk to the captain.
 local function onCatcherTouch( event )
-	local phase = event.phase
-
-	if phase == "began" then
-		if not ( state == "start" or isPlaying() ) then
-			return true
-		end
-
-		if room:containsPoint( event.x, event.y ) then
-			shovel()
-
-		elseif state == "start" or state == "phase1" then
-			pressWorld()
-
-		elseif state == "phase2" then
-			display.getCurrentStage():setFocus( inputCatcher, event.id )
-			thrustTouchId = event.id
-			boat:setThrust( true )
-			sound.setLayer( "thrust", 1 )
-		end
-
-	elseif ( phase == "ended" or phase == "cancelled" ) and event.id == thrustTouchId then
-		releaseThrust()
+	if event.phase == "began" and ( state == "start" or state == "phase1" ) and not room:containsPoint( event.x, event.y ) then
+		pressWorld()
 	end
 
 	return true
@@ -411,7 +403,7 @@ local function openOptions()
 	end
 
 	isPaused = true
-	releaseInput()
+	syncThrust()
 	syncGameTransitions()
 	sound.pauseLoops()
 	panel:open()
@@ -421,6 +413,7 @@ local function onOptionsClosed()
 	isPaused = false
 	previousTime = getTimer()
 	syncGameTransitions()
+	syncThrust()
 
 	-- The help card keeps the loops paused until it is dismissed.
 	if state ~= "help" then
@@ -434,10 +427,43 @@ local function newLayer( parent )
 	return layer
 end
 
+-- Options takes only Escape, the help card and the game-over screen take any key, and the game itself takes its bound keys.
+local function onKeyDown( action )
+	if panel:isOpen() then
+		if action == "options" then
+			panel:close()
+			return true
+		end
+
+		return false
+	end
+
+	if state == "help" then
+		overlay:dismissHelp()
+		return true
+	end
+
+	if state == "gameover" then
+		overlay:pressGameOverKey()
+		return true
+	end
+
+	if action == "options" then
+		openOptions()
+		return true
+	end
+
+	if action == "shovel" and ( state == "start" or isPlaying() ) then
+		shovel()
+		return true
+	end
+
+	return false
+end
+
 -- Reset is a full rebuild: every module is constructed again and the run returns to the start view.
 function buildGame()
 	display.getCurrentStage():setFocus( nil )
-	thrustTouchId = nil
 	isPaused = false
 	musicRestartDelay = nil
 
@@ -486,8 +512,11 @@ function buildGame()
 			end
 		end,
 
+		onToggleInstructions = toggleShowInstructions,
 		onClose = onOptionsClosed,
 	} )
+
+	panel:setShowInstructions( saveData.showInstructions )
 
 	state = "start"
 	lastWarnedTier = 0
@@ -529,6 +558,7 @@ function scene:show( event )
 		end
 
 		Runtime:addEventListener( "enterFrame", onEnterFrame )
+		controls.start( { onKeyDown = onKeyDown, onThrustChange = syncThrust } )
 
 	elseif phase == "did" then
 		previousTime = getTimer()
@@ -544,6 +574,7 @@ function scene:hide( event )
 
 	elseif phase == "did" then
 		Runtime:removeEventListener( "enterFrame", onEnterFrame )
+		controls.stop()
 		sound.stopLoops()
 		sound.cutMusic()
 	end

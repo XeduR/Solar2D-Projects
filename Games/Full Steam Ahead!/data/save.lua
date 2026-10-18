@@ -8,4 +8,7 @@ return {
 	},
 
 	maxScores = 10,
+
+	-- Whether the How-to-play card opens before phase 2.
+	defaultShowInstructions = true,
 }

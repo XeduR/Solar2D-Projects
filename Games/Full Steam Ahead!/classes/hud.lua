@@ -6,6 +6,7 @@ local hud = {}
 -- Libraries, classes, scripts, configs, etc.
 
 local screen = require( "classes.screen" )
+local gameText = require( "classes.gameText" )
 local scores = require( "classes.scores" )
 local sheets = require( "classes.sheets" )
 local sound = require( "classes.sound" )
@@ -40,7 +41,7 @@ local function newKnotsPlate( group )
 end
 
 local function newKnotsText( group, color, offset )
-	local text = display.newText( {
+	local text = gameText.new( {
 		parent = group,
 		text = "",
 		x = knotsConfig.platePaddingX + offset,
@@ -59,7 +60,7 @@ local function newButtonBackground( group )
 end
 
 local function newButtonLabel( group, text )
-	local label = display.newText( {
+	local label = gameText.new( {
 		parent = group,
 		text = text,
 		x = 0,
@@ -210,6 +211,21 @@ function hudMethods:update( dt )
 	end
 end
 
+-- The button column's left and right edges and centre x, and the centre y of the Options and Reset buttons.
+function hud.buttonLayout()
+	local columnLeft = screen.minX + buttonConfig.marginX
+	local optionsY = screen.minY + buttonConfig.marginY + buttonConfig.height * 0.5
+
+	return {
+		top = optionsY - buttonConfig.height * 0.5,
+		left = columnLeft,
+		right = columnLeft + buttonConfig.width,
+		centerX = columnLeft + buttonConfig.width * 0.5,
+		optionsY = optionsY,
+		resetY = optionsY + buttonConfig.height + buttonConfig.gap,
+	}
+end
+
 -- callbacks: onReset(), onOptions().
 function hud.new( parentGroup, callbacks )
 	local bar = setmetatable( {}, hudMethods )
@@ -224,13 +240,11 @@ function hud.new( parentGroup, callbacks )
 	group:insert( knotsGroup )
 	bar.knotsGroup = knotsGroup
 
-	local columnLeft = screen.minX + buttonConfig.marginX
-	local buttonX = columnLeft + buttonConfig.width * 0.5
-	local optionsY = screen.minY + buttonConfig.marginY + buttonConfig.height * 0.5
+	local layout = hud.buttonLayout()
 
 	bar.knotsPlate = newKnotsPlate( knotsGroup )
-	knotsGroup.x = columnLeft + buttonConfig.width + buttonConfig.gap
-	knotsGroup.y = optionsY
+	knotsGroup.x = layout.right + buttonConfig.gap
+	knotsGroup.y = layout.optionsY
 
 	bar.knotsShadow = newKnotsText( knotsGroup, knotsConfig.shadowColor, knotsConfig.shadowOffset )
 	bar.knotsText = newKnotsText( knotsGroup, knotsConfig.textColor, 0 )
@@ -241,14 +255,13 @@ function hud.new( parentGroup, callbacks )
 	bar.isPunchSettled = true
 	bar.punchDecade = decadeOf( knotsConfig.punchMinKnots ) - 1
 
-	local optionsButton = newButton( group, buttonConfig.optionsLabel, buttonX, optionsY, function()
+	local optionsButton = newButton( group, buttonConfig.optionsLabel, layout.centerX, layout.optionsY, function()
 		if callbacks.onOptions then
 			callbacks.onOptions()
 		end
 	end )
 
-	local resetY = optionsY + buttonConfig.height + buttonConfig.gap
-	local resetButton = newButton( group, buttonConfig.resetLabel, buttonX, resetY, function()
+	local resetButton = newButton( group, buttonConfig.resetLabel, layout.centerX, layout.resetY, function()
 		if callbacks.onReset then
 			callbacks.onReset()
 		end

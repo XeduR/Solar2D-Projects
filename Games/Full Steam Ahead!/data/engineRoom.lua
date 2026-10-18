@@ -304,8 +304,10 @@ return {
 	},
 
 	tooltip = {
-		-- One line at the large size does not fit between the porthole and the screen edge.
-		text = "<- Tap in the left corner\nto shovel coal.",
+		text = "Press Space or Enter to shovel coal.",
+
+		-- One line at the large size does not fit between the porthole and the screen edge, so the text wraps after "Enter".
+		wrapWidth = 504,
 
 		-- The plate sits right of the porthole, near the bottom and below the burst flames; the gaps also cover the pulse growth.
 		rimGap = 24,
@@ -316,7 +318,7 @@ return {
 		paddingX = 32,
 		paddingY = 22,
 		plateAlpha = 0.88,
-		font = fonts.bold,
+		font = fonts.face,
 		fontSize = fonts.large,
 
 		-- Alpha change per second when showing or hiding.

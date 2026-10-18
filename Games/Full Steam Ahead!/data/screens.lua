@@ -4,7 +4,11 @@ local fonts = require( "data.fonts" )
 return {
 	family = "ui",
 
-	credits = "A Game by Eetu Rantanen. Made for Ludum Dare 60",
+	-- The title bubble joins the sentences on one line, the game-over screen stacks them.
+	credits = {
+		"A Game by Eetu Rantanen.",
+		"Made for Ludum Dare 60.",
+	},
 
 	firedTransition = {
 		duration = 1.3,
@@ -65,109 +69,117 @@ return {
 			},
 		},
 
-		-- Each OffsetY is measured down from the top screen edge: to the logo's top edge, and to the centre of every other item.
-		logoOffsetY = 69,
-
-		creditsOffsetY = 162,
-		creditsFont = fonts.regular,
+		-- The logo's top edge lines up with the top of the HUD's Options button, which stays on top of this screen.
+		-- Each OffsetY is measured down from the top screen edge to the item's centre.
+		creditsOffsetY = 117,
+		creditsFont = fonts.face,
 		creditsFontSize = fonts.small,
 
 		listHeader = "Top speeds",
-		listHeaderOffsetY = 195,
-		listHeaderFont = fonts.bold,
-		listHeaderFontSize = fonts.small,
+		listHeaderOffsetY = 172,
+		listHeaderFont = fonts.face,
+		listHeaderFontSize = fonts.large,
 
 		dividerWidth = 360,
 		dividerHeight = 2,
-		dividerOffsetY = 213,
+		dividerOffsetY = 191,
 
-		listOffsetY = 234,
-		rowSpacing = 27,
+		listOffsetY = 211,
+		rowSpacing = 30,
 		rowCount = 10,
-		rowFont = fonts.regular,
+		rowFont = fonts.face,
 		rowFontSize = fonts.small,
-		rowHighlightFont = fonts.bold,
+		rowHighlightFont = fonts.face,
 
 		-- Row columns relative to the screen centre: right-aligned rank, right-aligned value.
-		rankColumnX = -130,
-		valueColumnX = 160,
+		rankColumnX = -160,
+		valueColumnX = 240,
 		rankFormat = "%d.",
 		emptyValue = "-",
 
-		-- Centred on its row, so the art must be wide enough for the widest row, "Your run" included.
+		-- A nine-slice stretched across its row; the margin is how far it reaches past the rank text's left edge and the value column on the right.
 		highlightImage = "rowHighlight",
+		highlightMarginX = 18,
+		highlightHeight = 33,
 
 		-- Extra gap above the run's own row, shown when the run did not make the list.
 		runGap = 12,
 		runLabel = "Your run",
 
-		playAgain = "Play again?",
+		prompt = "Press any key to play again.",
 
-		-- Measured up from the bottom screen edge to the button's centre.
-		playAgainOffsetFromBottom = 42,
-		playAgainFont = fonts.bold,
-		playAgainFontSize = fonts.large,
-		playAgainHitWidth = 300,
-		playAgainHitHeight = 64,
+		-- Measured up from the bottom screen edge to the prompt's centre.
+		promptOffsetFromBottom = 28,
+
+		-- The ending line centres between the bottom of the run row's highlight slot and this line, measured up from the bottom screen edge.
+		endingLineFloorOffset = 43.5,
+
+		-- Ending lines longer than this wrap.
+		endingLineWidth = 820,
+		endingLineFont = fonts.face,
+		endingLineFontSize = fonts.small,
+	},
+
+	help = {
+		heading = "How to play",
+		instructions = {
+			"- Hold Up arrow or W to go up, release to fall.",
+			"- Keep shovelling, or the captain fires you.",
+			"- Don't crash!",
+		},
+		prompt = "Press any key to continue.",
+
+		-- Seconds before the prompt appears; keys pressed before then are swallowed.
+		promptDelay = 1.25,
+
+		-- The toggle reads as checked when the instructions are turned off.
+		toggleChecked = "[X] Don't show this next time.",
+		toggleUnchecked = "[ ] Don't show this next time.",
+
+		dimColor = { 0, 0.55 },
+
+		-- A nine-slice sized around its text plus the padding; shadowSize must match the drop shadow drawn into its right and bottom edges.
+		image = "helpCard",
+		shadowSize = 6,
+		paddingX = 36,
+		paddingY = 42,
+
+		-- Vertical gaps after the heading, between instructions, before the toggle, and before the prompt.
+		headingGap = 15,
+		instructionGap = 9,
+		toggleGap = 30,
+		promptGap = 27,
+
+		headingFont = fonts.face,
+		headingFontSize = fonts.large,
+		headingColor = palette.textDark,
+
+		instructionFont = fonts.face,
+		instructionFontSize = fonts.small,
+		instructionColor = palette.textDark,
+
+		toggleFont = fonts.face,
+		toggleFontSize = fonts.small,
+		toggleColor = palette.textDark,
+
+		-- The card is light, so its prompt takes the crash screen's dark text colour.
+		promptColor = palette.textDark,
+
+		popDuration = 0.25,
+		popStartScale = 0.85,
+	},
+
+	-- The "press any key" prompts on the game-over screen and the help card.
+	prompt = {
+		-- Seconds before the game-over prompt appears; keys pressed before then are swallowed.
+		delay = 2.5,
+
+		font = fonts.face,
+		fontSize = fonts.large,
 
 		-- Seconds the prompt stays lit and dimmed in each blink.
 		blinkOnTime = 0.6,
 		blinkOffTime = 0.35,
 		blinkDimAlpha = 0.15,
-
-		-- Measured up from the bottom screen edge to the centre of the ending line's text block.
-		endingLineOffsetFromBottom = 93,
-
-		-- Lines longer than this wrap.
-		endingLineWidth = 820,
-		endingLineFont = fonts.bold,
-		endingLineFontSize = fonts.small,
-	},
-
-	help = {
-		heading = "How to play:",
-		instructions = {
-			"1. Keep tapping the engine room to shovel coal!",
-			"2. Press and hold anywhere outside the engine room to go up.",
-			"3. Let go and the boat will begin to fall.",
-			"4. Don't crash!",
-		},
-		prompt = "Tap to continue",
-
-		-- Presses before this many seconds are swallowed, so a frantic shovel click cannot skip the card.
-		lockout = 0.8,
-
-		dimColor = { 0, 0.55 },
-
-		-- The card art is not stretched, so the text must fit inside it; shadowSize must match the drop shadow drawn into its right and bottom edges.
-		image = "helpCard",
-		shadowSize = 6,
-		paddingX = 36,
-		paddingY = 30,
-
-		-- Vertical gaps after the heading, between instructions, and before the prompt.
-		headingGap = 15,
-		instructionGap = 9,
-		promptGap = 24,
-
-		headingFont = fonts.bold,
-		headingFontSize = fonts.large,
-		headingColor = palette.textDark,
-
-		instructionFont = fonts.regular,
-		instructionFontSize = fonts.small,
-		instructionColor = palette.textDark,
-
-		promptFont = fonts.bold,
-		promptFontSize = fonts.large,
-		promptColor = { 0.75, 0.3, 0.1 },
-		promptFadeInDuration = 0.25,
-
-		-- Once shown, the prompt pulses; speed is in radians per second, and depth is how far it dims, from 0 for none to 1 for fully out.
-		promptPulseSpeed = 4,
-		promptPulseDepth = 0.35,
-
-		popDuration = 0.25,
-		popStartScale = 0.85,
 	},
 }

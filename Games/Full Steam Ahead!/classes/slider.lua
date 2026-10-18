@@ -5,6 +5,7 @@ local slider = {}
 --------------------------------------------------------------------------------------
 -- Libraries, classes, scripts, configs, etc.
 
+local gameText = require( "classes.gameText" )
 local sheets = require( "classes.sheets" )
 local drawing = require( "classes.drawing" )
 local sound = require( "classes.sound" )
@@ -54,12 +55,12 @@ local function newKnob( group )
 	return sheets.newSprite( group, family, config.knobImage, { config.normalTag, config.pressedTag } )
 end
 
-local function newLabel( group, text, x, font, anchorX )
-	local label = display.newText( {
+local function newLabel( group, text, x, y, font, anchorX )
+	local label = gameText.new( {
 		parent = group,
 		text = text,
 		x = x,
-		y = config.labelOffsetY,
+		y = y,
 		font = font,
 		fontSize = config.fontSize,
 	} )
@@ -163,8 +164,8 @@ function slider.new( parentGroup, params )
 	control.knob = newKnob( group )
 	control.hitArea = newHitArea( group, control.width, control.knob.width )
 	control.hitArea:toBack()
-	control.label = newLabel( group, params.label or "", left, config.font, 0 )
-	control.readout = newLabel( group, "", -left, config.valueFont, 1 )
+	control.label = newLabel( group, params.label or "", left, config.labelOffsetY, config.font, 0 )
+	control.readout = newLabel( group, "", -left + config.valueGap, 0, config.valueFont, 0 )
 
 	local function onTouch( event )
 		return control:touch( event )

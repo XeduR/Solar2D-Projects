@@ -13,7 +13,7 @@ local saveConfig = require( "data.save" )
 
 function save.load()
 	local stored = loadsave.load( saveConfig.filename )
-	local data = { scores = {}, volume = {} }
+	local data = { scores = {}, volume = {}, showInstructions = saveConfig.defaultShowInstructions }
 
 	if type( stored ) == "table" then
 		local storedScores = stored.scores
@@ -30,6 +30,10 @@ function save.load()
 			for key in pairs( saveConfig.defaultVolume ) do
 				data.volume[key] = stored.volume[key]
 			end
+		end
+
+		if type( stored.showInstructions ) == "boolean" then
+			data.showInstructions = stored.showInstructions
 		end
 	end
 

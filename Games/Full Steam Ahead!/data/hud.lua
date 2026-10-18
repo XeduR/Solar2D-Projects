@@ -5,13 +5,13 @@ return {
 	family = "ui",
 
 	knots = {
-		font = fonts.bold,
-		fontSize = fonts.large,
+		font = fonts.face,
+		fontSize = fonts.small,
 		textColor = palette.textLight,
 		shadowColor = { 0, 0.55 },
 
 		-- Distance of the text shadow below and to the right of the text, in content units.
-		shadowOffset = 3,
+		shadowOffset = 2,
 
 		-- Backing plate behind the readout; its art is drawn wide enough for the longest readout.
 		plateImage = "knotsReadout",
@@ -56,13 +56,13 @@ return {
 		pressedTag = "pressed",
 
 		-- Button size in content units.
-		width = 120,
-		height = 45,
+		width = 144,
+		height = 48,
 
 		optionsLabel = "Options",
 		resetLabel = "Reset",
 
-		font = fonts.bold,
+		font = fonts.face,
 		fontSize = fonts.small,
 		textColor = palette.buttonText,
 
@@ -88,8 +88,11 @@ return {
 		-- Vertical offset of the label and the percentage from the track's centre; negative is up.
 		labelOffsetY = -24,
 
-		font = fonts.regular,
-		valueFont = fonts.bold,
+		-- Space between the track's right end and the percentage beside it; covers the knob's overhang at full volume.
+		valueGap = 30,
+
+		font = fonts.face,
+		valueFont = fonts.face,
 		fontSize = fonts.small,
 		textColor = palette.textDark,
 		percentFormat = "%d%%",
@@ -102,14 +105,14 @@ return {
 		image = "optionsPanel",
 
 		-- Size of the panel without its drop shadow, in content units.
-		width = 324,
-		height = 288,
+		width = 552,
+		height = 336,
 
 		-- Width of the drop shadow drawn into the image below and to the right of the panel, in content units.
 		shadowSize = 6,
 
 		title = "Options",
-		titleFont = fonts.bold,
+		titleFont = fonts.face,
 		titleFontSize = fonts.large,
 		titleColor = palette.textDark,
 
@@ -120,6 +123,20 @@ return {
 		firstSliderOffsetY = 104,
 
 		sliderSpacing = 72,
+
+		-- Distance from the panel's left edge to the left end of every slider track, and to the toggle's left edge.
+		paddingX = 36,
+
+		-- Distance from the panel's top edge to the instructions toggle's centre; the toggle's left edge lines up with the slider labels.
+		toggleOffsetY = 300,
+
+		-- The toggle reads as checked when the instructions are turned on.
+		toggleChecked = "[X] show instructions at start",
+		toggleUnchecked = "[ ] show instructions at start",
+
+		toggleFont = fonts.face,
+		toggleFontSize = fonts.small,
+		toggleColor = palette.textDark,
 
 		-- Each key names a volume entry in the save data.
 		sliders = {
