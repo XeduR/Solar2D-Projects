@@ -1,1 +1,0 @@
-These images were generated with Bing Image Creator by using the "dilemmas" from Data/dilemmas.lua as prompts.
