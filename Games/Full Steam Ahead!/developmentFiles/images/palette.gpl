@@ -1,0 +1,68 @@
+GIMP Palette
+Name: Full Steam Ahead
+Columns: 8
+#
+ 20  15  15	outline-0
+ 15  18  48	space-0
+ 43  31  92	space-1
+ 74  47 133	space-2
+ 43  40  48	iron-0
+ 85  82  90	iron-1
+140 140 158	iron-2
+199 199 209	iron-3
+ 46  30  20	wood-0
+ 82  54  31	wood-1
+138  85  48	wood-2
+184 117  71	wood-3
+221 160 112	wood-4
+110  74  22	brass-0
+168 122  51	brass-1
+204 153  61	brass-2
+242 204  97	brass-3
+ 87  15  15	hull-0
+153  31  26	hull-1
+189  41  31	hull-2
+224  84  44	hull-3
+184 173 153	cream-0
+214 204 182	cream-1
+236 229 208	cream-2
+249 244 227	cream-3
+ 26  34  69	navy-0
+ 44  61 125	navy-1
+ 61 107 158	navy-2
+196 135 106	skin-0
+245 199 158	skin-1
+255 224 194	skin-2
+163 181 217	cloud-0
+209 222 242	cloud-1
+255 255 255	cloud-2
+ 64  10   5	fire-0
+153  46  10	fire-1
+217  26   5	fire-2
+255 117  20	fire-3
+255 178  64	fire-4
+255 242 166	fire-5
+  8  36  87	ocean-0
+ 26  79 148	ocean-1
+ 33 115 184	ocean-2
+153 204 242	ocean-3
+219 242 255	ocean-4
+ 51  68 156	sky-0
+ 71 102 189	sky-1
+ 97 163 235	sky-2
+140  56  31	planetOrange-0
+224 117  46	planetOrange-1
+245 163  90	planetOrange-2
+255 217 140	planetOrange-3
+ 31  97  51	planetGreen-0
+ 46 133  76	planetGreen-1
+178 242 140	planetGreen-2
+ 82  31 115	planetPurple-0
+140  76 217	planetPurple-1
+230 158 242	planetPurple-2
+ 74  64  56	rock-0
+125 110  96	rock-1
+168 147 125	rock-2
+102  41  26	anger-0
+242  26  26	anger-1
+255 203 187	anger-2

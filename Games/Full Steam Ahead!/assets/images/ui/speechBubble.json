@@ -1,0 +1,47 @@
+{ "frames": {
+   "speechBubble 0.aseprite": {
+    "frame": { "x": 1, "y": 1, "w": 21, "h": 21 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 21, "h": 21 },
+    "sourceSize": { "w": 21, "h": 21 },
+    "duration": 100
+   },
+   "speechBubble 1.aseprite": {
+    "frame": { "x": 24, "y": 1, "w": 21, "h": 21 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 21, "h": 21 },
+    "sourceSize": { "w": 21, "h": 21 },
+    "duration": 100
+   },
+   "speechBubble 2.aseprite": {
+    "frame": { "x": 47, "y": 1, "w": 21, "h": 21 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 21, "h": 21 },
+    "sourceSize": { "w": 21, "h": 21 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "https://www.aseprite.org/",
+  "version": "1.3.18.6-x64",
+  "image": "speechBubble.png",
+  "format": "RGBA8888",
+  "size": { "w": 69, "h": 23 },
+  "scale": "1",
+  "frameTags": [
+   { "name": "calm", "from": 0, "to": 0, "direction": "forward", "color": "#5f87ffff" },
+   { "name": "cross", "from": 1, "to": 1, "direction": "forward", "color": "#5f87ffff" },
+   { "name": "angry", "from": 2, "to": 2, "direction": "forward", "color": "#5f87ffff" }
+  ],
+  "layers": [
+   { "name": "Shadow", "opacity": 71, "blendMode": "normal" },
+   { "name": "Body", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+   { "name": "nineSlice", "color": "#0000ffff", "keys": [{ "frame": 0, "bounds": {"x": 0, "y": 0, "w": 21, "h": 21 }, "center": {"x": 7, "y": 7, "w": 7, "h": 7 } }] }
+  ]
+ }
+}

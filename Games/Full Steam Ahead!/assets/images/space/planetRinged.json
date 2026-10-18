@@ -1,0 +1,160 @@
+{ "frames": {
+   "planetRinged 0.aseprite": {
+    "frame": { "x": 1, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 1.aseprite": {
+    "frame": { "x": 161, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 2.aseprite": {
+    "frame": { "x": 321, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 3.aseprite": {
+    "frame": { "x": 481, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 4.aseprite": {
+    "frame": { "x": 641, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 5.aseprite": {
+    "frame": { "x": 801, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 6.aseprite": {
+    "frame": { "x": 961, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 7.aseprite": {
+    "frame": { "x": 1121, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 8.aseprite": {
+    "frame": { "x": 1281, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 9.aseprite": {
+    "frame": { "x": 1441, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 10.aseprite": {
+    "frame": { "x": 1601, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 11.aseprite": {
+    "frame": { "x": 1761, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 12.aseprite": {
+    "frame": { "x": 1921, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 13.aseprite": {
+    "frame": { "x": 2081, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   },
+   "planetRinged 14.aseprite": {
+    "frame": { "x": 2241, "y": 1, "w": 158, "h": 90 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 158, "h": 90 },
+    "sourceSize": { "w": 158, "h": 90 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "https://www.aseprite.org/",
+  "version": "1.3.18.6-x64",
+  "image": "planetRinged.png",
+  "format": "I8",
+  "size": { "w": 2400, "h": 92 },
+  "scale": "1",
+  "frameTags": [
+   { "name": "orange", "from": 0, "to": 0, "direction": "forward", "color": "#000000ff" },
+   { "name": "orangeBands", "from": 1, "to": 1, "direction": "forward", "color": "#000000ff" },
+   { "name": "orangeCraters", "from": 2, "to": 2, "direction": "forward", "color": "#000000ff" },
+   { "name": "blue", "from": 3, "to": 3, "direction": "forward", "color": "#000000ff" },
+   { "name": "blueBands", "from": 4, "to": 4, "direction": "forward", "color": "#000000ff" },
+   { "name": "blueCraters", "from": 5, "to": 5, "direction": "forward", "color": "#000000ff" },
+   { "name": "green", "from": 6, "to": 6, "direction": "forward", "color": "#000000ff" },
+   { "name": "greenBands", "from": 7, "to": 7, "direction": "forward", "color": "#000000ff" },
+   { "name": "greenCraters", "from": 8, "to": 8, "direction": "forward", "color": "#000000ff" },
+   { "name": "purple", "from": 9, "to": 9, "direction": "forward", "color": "#000000ff" },
+   { "name": "purpleBands", "from": 10, "to": 10, "direction": "forward", "color": "#000000ff" },
+   { "name": "purpleCraters", "from": 11, "to": 11, "direction": "forward", "color": "#000000ff" },
+   { "name": "grey", "from": 12, "to": 12, "direction": "forward", "color": "#000000ff" },
+   { "name": "greyBands", "from": 13, "to": 13, "direction": "forward", "color": "#000000ff" },
+   { "name": "greyCraters", "from": 14, "to": 14, "direction": "forward", "color": "#000000ff" }
+  ],
+  "layers": [
+   { "name": "Ring Back Fill", "opacity": 255, "blendMode": "normal" },
+   { "name": "Ring Back Outline", "opacity": 255, "blendMode": "normal" },
+   { "name": "Body Fill", "opacity": 255, "blendMode": "normal" },
+   { "name": "Body Outline", "opacity": 255, "blendMode": "normal" },
+   { "name": "Bands", "opacity": 255, "blendMode": "normal" },
+   { "name": "Craters", "opacity": 255, "blendMode": "normal" },
+   { "name": "Ring Front Fill", "opacity": 255, "blendMode": "normal" },
+   { "name": "Ring Front Outline", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}
