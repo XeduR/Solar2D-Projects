@@ -128,11 +128,9 @@ return {
 		count = 46,
 		family = "effects",
 		name = "smoke",
-		tags = { "light", "dark" },
 
-		-- The fire level is the chance that a puff is dark.
-		lightTag = "light",
-		darkTag = "dark",
+		-- Light puff frames first, dark second; the fire level is the chance that a puff is dark.
+		tags = { "light", "dark" },
 
 		life = { 1.6, 2.4 },
 		scaleStart = 1,

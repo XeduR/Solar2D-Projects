@@ -285,7 +285,7 @@ function boatMethods:emitSmoke( dt, speed, fireLevel, scroll, rateLevel )
 		local x, y = self:localToLayer( settings.x + randomSpread( settings.jitter ), settings.y )
 		local velocityX = -( scroll * settings.scrollFactor + randomRange( settings.drift ) * self.scale )
 		local velocityY = -randomRange( settings.rise ) * self.scale
-		local tag = random() < fireLevel and settings.darkTag or settings.lightTag
+		local tag = random() < fireLevel and settings.tags[2] or settings.tags[1]
 		emitParticle( self.smoke, x, y, velocityX, velocityY, self.scale, tag )
 	end
 end
@@ -356,6 +356,7 @@ end
 
 function boatMethods:animateParts( speed, fireLevel, cometLevel )
 	local time = self.time
+
 	local captain = config.captain
 	self.captain.rotation = -captain.leanMax * speed + sin( time * captain.swaySpeed ) * captain.swayAmount
 

@@ -8,6 +8,7 @@ local captain = {}
 local screen = require( "classes.screen" )
 local sheets = require( "classes.sheets" )
 local drawing = require( "classes.drawing" )
+local sound = require( "classes.sound" )
 local config = require( "data.captain" )
 local lines = require( "data.captainLines" )
 local credits = require( "data.screens" ).credits
@@ -228,7 +229,7 @@ local function newBubble( parentGroup )
 	return bubble
 end
 
-function bubbleMethods:hide()
+function bubbleMethods:clear()
 	if self.content then
 		display.remove( self.content )
 		self.content = nil
@@ -237,9 +238,13 @@ function bubbleMethods:hide()
 	self.isShown = false
 end
 
+function bubbleMethods:hide()
+	self:clear()
+end
+
 -- Without text, the bubble shows the logo and credits.
 function bubbleMethods:show( text, style )
-	self:hide()
+	self:clear()
 
 	local content = display.newGroup()
 	self.group:insert( content )
@@ -451,6 +456,11 @@ function captainMethods:startLine( text, tier, duration, isMilestone )
 	}
 
 	self.lineBubble:show( text, style )
+
+	-- Only anger warnings and the firing line speak; calm quips and milestones stay quiet under the music.
+	if tier > 0 then
+		sound.babble( tier, #text )
+	end
 end
 
 function captainMethods:say( text, tier, duration )

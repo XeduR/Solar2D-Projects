@@ -102,6 +102,8 @@ return {
 		runLabel = "Your run",
 
 		playAgain = "Play again?",
+
+		-- Measured up from the bottom screen edge to the button's centre.
 		playAgainOffsetFromBottom = 42,
 		playAgainFont = fonts.bold,
 		playAgainFontSize = fonts.large,
@@ -113,6 +115,7 @@ return {
 		blinkOffTime = 0.35,
 		blinkDimAlpha = 0.15,
 
+		-- Measured up from the bottom screen edge to the centre of the ending line's text block.
 		endingLineOffsetFromBottom = 93,
 
 		-- Lines longer than this wrap.
@@ -160,7 +163,7 @@ return {
 		promptColor = { 0.75, 0.3, 0.1 },
 		promptFadeInDuration = 0.25,
 
-		-- Once shown, the prompt pulses; depth is how far it dims, from 0 for none to 1 for fully out.
+		-- Once shown, the prompt pulses; speed is in radians per second, and depth is how far it dims, from 0 for none to 1 for fully out.
 		promptPulseSpeed = 4,
 		promptPulseDepth = 0.35,
 

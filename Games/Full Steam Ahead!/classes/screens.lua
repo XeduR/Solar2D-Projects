@@ -8,6 +8,7 @@ local screens = {}
 local screen = require( "classes.screen" )
 local scores = require( "classes.scores" )
 local sheets = require( "classes.sheets" )
+local sound = require( "classes.sound" )
 local config = require( "data.screens" )
 local endingLines = require( "data.endingLines" )
 
@@ -296,6 +297,9 @@ local function newPlayAgain( hitGroup, labelGroup, theme, onPress )
 	hitArea:addEventListener( "touch", function( event )
 		if event.phase == "began" then
 			onPress()
+
+			-- After onPress, since starting a new game stops every effect.
+			sound.play( "click" )
 		end
 
 		return true
@@ -382,6 +386,7 @@ function overlayMethods:showHelp( onDismiss )
 
 	dim:addEventListener( "touch", function( event )
 		if event.phase == "began" and self.help == help and help.elapsed >= helpConfig.lockout then
+			sound.play( "click" )
 			self:hideHelp()
 
 			if onDismiss then
@@ -402,7 +407,13 @@ end
 function overlayMethods:playFiredTransition( centreX, centreY, onComplete )
 	self:startTransition( function( group )
 		return newFiredCover( group, centreX, centreY )
-	end, config.firedTransition.duration, animateFired, onComplete )
+	end, config.firedTransition.duration, animateFired, function()
+		sound.play( "doorSlam" )
+
+		if onComplete then
+			onComplete()
+		end
+	end )
 end
 
 function overlayMethods:playCrashTransition( centreX, centreY, onComplete )

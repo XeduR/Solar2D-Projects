@@ -20,6 +20,9 @@ return {
 	-- Obstacles are removed once fully this far past the left screen edge.
 	removeMargin = 40,
 
+	-- Largest gap between the boat's and an obstacle's collision edges, in content units, that still plays the near-miss whoosh as it passes.
+	nearMissDistance = 30,
+
 	-- Gaps stay a boat diameter plus this far from the top and bottom edges.
 	gapEdgeMargin = 40,
 

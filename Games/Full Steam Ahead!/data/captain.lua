@@ -5,7 +5,7 @@ return {
 	-- Bubbles never come closer than this to a screen edge.
 	screenMargin = 14,
 
-	-- How quickly a bubble catches up with where it should be; higher is snappier.
+	-- Rate per second at which a bubble catches up with its target; higher is snappier.
 	followRate = 9,
 
 	-- Gap between the captain and the nearest edge of the bubble that follows him.
@@ -152,7 +152,7 @@ return {
 		topOffset = 69,
 	},
 
-	-- How fast a shaking bubble trembles.
+	-- How fast a shaking bubble trembles, in radians per second.
 	shakeSpeed = 38,
 
 	-- Vertical shake runs at a different speed and smaller size than horizontal, so it never looks like a loop.

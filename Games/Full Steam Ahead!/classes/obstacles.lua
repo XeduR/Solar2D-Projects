@@ -8,6 +8,7 @@ local obstacles = {}
 local screen = require( "classes.screen" )
 local sheets = require( "classes.sheets" )
 local drawing = require( "classes.drawing" )
+local sound = require( "classes.sound" )
 local config = require( "data.obstacles" )
 local boatConfig = require( "data.boat" )
 
@@ -452,28 +453,64 @@ function fieldMethods:updateFace( face, dt )
 	face.moustache.rotation = sin( face.time * style.moustacheTwirlSpeed ) * style.moustacheTwirlAngle
 end
 
+-- Tracks each obstacle's closest gap to the boat and plays the near-miss whoosh once it has passed without a hit.
+function fieldMethods:trackNearMiss( obstacle, x, radius, distance )
+	if obstacle.isPassed then
+		return
+	end
+
+	local gap = distance - obstacle.hitRadius - radius
+	obstacle.closestGap = min( obstacle.closestGap or gap, gap )
+
+	if obstacle.group.x + obstacle.hitRadius < x - radius then
+		obstacle.isPassed = true
+
+		if self.isActive and obstacle.closestGap <= config.nearMissDistance then
+			sound.play( "whoosh" )
+		end
+	end
+end
+
 function fieldMethods:checkCollision( x, y, radius )
+	local hitX, hitY, hitKind
+
+	-- No early return on a hit: every obstacle hit this frame must be marked passed, so none of them whooshes later.
 	for i = 1, #self.items do
 		local obstacle = self.items[i]
 		local offsetX = x - obstacle.group.x
 		local offsetY = y - obstacle.group.y
 		local reach = obstacle.hitRadius + radius
 		local distanceSquared = offsetX * offsetX + offsetY * offsetY
+		local distance = sqrt( distanceSquared )
+
+		obstacle.boatDistance = distance
 
 		if distanceSquared < reach * reach then
-			local distance = sqrt( distanceSquared )
+			obstacle.isPassed = true
 
-			if distance == 0 then
-				return obstacle.group.x, obstacle.group.y, obstacle.kind
+			if not hitX then
+				hitKind = obstacle.kind
+
+				if distance == 0 then
+					hitX, hitY = obstacle.group.x, obstacle.group.y
+				else
+					local scale = obstacle.hitRadius / distance
+					hitX, hitY = obstacle.group.x + offsetX * scale, obstacle.group.y + offsetY * scale
+				end
 			end
-
-			local scale = obstacle.hitRadius / distance
-
-			return obstacle.group.x + offsetX * scale, obstacle.group.y + offsetY * scale, obstacle.kind
 		end
 	end
 
-	return nil
+	-- No near misses on a crash frame, so no whoosh plays over the crash.
+	if hitX then
+		return hitX, hitY, hitKind
+	end
+
+	for i = 1, #self.items do
+		local obstacle = self.items[i]
+
+		self:trackNearMiss( obstacle, x, radius, obstacle.boatDistance )
+	end
 end
 
 return obstacles

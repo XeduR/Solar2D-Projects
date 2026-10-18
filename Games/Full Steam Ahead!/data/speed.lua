@@ -6,6 +6,7 @@ return {
 	escapeKnots = 21744,
 
 	-- Highest possible speed, in knots, so endless shovelling never overflows to infinity.
+	-- Matches the largest unit in data/scores.lua, so raising it needs a larger unit there.
 	maxKnots = 1e18,
 
 	-- Per phase, ocean then space: growth multiplies the knots on every shovel, and decay is the exponential rate per second at which they fall off.

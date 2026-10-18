@@ -76,6 +76,6 @@ return {
 		"Collect your wages and walk home. Yes, from here.",
 		"Dismissed! I shall stoke her myself. Somehow.",
 		"Fired! Hand in your shovel and your soot.",
-		"Bah! I'll show you how to fire up an old lady."
+		"Bah! I'll show you how to fire up an old lady.",
 	},
 }

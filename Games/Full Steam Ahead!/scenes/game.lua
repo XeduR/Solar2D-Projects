@@ -9,6 +9,8 @@ local screen = require( "classes.screen" )
 local config = require( "data.game" )
 local speedConfig = require( "data.speed" )
 local saveConfig = require( "data.save" )
+local soundConfig = require( "data.sound" )
+local screensConfig = require( "data.screens" )
 
 local speedModel = require( "classes.speedModel" )
 local scores = require( "classes.scores" )
@@ -21,6 +23,7 @@ local screens = require( "classes.screens" )
 local hud = require( "classes.hud" )
 local optionsPanel = require( "classes.optionsPanel" )
 local sheets = require( "classes.sheets" )
+local sound = require( "classes.sound" )
 
 --------------------------------------------------------------------------------------
 -- Forward declarations & variables
@@ -50,6 +53,12 @@ local previousTime = 0
 local lastWarnedTier = 0
 local titleIdleTime = 0
 local thrustTouchId
+
+-- Set by muteGame; the master volume stays at zero until the Master slider moves.
+local isMuted = false
+
+-- Seconds left until the music returns on the game-over screen, nil when none is pending.
+local musicRestartDelay
 
 local buildGame
 
@@ -82,6 +91,7 @@ local function releaseThrust()
 	end
 
 	boat:setThrust( false )
+	sound.setLayer( "thrust", 0 )
 end
 
 local function releaseInput()
@@ -141,6 +151,7 @@ local function startLaunch()
 	view:startLaunch()
 	model:setAngerFrozen( true )
 	talk:quip( "launch" )
+	sound.play( "launch" )
 end
 
 local function startPhase2()
@@ -149,6 +160,10 @@ local function startPhase2()
 	model:setAngerFrozen( false )
 	field:setActive( true )
 	syncGameTransitions()
+
+	if not isPaused then
+		sound.resumeLoops()
+	end
 end
 
 -- The game holds still under the help card until it is dismissed.
@@ -156,6 +171,7 @@ local function showHelp()
 	state = "help"
 	releaseInput()
 	syncGameTransitions()
+	sound.pauseLoops()
 	overlay:showHelp( startPhase2 )
 end
 
@@ -169,6 +185,8 @@ local function showGameOver( theme, cause )
 	save.write( saveData )
 
 	bar:showKnots( false )
+	sound.play( "jingle" )
+	musicRestartDelay = soundConfig.gameOverMusicDelay
 	overlay:showGameOver( { theme = theme, cause = cause, list = board:getList(), rank = rank, runKnots = runKnots }, buildGame )
 end
 
@@ -178,10 +196,16 @@ local function getFired()
 	boat:setCoasting( true )
 	talk:quip( "fired" )
 
+	sound.stopLoops()
+
 	room:playFired( function()
 		local centreX, centreY = room:getCenter()
 
+		sound.fadeOutMusic( screensConfig.firedTransition.duration )
+
 		overlay:playFiredTransition( centreX, centreY, function()
+			-- Sound updates before the overlay each frame, so the fade still has one frame left when the screen turns fully black.
+			sound.cutMusic()
 			showGameOver( "fired", "fired" )
 		end )
 	end )
@@ -191,6 +215,10 @@ local function crash( hitX, hitY, cause )
 	state = "ending"
 	releaseThrust()
 	boat:explode( hitX, hitY )
+
+	sound.stopLoops()
+	sound.cutMusic()
+	sound.play( "crash" )
 
 	overlay:playCrashTransition( hitX, hitY, function()
 		showGameOver( "crash", cause )
@@ -237,6 +265,7 @@ local function checkWarnings()
 	elseif tier > lastWarnedTier then
 		lastWarnedTier = tier
 		talk:warn( tier )
+		sound.play( "stinger" .. tier )
 	end
 end
 
@@ -252,14 +281,40 @@ local function updateCaptainPose()
 	end
 end
 
+local function updateMusicRestart( dt )
+	if not musicRestartDelay then
+		return
+	end
+
+	musicRestartDelay = musicRestartDelay - dt
+
+	if musicRestartDelay <= 0 then
+		musicRestartDelay = nil
+		sound.restartMusic()
+	end
+end
+
+-- The fire roars from the start view to space.
+local function updateLayers( fireLevel )
+	sound.setLayer( "roar", fireLevel )
+end
+
 local function onEnterFrame()
-	if not isRunning or isPaused then
+	if not isRunning then
 		return
 	end
 
 	local now = getTimer()
 	local dt = min( ( now - previousTime ) / 1000, config.maxFrameTime )
 	previousTime = now
+
+	-- The music and its cross-fades keep running while Options or the help card holds the game still.
+	sound.update( dt )
+	updateMusicRestart( dt )
+
+	if isPaused then
+		return
+	end
 
 	if state == "help" then
 		overlay:update( dt )
@@ -275,6 +330,15 @@ local function onEnterFrame()
 
 	room:setFireLevel( fireLevel )
 	view:update( dt, knots, fireLevel )
+
+	if state == "start" or isPlaying() then
+		updateLayers( fireLevel )
+	end
+
+	if isPlaying() then
+		sound.setKnots( knots )
+	end
+
 	bar:setKnots( knots )
 	talk:setAnchor( boat:getCaptainPoint() )
 
@@ -314,6 +378,7 @@ local function onCatcherTouch( event )
 			display.getCurrentStage():setFocus( inputCatcher, event.id )
 			thrustTouchId = event.id
 			boat:setThrust( true )
+			sound.setLayer( "thrust", 1 )
 		end
 
 	elseif ( phase == "ended" or phase == "cancelled" ) and event.id == thrustTouchId then
@@ -323,12 +388,20 @@ local function onCatcherTouch( event )
 	return true
 end
 
+local function applyVolumes()
+	local volume = saveData.volume
+
+	sound.setVolumes( { master = isMuted and 0 or volume.master, music = volume.music, sfx = volume.sfx } )
+end
+
 local function setVolume( key, value )
 	saveData.volume[key] = value
 
 	if key == "master" then
-		audio.setVolume( value )
+		isMuted = false
 	end
+
+	applyVolumes()
 end
 
 local function openOptions()
@@ -340,6 +413,7 @@ local function openOptions()
 	isPaused = true
 	releaseInput()
 	syncGameTransitions()
+	sound.pauseLoops()
 	panel:open()
 end
 
@@ -347,6 +421,11 @@ local function onOptionsClosed()
 	isPaused = false
 	previousTime = getTimer()
 	syncGameTransitions()
+
+	-- The help card keeps the loops paused until it is dismissed.
+	if state ~= "help" then
+		sound.resumeLoops()
+	end
 end
 
 local function newLayer( parent )
@@ -360,6 +439,7 @@ function buildGame()
 	display.getCurrentStage():setFocus( nil )
 	thrustTouchId = nil
 	isPaused = false
+	musicRestartDelay = nil
 
 	if inputCatcher then
 		inputCatcher:removeEventListener( "touch", onCatcherTouch )
@@ -399,6 +479,11 @@ function buildGame()
 		onRelease = function( key, value )
 			setVolume( key, value )
 			save.write( saveData )
+
+			-- A click at the new level makes the effects volume audible.
+			if key == "sfx" then
+				sound.play( "click" )
+			end
 		end,
 
 		onClose = onOptionsClosed,
@@ -411,6 +496,8 @@ function buildGame()
 	showStartTitle( true )
 	room:showTooltip( true )
 	bar:showKnots( false )
+
+	sound.reset()
 end
 
 --------------------------------------------------------------------------------------
@@ -425,7 +512,9 @@ function scene:create( event )
 	saveData = save.load()
 
 	local sceneParams = event.params or {}
-	audio.setVolume( sceneParams.muteGame and 0 or saveData.volume.master )
+	isMuted = sceneParams.muteGame == true
+	applyVolumes()
+
 	board = scores.new( saveData.scores, saveConfig.maxScores )
 
 	buildGame()
@@ -455,6 +544,8 @@ function scene:hide( event )
 
 	elseif phase == "did" then
 		Runtime:removeEventListener( "enterFrame", onEnterFrame )
+		sound.stopLoops()
+		sound.cutMusic()
 	end
 end
 

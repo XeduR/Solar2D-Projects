@@ -11,6 +11,7 @@ local palette = require( "data.palette" )
 local screen = require( "classes.screen" )
 local sheets = require( "classes.sheets" )
 local drawing = require( "classes.drawing" )
+local sound = require( "classes.sound" )
 
 --------------------------------------------------------------------------------------
 -- Forward declarations & variables
@@ -34,7 +35,6 @@ local max = math.max
 local rad = math.rad
 local sqrt = math.sqrt
 local pi = math.pi
-local unpack = unpack
 
 local clamp = drawing.clamp
 local clamp01 = drawing.clamp01
@@ -42,12 +42,13 @@ local lerp = drawing.lerp
 local smoothstep = drawing.smoothstep
 local newPolygonAt = drawing.newPolygonAt
 local randomBetween = drawing.randomBetween
+local setColour = drawing.setColour
 
 --------------------------------------------------------------------------------------
 -- Private functions
 
 -- Closes rate * dt of the remaining gap, capped at the whole gap so a long frame lands on the target instead of overshooting it.
-local function approach( current, target, rate, dt )
+local function approachLinear( current, target, rate, dt )
 	return current + ( target - current ) * min( 1, rate * dt )
 end
 
@@ -64,10 +65,6 @@ local function noise( phase )
 	local weight = noiseConfig.secondWeight
 
 	return sin( phase ) * ( 1 - weight ) + sin( phase * noiseConfig.secondFrequency ) * weight
-end
-
-local function setColor( object, color )
-	object:setFillColor( unpack( color ) )
 end
 
 local function setLerpColor( object, from, to, amount )
@@ -149,7 +146,7 @@ local function newHalo( group )
 
 	for i = 1, #haloConfig.radii do
 		local circle = display.newCircle( group, mouth.centerX, mouth.targetY, haloConfig.radii[i] )
-		setColor( circle, haloConfig.color )
+		setColour( circle, haloConfig.color )
 		circle.blendMode = "add"
 		circle.alpha = 0
 		halo[i] = circle
@@ -195,7 +192,7 @@ local function newFlares( group )
 
 	for i = 1, flareConfig.poolSize do
 		local object = display.newCircle( group, 0, 0, flareConfig.radius )
-		setColor( object, flareConfig.color )
+		setColour( object, flareConfig.color )
 		object.blendMode = "add"
 		object.isVisible = false
 		flares[i] = { object = object, isActive = false }
@@ -217,7 +214,7 @@ end
 local function newWarmGlow( group )
 	local glowConfig = config.glow
 	local glow = newPolygonAt( group, appendArc( { 0, 0 }, 0, 0, hiddenRadius, 0, 90 ) )
-	setColor( glow, glowConfig.color )
+	setColour( glow, glowConfig.color )
 	glow.blendMode = "add"
 	glow.alpha = 0
 
@@ -241,7 +238,7 @@ local function newTooltip( group )
 		font = tooltipConfig.font,
 		fontSize = tooltipConfig.fontSize,
 	} )
-	setColor( label, palette.textLight )
+	setColour( label, palette.textLight )
 
 	local plateWidth = snapToPixels( label.width + tooltipConfig.paddingX * 2 )
 	local plateHeight = snapToPixels( label.height + tooltipConfig.paddingY * 2 )
@@ -392,7 +389,7 @@ function roomMethods:updateFired( dt )
 	if not fall.isSettled then
 		fall.velocityY = fall.velocityY + firedConfig.gravity * dt
 		fall.y = fall.y + fall.velocityY * dt
-		fall.x = approach( fall.x, firedConfig.lyingX, firedConfig.slide, dt )
+		fall.x = approachLinear( fall.x, firedConfig.lyingX, firedConfig.slide, dt )
 
 		if fall.y >= firedConfig.restY and fall.velocityY > 0 then
 			fall.y = firedConfig.restY
@@ -411,7 +408,7 @@ function roomMethods:updateFired( dt )
 
 	fall.wobble = fall.wobble * exp( -firedConfig.wobbleDecay * dt )
 	fall.wobblePhase = fall.wobblePhase + dt * firedConfig.wobbleSpeed
-	fall.rotation = approach( fall.rotation, firedConfig.lyingRotation, firedConfig.spin, dt )
+	fall.rotation = approachLinear( fall.rotation, firedConfig.lyingRotation, firedConfig.spin, dt )
 	self:placeShovel( fall.x, fall.y, fall.rotation + fall.wobble * sin( fall.wobblePhase ) )
 
 	if fall.isSettled and self.firedTime >= firedConfig.completeDelay and self.firedCallback then
@@ -422,6 +419,8 @@ end
 function roomMethods:clatter()
 	local sparkConfig = config.sparks
 	local bladeX, bladeY = self:getBladePosition()
+
+	sound.play( "clang" )
 
 	for _ = 1, sparkConfig.clatterCount do
 		local angle = rad( randomBetween( sparkConfig.clatterMinAngle, sparkConfig.clatterMaxAngle ) )
@@ -457,10 +456,14 @@ function roomMethods:throwCoal( fromX, fromY, count, speed )
 	local mouth = config.furnace.mouth
 	local jitter = coalConfig.releaseJitter
 
+	-- Shared by the chunks of one throw, so only the first to land whoomphs.
+	local throw = { hasLanded = false }
+
 	for i = 1, min( count, #self.chunks ) do
 		local chunk = self:takeChunk()
 
 		chunk.isActive = true
+		chunk.throw = throw
 		chunk.elapsed = -( i - 1 ) * coalConfig.stagger
 		chunk.duration = coalConfig.flightTime / speed
 		chunk.fromX = fromX + randomBetween( -jitter, jitter )
@@ -485,7 +488,7 @@ function roomMethods:updateChunks( dt )
 			if chunk.elapsed >= chunk.duration then
 				chunk.isActive = false
 				object.isVisible = false
-				self:landCoal( chunk.toX, chunk.toY )
+				self:landCoal( chunk.toX, chunk.toY, chunk.throw )
 
 			elseif chunk.elapsed >= 0 then
 				local progress = chunk.elapsed / chunk.duration
@@ -504,9 +507,14 @@ function roomMethods:updateChunks( dt )
 	end
 end
 
-function roomMethods:landCoal( x, y )
+function roomMethods:landCoal( x, y, throw )
 	local flareConfig = config.flare
 	self.kick = min( flareConfig.maxKick, self.kick + flareConfig.kick )
+
+	if not throw.hasLanded then
+		throw.hasLanded = true
+		sound.play( "whoomph", self.level )
+	end
 
 	local flare = takeFromPool( self.flares )
 	if flare then
@@ -563,7 +571,7 @@ function roomMethods:spawnSpark( x, y, velocityX, velocityY, gravity, life, colo
 	spark.gravity = gravity
 	spark.life = life
 	spark.age = 0
-	setColor( spark.object, color )
+	setColour( spark.object, color )
 end
 
 function roomMethods:updateSparks( dt )
@@ -650,6 +658,15 @@ function roomMethods:updateBurst( dt, level, kick )
 	local burstConfig = config.burst
 	local intensity = clamp01( ( level - burstConfig.startLevel ) / ( 1 - burstConfig.startLevel ) )
 
+	-- One burst sound per flare-up; it re-arms only once the flames have gone out.
+	local isBursting = intensity > 0
+
+	if isBursting and not self.isBursting then
+		sound.play( "burst" )
+	end
+
+	self.isBursting = isBursting
+
 	for i = 1, #self.burstFlames do
 		local tongue = self.burstFlames[i]
 		local sprite = tongue.animation.sprite
@@ -682,7 +699,7 @@ function roomMethods:updateFire( dt )
 	local gaugeConfig = config.gauge
 	local time = self.time
 
-	self.level = approach( self.level, self.targetLevel, config.fire.response, dt )
+	self.level = approachLinear( self.level, self.targetLevel, config.fire.response, dt )
 	self.kick = self.kick * exp( -config.flare.kickDecay * dt )
 
 	local level = self.level * self.dim
@@ -776,6 +793,7 @@ function engineRoom.new( parentGroup )
 
 	room.isFired = false
 	room.isCompletePending = false
+	room.isBursting = false
 
 	local restPose = config.shovel.restPose
 	room.motion = {

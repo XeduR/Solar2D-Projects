@@ -32,7 +32,7 @@ local launchParams = {
 	-- Salt for that hash; changing it makes existing save files fail to load.
 	savedataSalt = "XeduR",
 
-	-- Starts the game at zero master volume, ignoring the saved master volume until the volume slider moves.
+	-- Starts the game at zero master volume, ignoring the saved master volume until the master volume slider moves.
 	muteGame = false,
 
 	-- Launch screen logo; the offsets are from the screen's centre.

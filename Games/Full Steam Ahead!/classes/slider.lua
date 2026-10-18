@@ -7,6 +7,7 @@ local slider = {}
 
 local sheets = require( "classes.sheets" )
 local drawing = require( "classes.drawing" )
+local sound = require( "classes.sound" )
 local hudConfig = require( "data.hud" )
 
 local config = hudConfig.slider
@@ -99,6 +100,7 @@ function sliderMethods:dragTo( contentX, contentY )
 
 	self.value = value
 	self:refresh()
+	sound.play( "tick" )
 
 	if self.onChange then
 		self.onChange( value )

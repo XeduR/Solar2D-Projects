@@ -9,6 +9,8 @@ return {
 
 	-- Contents stay inside this radius; the rim covers everything from here to the radius.
 	safeRadius = 278,
+
+	-- How finely the porthole and glow arcs are drawn; smaller is smoother.
 	arcStepDegrees = 3,
 
 	-- Smallest flame scale, since display objects cannot be scaled to zero.

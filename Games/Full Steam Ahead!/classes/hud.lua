@@ -8,6 +8,7 @@ local hud = {}
 local screen = require( "classes.screen" )
 local scores = require( "classes.scores" )
 local sheets = require( "classes.sheets" )
+local sound = require( "classes.sound" )
 local config = require( "data.hud" )
 
 local knotsConfig = config.knots
@@ -100,6 +101,9 @@ local function newButton( parentGroup, text, x, y, onPress )
 			if onPress then
 				onPress()
 			end
+
+			-- After onPress, since a press that resets the game stops every effect.
+			sound.play( "click" )
 		end
 
 		return true
